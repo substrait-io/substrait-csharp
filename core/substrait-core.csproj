@@ -18,6 +18,6 @@
     <PackageReference Include="Google.Protobuf" Version="3.20.1" />
   </ItemGroup>
   <ItemGroup>
-    <Protobuf Include="../substrait/proto/**/*.proto" ProtoRoot="../substrait/proto/" OutputDir="proto/" GrpcServices="None" />
+    <Protobuf Include="../substrait/proto/**/*.proto" ProtoRoot="../substrait/proto/" OutputDir="proto/" CompileOutputs="false" GrpcServices="None" />
   </ItemGroup>
 </Project>
