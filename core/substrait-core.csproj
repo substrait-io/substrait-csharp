@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard1.1</TargetFrameworks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Grpc.Tools" />
+    <None Remove="Google.Protobuf" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Grpc.Tools" Version="2.46.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Google.Protobuf" Version="3.20.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <Protobuf Include="../substrait/proto/**/*.proto" ProtoRoot="../substrait/proto/" OutputDir="proto/" CompileOutputs="false" GrpcServices="None" />
+  </ItemGroup>
+</Project>
