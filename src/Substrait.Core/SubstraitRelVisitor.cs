@@ -1,6 +1,4 @@
-﻿using Substrait.Relation;
-
-namespace Substrait.Core
+﻿namespace Substrait.Relation
 {
   /// <summary>
   /// Visitor to transform, compile, and/or process SQL logical operators represented using Substrait. The visitor has
@@ -99,7 +97,7 @@ namespace Substrait.Core
       Fallback(sort);
     }
 
-    public void Fallback(Rel _)
+    protected void Fallback(object _)
     {
       throw new InvalidOperationException();
     }
