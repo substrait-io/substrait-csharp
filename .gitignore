@@ -1,3 +1,6 @@
+# Substrait generated code and artifacts
+src/*/generated/
+
 # globs
 Makefile.in
 *.userprefs

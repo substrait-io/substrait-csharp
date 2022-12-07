@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 25.0.1700.0
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.33027.108
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "substrait-core", "core\substrait-core.csproj", "{D0621DA5-91E4-4273-A076-CF7B15EC0139}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Substrait.Core", "src\Substrait.Core\Substrait.Core.csproj", "{C33A4305-4A80-4A92-AEF5-FB304D8BA6C7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,10 +11,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{D0621DA5-91E4-4273-A076-CF7B15EC0139}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D0621DA5-91E4-4273-A076-CF7B15EC0139}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D0621DA5-91E4-4273-A076-CF7B15EC0139}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D0621DA5-91E4-4273-A076-CF7B15EC0139}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C33A4305-4A80-4A92-AEF5-FB304D8BA6C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C33A4305-4A80-4A92-AEF5-FB304D8BA6C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C33A4305-4A80-4A92-AEF5-FB304D8BA6C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C33A4305-4A80-4A92-AEF5-FB304D8BA6C7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
