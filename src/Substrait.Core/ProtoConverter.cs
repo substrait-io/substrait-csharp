@@ -14,10 +14,10 @@ namespace Substrait.Core
   public class ProtoConverter
   {
     /// <summary>
-    /// Create domain object specific to relational operator type from protobuf message
+    /// Create domain object from a protobuf encoded message
     /// </summary>
     /// <param name="protoRel">Relation encoded as protobuf message</param>
-    /// <returns><see cref="Rel"/> corresponding to message's operator type</returns>
+    /// <returns><see cref="Rel"/> corresponding to message's relation</returns>
     public Rel ToRel(ProtoRel protoRel)
     {
       var relType = protoRel.RelTypeCase;
