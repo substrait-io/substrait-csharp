@@ -122,7 +122,7 @@ namespace Substrait.Core
     {
       var input = ToRel(project.Input);
       var inputs = ImmutableList.Create(input);
-      return new Join()
+      return new Project()
       {
         Inputs = inputs,
       };
