@@ -5,5 +5,6 @@
   /// </summary>
   public class Fetch : Rel
   {
+    public long Count { get; init; }
   }
 }
