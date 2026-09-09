@@ -21,7 +21,7 @@
     <Company>Microsoft</Company>
     <Copyright>Copyright (c) Microsoft Corporation.</Copyright>
     <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/microsoft/substrait-csharp</RepositoryUrl>
+    <RepositoryUrl>https://github.com/substrait-io/substrait-csharp</RepositoryUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>

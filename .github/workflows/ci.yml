@@ -76,7 +76,7 @@ jobs:
           -pn Microsoft.Substrait
           -pv ${{ env.PREVIEW_PACKAGE_VERSION }}
           -ps "Organization: Microsoft"
-          -nsb https://github.com/microsoft/substrait-csharp
+          -nsb https://github.com/substrait-io/substrait-csharp
           -mi SPDX:2.2
 
       - name: Validate SBOM
