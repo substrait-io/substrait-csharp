@@ -1,9 +1,0 @@
-# SPDX-License-Identifier: Apache-2.0
-
-* @yongchul
-/.github/ @yongchul
-/src/ @yongchul
-/tests/ @yongchul
-/docs/ @yongchul
-/Directory.* @yongchul
-/global.json @yongchul
