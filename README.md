@@ -28,7 +28,7 @@ compatible installed SDK.
 Clone the repository with its pinned Substrait specification sources:
 
 ```shell
-git clone --recurse-submodules https://github.com/microsoft/substrait-csharp.git
+git clone --recurse-submodules https://github.com/substrait-io/substrait-csharp.git
 ```
 
 For an existing clone, initialize the submodule with:
@@ -102,13 +102,17 @@ with multiple relations cannot be converted to the internal representation.
 Here are some ways you can contribute to the substrait-csharp project:
 
 * Submit PRs to fix bugs or add new features.
-* Review currently [open PRs](https://github.com/microsoft/substrait-csharp/pulls).
+* Review currently [open PRs](https://github.com/substrait-io/substrait-csharp/pulls).
 * Provide feedback and report bugs related to the software or the documentation.
 * Enhance our design documents, examples, tutorials, and overall documentation.
 
-To get started, please take a look at the [issues](https://github.com/microsoft/substrait-csharp/issues) and leave a comment if any of them interest you.
+To get started, read the [contribution guide](CONTRIBUTING.md), then take a look
+at the [issues](https://github.com/substrait-io/substrait-csharp/issues) and
+leave a comment if any of them interest you.
 
-If you plan to make significant changes, we recommend [discussing](https://github.com/microsoft/substrait-csharp/discussions) them with the substrait-csharp community first.
+If you plan to make significant changes, open an
+[issue](https://github.com/substrait-io/substrait-csharp/issues) to discuss them
+with the substrait-csharp community first.
 This helps ensure that your contributions align with the project's goals and avoids duplicating efforts.
 
 ## Contributor License Agreement

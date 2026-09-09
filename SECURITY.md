@@ -1,14 +1,26 @@
-<!-- BEGIN MICROSOFT SECURITY.MD V1.0.0 BLOCK -->
+# Security Policy
 
-## Security
+## Reporting a vulnerability
 
-Microsoft takes the security of our software products and services seriously, which
-includes all source code repositories in our GitHub organizations.
+Do not report security vulnerabilities through public GitHub issues.
 
-**Please do not report security vulnerabilities through public GitHub issues.**
+Report vulnerabilities privately using
+[GitHub private vulnerability reporting](https://github.com/substrait-io/substrait-csharp/security/advisories/new).
+Please include:
 
-For security reporting information, locations, contact information, and policies,
-please review the latest guidance for Microsoft repositories at
-[https://aka.ms/SECURITY.md](https://aka.ms/SECURITY.md).
+- A description of the vulnerability and its potential impact
+- The affected version or commit
+- Steps to reproduce or a proof of concept
+- Any known mitigations or suggested fixes
 
-<!-- END MICROSOFT SECURITY.MD BLOCK -->
+## Supported versions
+
+This project is experimental. Security fixes are generally applied to the latest
+development version. If supported releases are introduced, their support status
+will be documented here.
+
+## Coordinated disclosure
+
+Please allow the maintainers an opportunity to investigate and prepare a fix or
+mitigation before publicly disclosing a vulnerability. The maintainers will
+coordinate disclosure with the reporter through the private advisory.

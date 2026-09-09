@@ -9,3 +9,13 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+
+  - package-ecosystem: "nuget"
+    directory: "/"
+    groups:
+      nuget-dependencies:
+        patterns: ["*"]
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7

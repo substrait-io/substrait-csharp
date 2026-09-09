@@ -147,13 +147,13 @@ Assert-Equal 'Apache-2.0' $metadata.license.InnerText 'Package license'
 Assert-Equal 'expression' $metadata.license.type 'Package license type'
 Assert-Equal 'README.md' $metadata.readme 'Package readme'
 Assert-Equal 'git' $metadata.repository.type 'Repository type'
-Assert-Equal 'https://github.com/microsoft/substrait-csharp' $metadata.repository.url 'Repository URL'
+Assert-Equal 'https://github.com/substrait-io/substrait-csharp' $metadata.repository.url 'Repository URL'
 
 if ([string]::IsNullOrWhiteSpace($metadata.repository.commit)) {
     throw 'Package repository commit is missing.'
 }
 
-$expectedRepositorySource = "https://raw.githubusercontent.com/microsoft/substrait-csharp/$($metadata.repository.commit)/*"
+$expectedRepositorySource = "https://raw.githubusercontent.com/substrait-io/substrait-csharp/$($metadata.repository.commit)/*"
 $expectedSubstraitSource = 'https://raw.githubusercontent.com/substrait-io/substrait/d430e521f203aec6a4e06731d4bfd68cdf61f443/*'
 foreach ($targetFramework in @('net10.0', 'net8.0', 'netstandard2.0')) {
     $sourceLinkUrls = @(Read-SourceLinkUrls $SymbolsPackagePath $targetFramework)
