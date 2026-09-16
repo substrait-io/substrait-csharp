@@ -1,0 +1,158 @@
+name: Release and Publish
+
+on:
+  push:
+    tags:
+      - "v[0-9]*.[0-9]*.[0-9]*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build release package
+    if: github.repository == 'substrait-io/substrait-csharp'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Read package version from tag
+        id: version
+        shell: bash
+        run: |
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "Release tag must have the form vX.Y.Z." >&2
+            exit 1
+          fi
+          echo "version=${BASH_REMATCH[1]}" >> "${GITHUB_OUTPUT}"
+
+      - name: Verify Substrait specification release
+        shell: bash
+        run: |
+          spec_version="$(git -C third_party/substrait describe --tags --exact-match)"
+          if [[ ! "${spec_version}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "The Substrait submodule must be pinned to a release tag." >&2
+            exit 1
+          fi
+          echo "Publishing against Substrait specification ${spec_version}."
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore Substrait.sln
+
+      - name: Build
+        run: dotnet build Substrait.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test Substrait.sln --configuration Release --no-build --logger trx
+
+      - name: Pack
+        run: >-
+          dotnet pack src/Substrait/Substrait.csproj
+          --configuration Release
+          --no-build
+          --output artifacts/packages
+          -p:PackageVersion=${{ steps.version.outputs.version }}
+
+      - name: Validate packages
+        shell: pwsh
+        run: >-
+          ./eng/Validate-Package.ps1
+          -PackagePath artifacts/packages/Substrait.Net.${{ steps.version.outputs.version }}.nupkg
+          -SymbolsPackagePath artifacts/packages/Substrait.Net.${{ steps.version.outputs.version }}.snupkg
+          -ExpectedVersion ${{ steps.version.outputs.version }}
+
+      - name: Restore SBOM tool
+        run: dotnet tool restore
+
+      - name: Generate SBOM
+        run: >-
+          dotnet tool run sbom-tool generate
+          -b artifacts/packages
+          -bc src/Substrait
+          -pn Substrait.Net
+          -pv ${{ steps.version.outputs.version }}
+          -ps "Organization: Substrait"
+          -nsb https://github.com/substrait-io/substrait-csharp
+          -mi SPDX:2.2
+
+      - name: Validate SBOM
+        run: >-
+          dotnet tool run sbom-tool validate
+          -b artifacts/packages
+          -o artifacts/sbom-validation.json
+          -mi SPDX:2.2
+
+      - name: Test package consumers
+        shell: bash
+        run: |
+          for framework in net8.0 net9.0 net10.0; do
+            dotnet restore tests/PackageSmokeTest/PackageSmokeTest.csproj \
+              -p:SmokeTestPackageVersion=${{ steps.version.outputs.version }} \
+              -p:SmokeTestTargetFramework="${framework}" \
+              --configfile tests/PackageSmokeTest/NuGet.Config \
+              --no-cache
+            dotnet run \
+              --project tests/PackageSmokeTest/PackageSmokeTest.csproj \
+              --configuration Release \
+              --no-restore \
+              -p:SmokeTestPackageVersion=${{ steps.version.outputs.version }} \
+              -p:SmokeTestTargetFramework="${framework}"
+          done
+
+      - name: Upload release package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-package
+          path: |
+            artifacts/packages/Substrait.Net.${{ steps.version.outputs.version }}.nupkg
+            artifacts/packages/Substrait.Net.${{ steps.version.outputs.version }}.snupkg
+            artifacts/packages/_manifest/spdx_2.2/manifest.spdx.json
+          if-no-files-found: error
+
+  publish:
+    name: Publish to NuGet.org
+    needs: build
+    runs-on: ubuntu-latest
+    environment: nuget.org
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Download release package
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: release-package
+          path: artifacts/packages
+
+      - name: Log in to NuGet.org
+        id: nuget-login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Publish package and symbols
+        run: >-
+          dotnet nuget push
+          artifacts/packages/Substrait.Net.${{ needs.build.outputs.version }}.nupkg
+          --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}"
+          --source https://api.nuget.org/v3/index.json

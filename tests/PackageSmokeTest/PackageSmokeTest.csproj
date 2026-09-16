@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Substrait" VersionOverride="$(SmokeTestPackageVersion)" />
+    <PackageReference Include="Substrait.Net" VersionOverride="$(SmokeTestPackageVersion)" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net462'">

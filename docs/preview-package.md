@@ -1,6 +1,6 @@
 # Preview package status
 
-`Microsoft.Substrait` 0.1 previews are evaluation packages. Continuous
+`Substrait.Net` 0.1 previews are evaluation packages. Continuous
 integration produces `.nupkg` and `.snupkg` workflow artifacts, but does not
 publish them to a package feed.
 

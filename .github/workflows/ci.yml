@@ -61,8 +61,8 @@ jobs:
         shell: pwsh
         run: >-
           ./eng/Validate-Package.ps1
-          -PackagePath artifacts/packages/Microsoft.Substrait.${{ env.PREVIEW_PACKAGE_VERSION }}.nupkg
-          -SymbolsPackagePath artifacts/packages/Microsoft.Substrait.${{ env.PREVIEW_PACKAGE_VERSION }}.snupkg
+          -PackagePath artifacts/packages/Substrait.Net.${{ env.PREVIEW_PACKAGE_VERSION }}.nupkg
+          -SymbolsPackagePath artifacts/packages/Substrait.Net.${{ env.PREVIEW_PACKAGE_VERSION }}.snupkg
           -ExpectedVersion ${{ env.PREVIEW_PACKAGE_VERSION }}
 
       - name: Restore SBOM tool
@@ -73,9 +73,9 @@ jobs:
           dotnet tool run sbom-tool generate
           -b artifacts/packages
           -bc src/Substrait
-          -pn Microsoft.Substrait
+          -pn Substrait.Net
           -pv ${{ env.PREVIEW_PACKAGE_VERSION }}
-          -ps "Organization: Microsoft"
+          -ps "Organization: Substrait"
           -nsb https://github.com/substrait-io/substrait-csharp
           -mi SPDX:2.2
 

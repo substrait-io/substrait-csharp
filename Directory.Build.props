@@ -17,9 +17,9 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Authors>Microsoft</Authors>
-    <Company>Microsoft</Company>
-    <Copyright>Copyright (c) Microsoft Corporation.</Copyright>
+    <Authors>Substrait contributors</Authors>
+    <Company>Substrait</Company>
+    <Copyright>Copyright (c) Substrait contributors.</Copyright>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/substrait-io/substrait-csharp</RepositoryUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>

@@ -76,7 +76,7 @@ function Read-SourceLinkUrls {
 
     $archive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $Path))
     try {
-        $pdbEntry = $archive.GetEntry("lib/$TargetFramework/Microsoft.Substrait.pdb")
+        $pdbEntry = $archive.GetEntry("lib/$TargetFramework/Substrait.Net.pdb")
         if ($null -eq $pdbEntry) {
             throw "Package '$Path' is missing the Source Link PDB for '$TargetFramework'."
         }
@@ -119,20 +119,20 @@ function Read-SourceLinkUrls {
 }
 
 Assert-ArchiveEntries $PackagePath @(
-    'Microsoft.Substrait.nuspec',
-    'lib/net10.0/Microsoft.Substrait.dll',
-    'lib/net10.0/Microsoft.Substrait.xml',
-    'lib/net8.0/Microsoft.Substrait.dll',
-    'lib/net8.0/Microsoft.Substrait.xml',
-    'lib/netstandard2.0/Microsoft.Substrait.dll',
-    'lib/netstandard2.0/Microsoft.Substrait.xml',
+    'Substrait.nuspec',
+    'lib/net10.0/Substrait.Net.dll',
+    'lib/net10.0/Substrait.Net.xml',
+    'lib/net8.0/Substrait.Net.dll',
+    'lib/net8.0/Substrait.Net.xml',
+    'lib/netstandard2.0/Substrait.Net.dll',
+    'lib/netstandard2.0/Substrait.Net.xml',
     'README.md'
 )
 Assert-ArchiveEntries $SymbolsPackagePath @(
-    'Microsoft.Substrait.nuspec',
-    'lib/net10.0/Microsoft.Substrait.pdb',
-    'lib/net8.0/Microsoft.Substrait.pdb',
-    'lib/netstandard2.0/Microsoft.Substrait.pdb'
+    'Substrait.nuspec',
+    'lib/net10.0/Substrait.Net.pdb',
+    'lib/net8.0/Substrait.Net.pdb',
+    'lib/netstandard2.0/Substrait.Net.pdb'
 )
 
 $nuspec = Read-Nuspec $PackagePath
@@ -140,9 +140,9 @@ $namespaceManager = [System.Xml.XmlNamespaceManager]::new($nuspec.NameTable)
 $namespaceManager.AddNamespace('n', $nuspec.DocumentElement.NamespaceURI)
 $metadata = $nuspec.SelectSingleNode('/n:package/n:metadata', $namespaceManager)
 
-Assert-Equal 'Microsoft.Substrait' $metadata.id 'Package ID'
+Assert-Equal 'Substrait.Net' $metadata.id 'Package ID'
 Assert-Equal $ExpectedVersion $metadata.version 'Package version'
-Assert-Equal 'Microsoft' $metadata.authors 'Package authors'
+Assert-Equal 'Substrait contributors' $metadata.authors 'Package authors'
 Assert-Equal 'Apache-2.0' $metadata.license.InnerText 'Package license'
 Assert-Equal 'expression' $metadata.license.type 'Package license type'
 Assert-Equal 'README.md' $metadata.readme 'Package readme'
@@ -207,4 +207,4 @@ foreach ($targetFramework in $expectedDependencyGroups.Keys) {
     }
 }
 
-Write-Host "Validated Microsoft.Substrait $ExpectedVersion package and symbols."
+Write-Host "Validated Substrait.Net $ExpectedVersion package and symbols."
