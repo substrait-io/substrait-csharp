@@ -119,7 +119,7 @@ function Read-SourceLinkUrls {
 }
 
 Assert-ArchiveEntries $PackagePath @(
-    'Substrait.nuspec',
+    'Substrait.Net.nuspec',
     'lib/net10.0/Substrait.Net.dll',
     'lib/net10.0/Substrait.Net.xml',
     'lib/net8.0/Substrait.Net.dll',
@@ -129,7 +129,7 @@ Assert-ArchiveEntries $PackagePath @(
     'README.md'
 )
 Assert-ArchiveEntries $SymbolsPackagePath @(
-    'Substrait.nuspec',
+    'Substrait.Net.nuspec',
     'lib/net10.0/Substrait.Net.pdb',
     'lib/net8.0/Substrait.Net.pdb',
     'lib/netstandard2.0/Substrait.Net.pdb'
