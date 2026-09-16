@@ -1,0 +1,63 @@
+name: Semantic Release
+
+on:
+  schedule:
+    - cron: "0 2 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: semantic-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Create release
+    if: github.repository == 'substrait-io/substrait-csharp'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.0.0
+        with:
+          client-id: ${{ secrets.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          permission-contents: write
+
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.0.0
+        with:
+          node-version: 24
+
+      - name: Check release bootstrap
+        id: bootstrap
+        shell: bash
+        run: |
+          if git rev-parse --verify --quiet refs/tags/v0.1.0; then
+            echo "ready=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "ready=false" >> "${GITHUB_OUTPUT}"
+            echo "Create the initial v0.1.0 tag after trusted publishing is configured."
+          fi
+
+      - name: Run semantic-release
+        if: steps.bootstrap.outputs.ready == 'true'
+        run: >-
+          npx --yes
+          -p semantic-release@25.0.5
+          -p @semantic-release/commit-analyzer@13.0.1
+          -p @semantic-release/release-notes-generator@14.1.1
+          -p @semantic-release/github@12.0.8
+          -p conventional-changelog-conventionalcommits@9.3.1
+          semantic-release --ci
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}

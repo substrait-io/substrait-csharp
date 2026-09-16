@@ -51,13 +51,16 @@ Create the NuGet package locally with:
 dotnet pack src/Substrait/Substrait.csproj --configuration Release --output artifacts/packages
 ```
 
+The package ID and managed assembly name are `Substrait.Net`, and
+public namespaces remain under `Substrait`.
+
 ## Preview package validation
 
-Continuous integration creates a run-scoped prerelease package, validates its
+Pull-request and branch continuous integration creates a run-scoped prerelease package, validates its
 NuGet metadata and Source Link mappings, restores it into a standalone consumer,
 and generates an SPDX 2.2 SBOM. The `.nupkg`, `.snupkg`, and SBOM are uploaded as
-workflow artifacts for review. The workflow does not publish to NuGet.org or any
-other package feed.
+workflow artifacts for review. Tagged releases publish to NuGet.org through
+trusted publishing; see [RELEASING.md](RELEASING.md).
 
 The package consumer has no project reference to the library. To exercise it
 locally after packing a preview version, restore from the package output plus a

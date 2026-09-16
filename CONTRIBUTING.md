@@ -33,9 +33,11 @@ dotnet test Substrait.sln --configuration Release --no-build
 
 Continuous integration creates a run-scoped preview package, validates its
 metadata, symbols, Source Link mappings, and SPDX SBOM, and tests the package
-from standalone consumers. It uploads the artifacts for review but does not
-publish them. See [Preview package status](docs/preview-package.md) for the
-current compatibility scope.
+from standalone consumers. Pull-request and branch builds upload the artifacts
+for review but do not publish them. Tagged releases publish through NuGet trusted
+publishing as described in [RELEASING.md](RELEASING.md). See
+[Preview package status](docs/preview-package.md) for the current compatibility
+scope.
 
 For local package validation, pack the project and run
 `eng/Validate-Package.ps1` with the package, symbols package, and expected
@@ -65,3 +67,7 @@ Use the pull request template and keep each change focused. Explain its
 motivation, compatibility and public API impact, validation performed, and any
 package, generated-code, or submodule considerations. Open an issue before
 starting significant changes so the approach can be discussed.
+
+Pull requests are squash-merged. Use Conventional Commit syntax in the pull
+request title because semantic-release derives package versions and release
+notes from the resulting commit on `main`.

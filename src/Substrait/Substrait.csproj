@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net10.0;net8.0;netstandard2.0</TargetFrameworks>
-    <AssemblyName>Microsoft.Substrait</AssemblyName>
+    <AssemblyName>Substrait.Net</AssemblyName>
     <RootNamespace>Substrait</RootNamespace>
     <IsPackable>true</IsPackable>
-    <PackageId>Microsoft.Substrait</PackageId>
+    <PackageId>Substrait.Net</PackageId>
     <VersionPrefix>0.1.0</VersionPrefix>
     <Description>A library for creating, modifying, serializing, and processing Substrait plans in .NET.</Description>
     <PackageTags>Substrait;protobuf;query-plan</PackageTags>
