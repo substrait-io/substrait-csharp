@@ -25,16 +25,10 @@ Experimental C# bindings for [substrait](https://substrait.io).
 The repository requires a .NET 10 SDK. The checked-in `global.json` selects a
 compatible installed SDK.
 
-Clone the repository with its pinned Substrait specification sources:
+Clone the repository:
 
 ```shell
-git clone --recurse-submodules https://github.com/substrait-io/substrait-csharp.git
-```
-
-For an existing clone, initialize the submodule with:
-
-```shell
-git submodule update --init --recursive
+git clone https://github.com/substrait-io/substrait-csharp.git
 ```
 
 Restore, build, and test the solution from the repository root:
@@ -80,9 +74,13 @@ compatibility scope of the package artifacts.
 The package and assembly identity remain provisional until the first package
 preview.
 
-The `third_party/substrait` submodule pins the upstream specification used to
-generate protobuf and type-parser code. To upgrade it, check out the desired
-upstream release in that directory and commit the updated submodule pointer.
+The specification is supplied by `Substrait.Net.Protobuf`,
+`Substrait.Net.Antlr`, and `Substrait.Net.Extensions` NuGet packages, currently
+version **0.104.0**. No submodule, protobuf compiler, or Java/ANTLR generation
+tool is needed. Versions are pinned in `Directory.Packages.props`; see
+[Updating Substrait](CONTRIBUTING.md#updating-substrait) for upgrade instructions
+and [compatibility notes](docs/preview-package.md#migration-to-specification-packages)
+for changes from the previously bundled v0.73.0 specification.
 
 ## Conversion and serialization
 

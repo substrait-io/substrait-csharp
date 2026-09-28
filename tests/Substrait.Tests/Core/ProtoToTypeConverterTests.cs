@@ -46,6 +46,35 @@ public sealed class ProtoToTypeConverterTests
         IType actual = new ProtoToTypeConverter().From(protoType);
 
         Assert.IsTrue(expected.Equals(actual, ITypeComparison.Strict), $"Expected {expected}, but found {actual}.");
+        Assert.AreEqual(protoType, new TypeToProtoConverter().From(actual));
+    }
+
+    [TestMethod]
+    [DataRow(0)]
+    [DataRow(3)]
+    [DataRow(9)]
+    public void RejectsUnsupportedTimePrecision(int precision)
+    {
+        ProtoType type = new()
+        {
+            PrecisionTime = new() { Precision = precision, Nullability = ProtoType.Types.Nullability.Required },
+        };
+
+        Assert.ThrowsException<NotSupportedException>(() => new ProtoToTypeConverter().From(type));
+    }
+
+    [TestMethod]
+    public void RejectsMissingOrFractionalIntervalPrecision()
+    {
+        ProtoType type = new()
+        {
+            IntervalDay = new() { Nullability = ProtoType.Types.Nullability.Required },
+        };
+        ProtoToTypeConverter converter = new();
+
+        Assert.ThrowsException<NotSupportedException>(() => converter.From(type));
+        type.IntervalDay.Precision = 6;
+        Assert.ThrowsException<NotSupportedException>(() => converter.From(type));
     }
 
     [TestMethod]
@@ -226,9 +255,9 @@ public sealed class ProtoToTypeConverterTests
         yield return [new ProtoType { String = new ProtoType.Types.String { Nullability = ProtoType.Types.Nullability.Nullable } }, TypeFactory.NULLABLE.STR];
         yield return [new ProtoType { Binary = new ProtoType.Types.Binary { Nullability = ProtoType.Types.Nullability.Nullable } }, TypeFactory.NULLABLE.BINARY];
         yield return [new ProtoType { Date = new ProtoType.Types.Date { Nullability = ProtoType.Types.Nullability.Nullable } }, TypeFactory.NULLABLE.DATE];
-        yield return [new ProtoType { Time = new ProtoType.Types.Time { Nullability = ProtoType.Types.Nullability.Nullable } }, TypeFactory.NULLABLE.TIME];
+        yield return [new ProtoType { PrecisionTime = new ProtoType.Types.PrecisionTime { Precision = 6, Nullability = ProtoType.Types.Nullability.Nullable } }, TypeFactory.NULLABLE.TIME];
         yield return [new ProtoType { IntervalYear = new ProtoType.Types.IntervalYear { Nullability = ProtoType.Types.Nullability.Nullable } }, TypeFactory.NULLABLE.INTERVAL_YEAR];
-        yield return [new ProtoType { IntervalDay = new ProtoType.Types.IntervalDay { Nullability = ProtoType.Types.Nullability.Nullable } }, TypeFactory.NULLABLE.INTERVAL_DAY];
+        yield return [new ProtoType { IntervalDay = new ProtoType.Types.IntervalDay { Precision = 0, Nullability = ProtoType.Types.Nullability.Nullable } }, TypeFactory.NULLABLE.INTERVAL_DAY];
         yield return
         [
             new ProtoType

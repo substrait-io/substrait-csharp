@@ -150,6 +150,9 @@ public sealed class AggregateFunctionImpl : FunctionImpl
     /// <returns>The aggregate function implementation.</returns>
     public AggregateFunctionImpl Resolve(string uri, string name, string description)
     {
-        return new AggregateFunctionImpl(uri, name, description, this.Nullability, this.Args, this.Options, this.Ordered, this.Variadic, this.Return, this.Decomposable, this.Intermediate);
+        return new AggregateFunctionImpl(uri, name, description, this.Nullability, this.Args, this.Options, this.Ordered, this.Variadic, this.Return, this.Decomposable, this.Intermediate)
+        {
+            Deprecated = this.Deprecated,
+        };
     }
 }

@@ -126,6 +126,9 @@ public sealed class ScalarFunctionImpl : FunctionImpl
     /// <returns>The scalar function implementation.</returns>
     public ScalarFunctionImpl Resolve(string uri, string name, string description)
     {
-        return new ScalarFunctionImpl(uri, name, description, this.Nullability, this.Args, this.Options, this.Ordered, this.Variadic, this.Return);
+        return new ScalarFunctionImpl(uri, name, description, this.Nullability, this.Args, this.Options, this.Ordered, this.Variadic, this.Return)
+        {
+            Deprecated = this.Deprecated,
+        };
     }
 }

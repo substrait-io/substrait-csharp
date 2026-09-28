@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Core.Plan;
 using Substrait.Core.Relation;
@@ -12,12 +13,22 @@ namespace Substrait.Tests.Core;
 public sealed class PlanTests
 {
     [TestMethod]
-    public void CurrentVersionMatchesPinnedSubstraitRevision()
+    public void CurrentVersionMatchesSubstraitPackages()
     {
-        Assert.AreEqual(0U, Substrait.Core.Plan.Version.Current.MajorNumber);
-        Assert.AreEqual(73U, Substrait.Core.Plan.Version.Current.MinorNumber);
-        Assert.AreEqual(0U, Substrait.Core.Plan.Version.Current.PatchNumber);
-        Assert.AreEqual("d430e521f203aec6a4e06731d4bfd68cdf61f443", Substrait.Core.Plan.Version.Current.GitHash);
+        System.Version? expected = typeof(Substrait.Protobuf.Plan).Assembly.GetName().Version;
+        Assert.IsNotNull(expected);
+
+        Assert.AreEqual((uint)expected.Major, CurrentVersion.MajorNumber);
+        Assert.AreEqual((uint)expected.Minor, CurrentVersion.MinorNumber);
+        Assert.AreEqual((uint)expected.Build, CurrentVersion.PatchNumber);
+        Assert.AreEqual((uint)expected.Major, Substrait.Core.Plan.Version.Current.MajorNumber);
+        Assert.AreEqual((uint)expected.Minor, Substrait.Core.Plan.Version.Current.MinorNumber);
+        Assert.AreEqual((uint)expected.Build, Substrait.Core.Plan.Version.Current.PatchNumber);
+        string expectedHash = typeof(Substrait.Protobuf.Plan).Assembly
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .SingleOrDefault(attribute => attribute.Key == "SubstraitGitHash")?.Value ?? string.Empty;
+        Assert.AreEqual(expectedHash, CurrentVersion.GitHash);
+        Assert.AreEqual(expectedHash, Substrait.Core.Plan.Version.Current.GitHash);
     }
 
     [TestMethod]

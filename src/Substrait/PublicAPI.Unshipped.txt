@@ -1,4 +1,14 @@
 #nullable enable
+Substrait.Core.Extension.Functions.FunctionImpl.Deprecated.get -> Substrait.Core.Extension.Functions.FunctionImpl.Deprecation?
+Substrait.Core.Extension.Functions.FunctionImpl.Deprecated.init -> void
+Substrait.Core.Extension.Functions.FunctionImpl.Deprecation
+Substrait.Core.Extension.Functions.FunctionImpl.Deprecation.Deprecation() -> void
+Substrait.Core.Extension.Functions.FunctionImpl.Deprecation.Reason.get -> string!
+Substrait.Core.Extension.Functions.FunctionImpl.Deprecation.Reason.init -> void
+Substrait.Core.Extension.Functions.FunctionImpl.Deprecation.Since.get -> string!
+Substrait.Core.Extension.Functions.FunctionImpl.Deprecation.Since.init -> void
+Substrait.Core.Extension.ExtensionDefinitions.Urn.get -> string!
+Substrait.Core.Extension.ExtensionDefinitions.Urn.init -> void
 abstract Substrait.Core.Expression.DefaultExpressionVisitor<TContext, TOutput>.DefaultVisit(Substrait.Core.Expression.IExpression! expr, TContext context) -> TOutput
 abstract Substrait.Core.Expression.Expression.Accept<TContext, TOutput>(Substrait.Core.Expression.ExpressionVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
 abstract Substrait.Core.Expression.Expression.GetNodeHashCode() -> int

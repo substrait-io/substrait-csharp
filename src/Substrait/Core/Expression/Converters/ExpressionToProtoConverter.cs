@@ -65,7 +65,9 @@ public class ExpressionToProtoConverter
             };
             if (expression.SubqueryLevels > 0)
             {
+#pragma warning disable CS0612 // The internal model still uses subquery offsets, not relation anchors.
                 reference.OuterReference = new() { StepsOut = (uint)expression.SubqueryLevels };
+#pragma warning restore CS0612
             }
             else
             {
@@ -88,7 +90,7 @@ public class ExpressionToProtoConverter
         public override ProtoExpression Visit(StrLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { String = expression.Value, Nullable = expression.Type.IsNullable() });
         public override ProtoExpression Visit(BinaryLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { Binary = expression.Value, Nullable = expression.Type.IsNullable() });
         public override ProtoExpression Visit(DateLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { Date = expression.Value, Nullable = expression.Type.IsNullable() });
-        public override ProtoExpression Visit(TimeLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { Time = expression.Value, Nullable = expression.Type.IsNullable() });
+        public override ProtoExpression Visit(TimeLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { PrecisionTime = new() { Precision = 6, Value = expression.Value }, Nullable = expression.Type.IsNullable() });
         public override ProtoExpression Visit(FixedCharLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { FixedChar = expression.Value, Nullable = expression.Type.IsNullable() });
         public override ProtoExpression Visit(FixedBinaryLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { FixedBinary = expression.Value, Nullable = expression.Type.IsNullable() });
 

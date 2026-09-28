@@ -74,15 +74,48 @@ public sealed class ProtoToPlanConverterTests
     }
 
     [TestMethod]
+    public void RoundTripsStandardFunctionUrns()
+    {
+        const string urn = "extension:io.substrait:functions_arithmetic";
+        var read = new NamedTableRead(
+            new Substrait.Core.Type.NamedStruct(["value"], TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64])),
+            ["orders"],
+            null);
+        var function = new Substrait.Core.Expression.Expression.ScalarFunctionInvocation(
+            urn, "add:i64_i64", [new Literal.I64Literal(1), new Literal.I64Literal(2)], TypeFactory.REQUIRED.I64, null);
+        IPlan plan = new Substrait.Core.Plan.Plan(
+            [new Substrait.Core.Plan.Plan.Root(new Project(read, [function]), ["value", "sum"])],
+            Substrait.Core.Plan.Version.Current);
+
+        ProtoPlan serialized = new PlanToProtoConverter().From(plan);
+        Assert.AreEqual(urn, serialized.ExtensionUrns.Single().Urn);
+        Assert.AreEqual(serialized.ExtensionUrns[0].ExtensionUrnAnchor, serialized.Extensions[0].ExtensionFunction.ExtensionUrnReference);
+
+        ProtoPlan[] roundTrips =
+        [
+            ProtoPlan.Parser.ParseFrom(serialized.ToByteArray()),
+            JsonParser.Default.Parse<ProtoPlan>(JsonFormatter.Default.Format(serialized)),
+        ];
+        foreach (ProtoPlan roundTrip in roundTrips)
+        {
+            IPlan converted = new ProtoToPlanConverter().From(roundTrip);
+            var invocation = (Substrait.Core.Expression.Expression.ScalarFunctionInvocation)((Project)converted.Roots[0].Input).Expressions[0];
+            Assert.IsNotNull(invocation.Declaration);
+            Assert.AreEqual(urn, invocation.Declaration.Uri);
+            Assert.AreEqual(serialized, new PlanToProtoConverter().From(converted));
+        }
+    }
+
+    [TestMethod]
     public void NumbersFunctionAndTypeVariationAnchorsIndependently()
     {
-        var variation = new TypeVariationImpl("/types.yaml", "i64", "custom", string.Empty, FunctionBehavior.INHERITS);
+        var variation = new TypeVariationImpl("extension:example:types", "i64", "custom", string.Empty, FunctionBehavior.INHERITS);
         var schema = new Substrait.Core.Type.NamedStruct(
             ["value"],
             TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64_(variation)]));
         var read = new NamedTableRead(schema, ["orders"], null);
         var function = new Substrait.Core.Expression.Expression.ScalarFunctionInvocation(
-            "/functions.yaml",
+            "extension:example:functions",
             "identity:i64",
             [new Literal.I64Literal(1)],
             TypeFactory.REQUIRED.I64,
@@ -98,6 +131,27 @@ public sealed class ProtoToPlanConverterTests
         Assert.AreEqual(0U, result.Relations[0].Root.Input.Project.Expressions[0].ScalarFunction.FunctionReference);
         Assert.AreEqual(1U, result.Extensions.Single(extension => extension.ExtensionTypeVariation is not null).ExtensionTypeVariation.TypeVariationAnchor);
         Assert.AreEqual(0U, result.Extensions.Single(extension => extension.ExtensionFunction is not null).ExtensionFunction.FunctionAnchor);
+    }
+
+    [TestMethod]
+    public void ResolvesExtendedExpressionUrns()
+    {
+        ExtendedExpression expression = new()
+        {
+            ExtensionUrns = { new SimpleExtensionURN { ExtensionUrnAnchor = 1, Urn = "extension:example:functions" } },
+            Extensions =
+            {
+                new SimpleExtensionDeclaration
+                {
+                    ExtensionFunction = new() { ExtensionUrnReference = 1, FunctionAnchor = 7, Name = "identity:i64" },
+                },
+            },
+        };
+
+        FunctionImplAnchor anchor = new ExtensionsDictionary.Builder(expression).Build().GetFunctionAnchor(7);
+
+        Assert.AreEqual("extension:example:functions", anchor.Namespace);
+        Assert.AreEqual("identity:i64", anchor.Key);
     }
 
     [TestMethod]
@@ -141,7 +195,7 @@ public sealed class ProtoToPlanConverterTests
             {
                 ExtensionFunction = new()
                 {
-                    ExtensionUriReference = 1,
+                    ExtensionUrnReference = 1,
                     FunctionAnchor = 0,
                     Name = "missing:i64",
                 },
@@ -180,7 +234,7 @@ public sealed class ProtoToPlanConverterTests
             {
                 ExtensionTypeVariation = new()
                 {
-                    ExtensionUriReference = 1,
+                    ExtensionUrnReference = 1,
                     TypeVariationAnchor = 1,
                     Name = "missing",
                 },
@@ -222,7 +276,7 @@ public sealed class ProtoToPlanConverterTests
     private static ProtoPlan CreatePlanWithExtensions(SimpleExtensionDeclaration extension)
     {
         ProtoPlan plan = CreatePlan();
-        plan.ExtensionUris.Add(new SimpleExtensionURI { ExtensionUriAnchor = 1, Uri = "/missing.yaml" });
+        plan.ExtensionUrns.Add(new SimpleExtensionURN { ExtensionUrnAnchor = 1, Urn = "extension:example:missing" });
         plan.Extensions.Add(extension);
         return plan;
     }

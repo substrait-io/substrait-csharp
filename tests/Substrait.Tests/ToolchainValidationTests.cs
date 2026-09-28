@@ -4,7 +4,8 @@
 using Antlr4.Runtime;
 using Google.Protobuf;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Substrait.Antlr.Type;
+using Substrait.Antlr.SubstraitType;
+using Substrait.Extensions;
 using Substrait.Protobuf;
 
 namespace Substrait.Tests;
@@ -20,7 +21,7 @@ public sealed class ToolchainValidationTests
             Version = new Substrait.Protobuf.Version
             {
                 MajorNumber = 0,
-                MinorNumber = 73,
+                MinorNumber = 104,
                 PatchNumber = 0,
                 Producer = "substrait-csharp-tests",
             },
@@ -46,26 +47,43 @@ public sealed class ToolchainValidationTests
     }
 
     [TestMethod]
-    public void StandardExtensionsAreEmbedded()
+    public void StandardExtensionsComeFromPackage()
     {
         string[] expected =
         [
-            "DefaultExtensions/functions_aggregate_approx.yaml",
-            "DefaultExtensions/functions_aggregate_generic.yaml",
-            "DefaultExtensions/functions_arithmetic.yaml",
-            "DefaultExtensions/functions_boolean.yaml",
-            "DefaultExtensions/functions_comparison.yaml",
-            "DefaultExtensions/functions_datetime.yaml",
-            "DefaultExtensions/functions_logarithmic.yaml",
-            "DefaultExtensions/functions_rounding.yaml",
-            "DefaultExtensions/functions_string.yaml",
-            "DefaultExtensions/type_variations.yaml",
+            "functions_aggregate_approx.yaml",
+            "functions_aggregate_generic.yaml",
+            "functions_arithmetic.yaml",
+            "functions_boolean.yaml",
+            "functions_comparison.yaml",
+            "functions_datetime.yaml",
+            "functions_logarithmic.yaml",
+            "functions_rounding.yaml",
+            "functions_string.yaml",
         ];
 
-        string[] actual = typeof(Plan).Assembly.GetManifestResourceNames()
-            .Where(name => name.StartsWith("DefaultExtensions/", StringComparison.Ordinal))
-            .ToArray();
+        foreach (string name in expected)
+        {
+            Assert.IsTrue(SubstraitExtensions.ExtensionFiles.Contains(name));
+            Assert.IsFalse(string.IsNullOrWhiteSpace(SubstraitExtensions.ReadExtensionFile(name)));
+        }
 
-        CollectionAssert.AreEquivalent(expected, actual);
+        Assert.AreEqual("Substrait.Net.Protobuf", typeof(Plan).Assembly.GetName().Name);
+        Assert.AreEqual("Substrait.Net.Antlr", typeof(SubstraitTypeParser).Assembly.GetName().Name);
+        Assert.AreEqual("Substrait.Net.Extensions", typeof(SubstraitExtensions).Assembly.GetName().Name);
+    }
+
+    [TestMethod]
+    public void SpecificationPackagesMatchCurrentPlanVersion()
+    {
+        System.Version expected = new(
+            (int)Substrait.Core.Plan.Version.Current.MajorNumber,
+            (int)Substrait.Core.Plan.Version.Current.MinorNumber,
+            (int)Substrait.Core.Plan.Version.Current.PatchNumber,
+            0);
+
+        Assert.AreEqual(expected, typeof(Plan).Assembly.GetName().Version);
+        Assert.AreEqual(expected, typeof(SubstraitTypeParser).Assembly.GetName().Version);
+        Assert.AreEqual(expected, typeof(SubstraitExtensions).Assembly.GetName().Version);
     }
 }

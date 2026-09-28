@@ -90,9 +90,14 @@ public class ProtoToTypeConverter
                     typeVariation = this.GetTypeVariation(current.Date.TypeVariationReference);
                     collectedTypes.Add(GetFactory(current.Date.Nullability).Date_(typeVariation));
                     break;
-                case ProtoType.KindOneofCase.Time:
-                    typeVariation = this.GetTypeVariation(current.Time.TypeVariationReference);
-                    collectedTypes.Add(GetFactory(current.Time.Nullability).Time_(typeVariation));
+                case ProtoType.KindOneofCase.PrecisionTime:
+                    if (current.PrecisionTime.Precision != 6)
+                    {
+                        throw new NotSupportedException("Only microsecond-precision time types are supported.");
+                    }
+
+                    typeVariation = this.GetTypeVariation(current.PrecisionTime.TypeVariationReference);
+                    collectedTypes.Add(GetFactory(current.PrecisionTime.Nullability).Time_(typeVariation));
                     break;
                 case ProtoType.KindOneofCase.PrecisionTimestamp:
                     typeVariation = this.GetTypeVariation(current.PrecisionTimestamp.TypeVariationReference);
@@ -107,6 +112,11 @@ public class ProtoToTypeConverter
                     collectedTypes.Add(GetFactory(current.IntervalYear.Nullability).IntervalYear_(typeVariation));
                     break;
                 case ProtoType.KindOneofCase.IntervalDay:
+                    if (!current.IntervalDay.HasPrecision || current.IntervalDay.Precision != 0)
+                    {
+                        throw new NotSupportedException("Only explicitly second-precision day intervals are supported.");
+                    }
+
                     typeVariation = this.GetTypeVariation(current.IntervalDay.TypeVariationReference);
                     collectedTypes.Add(GetFactory(current.IntervalDay.Nullability).IntervalDay_(typeVariation));
                     break;

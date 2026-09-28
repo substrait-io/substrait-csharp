@@ -6,6 +6,7 @@ using System.Reflection;
 using Substrait.Core.Extension;
 using Substrait.Core.Extension.Functions;
 using Substrait.Core.Extension.Types;
+using Substrait.Extensions;
 using YamlDotNet.Core;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -73,7 +74,7 @@ public static class ExtensionUtils
     }
 
     /// <summary>Loads an extension collection from YAML.</summary>
-    /// <param name="namespaceStr">The extension namespace.</param>
+    /// <param name="namespaceStr">The extension namespace, or an empty string to use the declared URN.</param>
     /// <param name="stream">The YAML stream.</param>
     /// <returns>The loaded extension collection.</returns>
     public static ExtensionsCollection Load(string namespaceStr, Stream stream)
@@ -96,9 +97,18 @@ public static class ExtensionUtils
 
         using StreamReader reader = new(stream);
         ExtensionDefinitions? definitions = deserializer.Deserialize<ExtensionDefinitions>(reader);
-        return definitions is null
-            ? throw new ArgumentException("Failed to load extension signatures from " + namespaceStr)
-            : BuildExtensionCollection(namespaceStr, definitions);
+        if (definitions is null)
+        {
+            throw new ArgumentException("Failed to load extension signatures from " + namespaceStr);
+        }
+
+        string resolvedNamespace = string.IsNullOrEmpty(namespaceStr) ? definitions.Urn : namespaceStr;
+        if (string.IsNullOrEmpty(resolvedNamespace))
+        {
+            throw new ArgumentException("An extension must declare a URN or be loaded with an explicit namespace.");
+        }
+
+        return BuildExtensionCollection(resolvedNamespace, definitions);
     }
 
     /// <summary>Builds a resolved extension collection.</summary>
@@ -120,9 +130,8 @@ public static class ExtensionUtils
     private static ExtensionsCollection LoadDefaultsInternal()
     {
         IEnumerable<ExtensionFile> files = Namespaces
-            .Select(name => new ExtensionFile($"/functions_{name}.yaml", $"DefaultExtensions/functions_{name}.yaml"))
-            .Concat([new ExtensionFile("/type_variations.yaml", "DefaultExtensions/type_variations.yaml")]);
-        return Load(files, new EmbeddedResourceResolver(typeof(ExtensionUtils).Assembly));
+            .Select(name => new ExtensionFile(string.Empty, $"substrait/extensions/functions_{name}.yaml"));
+        return Load(files, new EmbeddedResourceResolver(typeof(SubstraitExtensions).Assembly));
     }
 
     /// <summary>Identifies an extension namespace and its resolvable path.</summary>

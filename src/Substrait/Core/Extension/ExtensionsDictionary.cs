@@ -121,34 +121,34 @@ public sealed class ExtensionsDictionary
 
         /// <summary>Initializes a builder from a protobuf plan.</summary>
         public Builder(Protobuf.Plan plan)
-            : this(plan.ExtensionUris, plan.Extensions)
+            : this(plan.ExtensionUrns, plan.Extensions)
         {
         }
 
         /// <summary>Initializes a builder from a protobuf extended expression.</summary>
         public Builder(ExtendedExpression extendedExpression)
-            : this(extendedExpression.ExtensionUris, extendedExpression.Extensions)
+            : this(extendedExpression.ExtensionUrns, extendedExpression.Extensions)
         {
         }
 
-        private Builder(IEnumerable<SimpleExtensionURI> extensionUris, IEnumerable<SimpleExtensionDeclaration> extensions)
+        private Builder(IEnumerable<SimpleExtensionURN> extensionUrns, IEnumerable<SimpleExtensionDeclaration> extensions)
         {
-            IReadOnlyDictionary<int, string> namespaceMap = extensionUris.ToImmutableDictionary(
-                extension => (int)extension.ExtensionUriAnchor,
-                extension => extension.Uri);
+            IReadOnlyDictionary<int, string> namespaceMap = extensionUrns.ToImmutableDictionary(
+                extension => (int)extension.ExtensionUrnAnchor,
+                extension => extension.Urn);
 
             foreach (SimpleExtensionDeclaration extension in extensions)
             {
                 if (extension.ExtensionTypeVariation is not null)
                 {
                     SimpleExtensionDeclaration.Types.ExtensionTypeVariation typeVariation = extension.ExtensionTypeVariation;
-                    string namespaceUri = GetNamespace(namespaceMap, (int)typeVariation.ExtensionUriReference);
+                    string namespaceUri = GetNamespace(namespaceMap, (int)typeVariation.ExtensionUrnReference);
                     this.typeVariationMap.Add((int)typeVariation.TypeVariationAnchor, new TypeVariationImplAnchor(namespaceUri, typeVariation.Name));
                 }
                 else if (extension.ExtensionFunction is not null)
                 {
                     SimpleExtensionDeclaration.Types.ExtensionFunction function = extension.ExtensionFunction;
-                    string namespaceUri = GetNamespace(namespaceMap, (int)function.ExtensionUriReference);
+                    string namespaceUri = GetNamespace(namespaceMap, (int)function.ExtensionUrnReference);
                     this.functionMap.Add((int)function.FunctionAnchor, new FunctionImplAnchor(namespaceUri, function.Name));
                 }
             }
@@ -165,7 +165,7 @@ public sealed class ExtensionsDictionary
         {
             return namespaceMap.TryGetValue(reference, out string? namespaceUri)
                 ? namespaceUri
-                : throw new ArgumentException($"Could not find extension URI of {reference}");
+                : throw new ArgumentException($"Could not find extension URN of {reference}");
         }
     }
 }

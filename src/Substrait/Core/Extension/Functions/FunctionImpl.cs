@@ -99,6 +99,19 @@ public abstract class FunctionImpl
     /// </summary>
     public virtual string Description { get; init; } = string.Empty;
 
+    /// <summary>Gets the deprecation information, when this implementation is deprecated.</summary>
+    public Deprecation? Deprecated { get; init; }
+
+    /// <summary>Describes a deprecated function implementation.</summary>
+    public sealed class Deprecation
+    {
+        /// <summary>Gets the specification version that deprecated the implementation.</summary>
+        public string Since { get; init; } = string.Empty;
+
+        /// <summary>Gets the reason for deprecation.</summary>
+        public string Reason { get; init; } = string.Empty;
+    }
+
     /// <summary>
     /// Gets function arguments.
     /// </summary>

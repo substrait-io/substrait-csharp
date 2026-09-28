@@ -55,13 +55,13 @@ public class TypeToProtoConverter
             new() { Date = new() { Nullability = type.Nullable.ToProto(), TypeVariationReference = Variation(type, context) } };
 
         public override ProtoType Visit(PrimitiveType.Time type, PlanToProtoConverter.ConverterContext context) =>
-            new() { Time = new() { Nullability = type.Nullable.ToProto(), TypeVariationReference = Variation(type, context) } };
+            new() { PrecisionTime = new() { Precision = 6, Nullability = type.Nullable.ToProto(), TypeVariationReference = Variation(type, context) } };
 
         public override ProtoType Visit(PrimitiveType.IntervalYear type, PlanToProtoConverter.ConverterContext context) =>
             new() { IntervalYear = new() { Nullability = type.Nullable.ToProto(), TypeVariationReference = Variation(type, context) } };
 
         public override ProtoType Visit(PrimitiveType.IntervalDay type, PlanToProtoConverter.ConverterContext context) =>
-            new() { IntervalDay = new() { Nullability = type.Nullable.ToProto(), TypeVariationReference = Variation(type, context) } };
+            new() { IntervalDay = new() { Precision = 0, Nullability = type.Nullable.ToProto(), TypeVariationReference = Variation(type, context) } };
 
         public override ProtoType Visit(ParameterizedType.PrecisionTimestamp type, PlanToProtoConverter.ConverterContext context) =>
             new() { PrecisionTimestamp = new() { Precision = type.Precision, Nullability = type.Nullable.ToProto(), TypeVariationReference = Variation(type, context) } };

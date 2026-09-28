@@ -58,10 +58,10 @@ public class PlanToProtoConverter
         }));
 
         ExtensionsCollector collected = context.ExtensionsCollector;
-        result.ExtensionUris.AddRange(collected.ExtensionUris.Select((uri, index) => new Protobuf.SimpleExtensionURI
+        result.ExtensionUrns.AddRange(collected.ExtensionUris.Select((uri, index) => new Protobuf.SimpleExtensionURN
         {
-            Uri = uri,
-            ExtensionUriAnchor = (uint)index + 1,
+            Urn = uri,
+            ExtensionUrnAnchor = (uint)index + 1,
         }));
 
 #if NET5_0_OR_GREATER
@@ -83,7 +83,7 @@ public class PlanToProtoConverter
                     ExtensionTypeVariation = new()
                     {
                         TypeVariationAnchor = anchor + 1,
-                        ExtensionUriReference = uriReference,
+                        ExtensionUrnReference = uriReference,
                         Name = extension.Name,
                     },
                 },
@@ -92,7 +92,7 @@ public class PlanToProtoConverter
                     ExtensionFunction = new()
                     {
                         FunctionAnchor = anchor,
-                        ExtensionUriReference = uriReference,
+                        ExtensionUrnReference = uriReference,
                         Name = extension.Name,
                     },
                 },

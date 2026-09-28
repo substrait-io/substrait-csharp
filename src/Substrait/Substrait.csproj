@@ -15,11 +15,12 @@
 
   <ItemGroup>
     <PackageReference Include="Antlr4.Runtime.Standard" />
-    <PackageReference Include="Antlr4BuildTasks" PrivateAssets="All" />
     <PackageReference Include="Google.Protobuf" />
-    <PackageReference Include="Grpc.Tools" PrivateAssets="All" />
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="All" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
+    <PackageReference Include="Substrait.Net.Antlr" />
+    <PackageReference Include="Substrait.Net.Extensions" />
+    <PackageReference Include="Substrait.Net.Protobuf" />
     <PackageReference Include="YamlDotNet" />
   </ItemGroup>
 
@@ -29,35 +30,6 @@
     <PackageReference Include="Microsoft.Bcl.HashCode" />
     <PackageReference Include="System.Collections.Immutable" />
     <PackageReference Include="System.Memory" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Protobuf Include="$(RepositoryRoot)third_party\substrait\proto\substrait\**\*.proto"
-              ProtoRoot="$(RepositoryRoot)third_party\substrait\proto"
-              GrpcServices="None" />
-
-    <Antlr4 Include="$(RepositoryRoot)third_party\substrait\grammar\SubstraitType.g4">
-      <Listener>false</Listener>
-      <Visitor>true</Visitor>
-      <GAtn>false</GAtn>
-      <Package>Substrait.Antlr.Type</Package>
-      <Error>true</Error>
-    </Antlr4>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="$(RepositoryRoot)third_party\substrait\extensions\functions_aggregate_approx.yaml;
-                               $(RepositoryRoot)third_party\substrait\extensions\functions_aggregate_generic.yaml;
-                               $(RepositoryRoot)third_party\substrait\extensions\functions_arithmetic.yaml;
-                               $(RepositoryRoot)third_party\substrait\extensions\functions_boolean.yaml;
-                               $(RepositoryRoot)third_party\substrait\extensions\functions_comparison.yaml;
-                               $(RepositoryRoot)third_party\substrait\extensions\functions_datetime.yaml;
-                               $(RepositoryRoot)third_party\substrait\extensions\functions_logarithmic.yaml;
-                               $(RepositoryRoot)third_party\substrait\extensions\functions_rounding.yaml;
-                               $(RepositoryRoot)third_party\substrait\extensions\functions_string.yaml;
-                               $(RepositoryRoot)third_party\substrait\extensions\type_variations.yaml">
-      <LogicalName>DefaultExtensions/%(Filename)%(Extension)</LogicalName>
-    </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>
