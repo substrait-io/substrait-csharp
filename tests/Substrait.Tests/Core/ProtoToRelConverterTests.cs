@@ -587,9 +587,9 @@ public sealed class ProtoToRelConverterTests
     {
         Substrait.Protobuf.Plan plan = new()
         {
-            ExtensionUris =
+            ExtensionUrns =
             {
-                new SimpleExtensionURI { ExtensionUriAnchor = 1, Uri = "/synthetic-aggregate.yaml" },
+                new SimpleExtensionURN { ExtensionUrnAnchor = 1, Urn = "extension:example:synthetic_aggregate" },
             },
             Extensions =
             {
@@ -597,7 +597,7 @@ public sealed class ProtoToRelConverterTests
                 {
                     ExtensionFunction = new SimpleExtensionDeclaration.Types.ExtensionFunction
                     {
-                        ExtensionUriReference = 1,
+                        ExtensionUrnReference = 1,
                         FunctionAnchor = 1,
                         Name = "synthetic_aggregate",
                     },

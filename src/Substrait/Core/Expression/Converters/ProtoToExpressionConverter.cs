@@ -200,9 +200,23 @@ public class ProtoToExpressionConverter
                 case ProtoLiteral.LiteralTypeOneofCase.String: destination.Add(new Literal.StrLiteral(current.String, nullable)); break;
                 case ProtoLiteral.LiteralTypeOneofCase.Binary: destination.Add(new Literal.BinaryLiteral(current.Binary, nullable)); break;
                 case ProtoLiteral.LiteralTypeOneofCase.Date: destination.Add(new Literal.DateLiteral(current.Date, nullable)); break;
-                case ProtoLiteral.LiteralTypeOneofCase.Time: destination.Add(new Literal.TimeLiteral(current.Time, nullable)); break;
+                case ProtoLiteral.LiteralTypeOneofCase.PrecisionTime:
+                    if (current.PrecisionTime.Precision != 6)
+                    {
+                        throw new NotSupportedException("Only microsecond-precision time literals are supported.");
+                    }
+
+                    destination.Add(new Literal.TimeLiteral(current.PrecisionTime.Value, nullable));
+                    break;
                 case ProtoLiteral.LiteralTypeOneofCase.IntervalYearToMonth: destination.Add(new Literal.IntervalYearLiteral(current.IntervalYearToMonth.Years, current.IntervalYearToMonth.Months, nullable)); break;
-                case ProtoLiteral.LiteralTypeOneofCase.IntervalDayToSecond: destination.Add(new Literal.IntervalDayLiteral(current.IntervalDayToSecond.Days, current.IntervalDayToSecond.Seconds, nullable)); break;
+                case ProtoLiteral.LiteralTypeOneofCase.IntervalDayToSecond:
+                    if (current.IntervalDayToSecond.Precision != 0 || current.IntervalDayToSecond.Subseconds != 0)
+                    {
+                        throw new NotSupportedException("Only second-precision day interval literals are supported.");
+                    }
+
+                    destination.Add(new Literal.IntervalDayLiteral(current.IntervalDayToSecond.Days, current.IntervalDayToSecond.Seconds, nullable));
+                    break;
                 case ProtoLiteral.LiteralTypeOneofCase.FixedChar: destination.Add(new Literal.FixedCharLiteral(current.FixedChar, nullable)); break;
                 case ProtoLiteral.LiteralTypeOneofCase.VarChar: destination.Add(new Literal.VarCharLiteral(current.VarChar.Value, (int)current.VarChar.Length, nullable)); break;
                 case ProtoLiteral.LiteralTypeOneofCase.FixedBinary: destination.Add(new Literal.FixedBinaryLiteral(current.FixedBinary, nullable)); break;
@@ -284,7 +298,14 @@ public class ProtoToExpressionConverter
 
     private static FieldReference CreateOuterReference(ProtoFieldReference fieldReference, IReadOnlyList<ParameterizedType.Struct> enclosingSchemas, int fieldIndex)
     {
+        if (fieldReference.OuterReference.OuterReferenceTypeCase == ProtoFieldReference.Types.OuterReference.OuterReferenceTypeOneofCase.RelReference)
+        {
+            throw new NotSupportedException("Relation-anchor outer references are not supported.");
+        }
+
+#pragma warning disable CS0612 // Retain support for the offset-based internal reference model.
         uint stepsOut = fieldReference.OuterReference.StepsOut;
+#pragma warning restore CS0612
         if (stepsOut == 0 || stepsOut > enclosingSchemas.Count)
         {
             throw new SerializationException($"Deserialization error: outer reference steps {stepsOut} is outside the {enclosingSchemas.Count} enclosing schemas.");

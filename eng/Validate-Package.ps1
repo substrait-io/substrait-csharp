@@ -154,32 +154,38 @@ if ([string]::IsNullOrWhiteSpace($metadata.repository.commit)) {
 }
 
 $expectedRepositorySource = "https://raw.githubusercontent.com/substrait-io/substrait-csharp/$($metadata.repository.commit)/*"
-$expectedSubstraitSource = 'https://raw.githubusercontent.com/substrait-io/substrait/d430e521f203aec6a4e06731d4bfd68cdf61f443/*'
 foreach ($targetFramework in @('net10.0', 'net8.0', 'netstandard2.0')) {
     $sourceLinkUrls = @(Read-SourceLinkUrls $SymbolsPackagePath $targetFramework)
     if ($sourceLinkUrls -notcontains $expectedRepositorySource) {
         throw "Source Link mapping '$expectedRepositorySource' is missing for '$targetFramework'."
     }
 
-    if ($sourceLinkUrls -notcontains $expectedSubstraitSource) {
-        throw "Source Link mapping '$expectedSubstraitSource' is missing for '$targetFramework'."
-    }
+    Assert-Equal 1 $sourceLinkUrls.Count "Source Link mapping count for '$targetFramework'"
 }
 
 $expectedDependencyGroups = [ordered]@{
     'net10.0' = [ordered]@{
         'Antlr4.Runtime.Standard' = '4.13.1'
-        'Google.Protobuf' = '3.26.1'
+        'Google.Protobuf' = '3.35.1'
+        'Substrait.Net.Antlr' = '0.104.0'
+        'Substrait.Net.Extensions' = '0.104.0'
+        'Substrait.Net.Protobuf' = '0.104.0'
         'YamlDotNet' = '15.1.2'
     }
     'net8.0' = [ordered]@{
         'Antlr4.Runtime.Standard' = '4.13.1'
-        'Google.Protobuf' = '3.26.1'
+        'Google.Protobuf' = '3.35.1'
+        'Substrait.Net.Antlr' = '0.104.0'
+        'Substrait.Net.Extensions' = '0.104.0'
+        'Substrait.Net.Protobuf' = '0.104.0'
         'YamlDotNet' = '15.1.2'
     }
     '.NETStandard2.0' = [ordered]@{
         'Antlr4.Runtime.Standard' = '4.13.1'
-        'Google.Protobuf' = '3.26.1'
+        'Google.Protobuf' = '3.35.1'
+        'Substrait.Net.Antlr' = '0.104.0'
+        'Substrait.Net.Extensions' = '0.104.0'
+        'Substrait.Net.Protobuf' = '0.104.0'
         'IndexRange' = '1.0.3'
         'Microsoft.Bcl.HashCode' = '6.0.0'
         'System.Collections.Immutable' = '8.0.0'

@@ -59,6 +59,52 @@ public sealed class ProtoToExpressionConverterTests
     public void ConvertsScalarAndIntervalLiterals(ProtoLiteral protoLiteral, Literal expected)
     {
         Assert.AreEqual(expected, this.converter.CreateLiteral(protoLiteral));
+        Assert.AreEqual(protoLiteral, new ExpressionToProtoConverter(new TypeToProtoConverter()).From(expected).Literal);
+    }
+
+    [TestMethod]
+    [DataRow(0)]
+    [DataRow(3)]
+    [DataRow(9)]
+    public void RejectsUnsupportedTimePrecision(int precision)
+    {
+        ProtoLiteral literal = new() { PrecisionTime = new() { Precision = precision, Value = 123 } };
+
+        Assert.ThrowsException<NotSupportedException>(() => this.converter.CreateLiteral(literal));
+    }
+
+    [TestMethod]
+    [DataRow(6, 1L)]
+    [DataRow(6, 0L)]
+    [DataRow(0, 1L)]
+    public void RejectsFractionalIntervalLiterals(int precision, long subseconds)
+    {
+        ProtoLiteral literal = new()
+        {
+            IntervalDayToSecond = new() { Days = 1, Seconds = 2, Precision = precision, Subseconds = subseconds },
+        };
+
+        Assert.ThrowsException<NotSupportedException>(() => this.converter.CreateLiteral(literal));
+    }
+
+    [TestMethod]
+    public void RejectsRelationAnchorOuterReferences()
+    {
+        ParameterizedType.Struct schema = TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I32]);
+        ProtoExpression proto = CreateFieldReference(0);
+        proto.Selection.OuterReference = new() { RelReference = 1 };
+
+        Assert.ThrowsException<NotSupportedException>(() => this.converter.From(proto, schema, [schema]));
+    }
+
+    [TestMethod]
+    public void RoundTripsOffsetOuterReferences()
+    {
+        ParameterizedType.Struct schema = TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I32]);
+        FieldReference expected = new(TypeFactory.REQUIRED.I32, 0, 1);
+        ProtoExpression proto = new ExpressionToProtoConverter(new TypeToProtoConverter()).From(expected);
+
+        Assert.AreEqual(expected, this.converter.From(proto, schema, [schema]));
     }
 
     [TestMethod]
@@ -223,7 +269,9 @@ public sealed class ProtoToExpressionConverterTests
 
         if (stepsOut.HasValue)
         {
+#pragma warning disable CS0612 // Exercise the supported legacy offset representation.
             reference.OuterReference = new ProtoExpression.Types.FieldReference.Types.OuterReference { StepsOut = stepsOut.Value };
+#pragma warning restore CS0612
         }
         else
         {
@@ -259,7 +307,7 @@ public sealed class ProtoToExpressionConverterTests
         yield return [new ProtoLiteral { String = "Hello, World!" }, new Literal.StrLiteral("Hello, World!")];
         yield return [new ProtoLiteral { Binary = binaryValue }, new Literal.BinaryLiteral(binaryValue)];
         yield return [new ProtoLiteral { Date = 600 }, new Literal.DateLiteral(600)];
-        yield return [new ProtoLiteral { Time = 3122016 }, new Literal.TimeLiteral(3122016)];
+        yield return [new ProtoLiteral { PrecisionTime = new() { Precision = 6, Value = 3122016 } }, new Literal.TimeLiteral(3122016)];
         yield return
         [
             new ProtoLiteral

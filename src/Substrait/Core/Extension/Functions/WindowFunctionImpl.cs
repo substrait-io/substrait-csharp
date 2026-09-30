@@ -66,6 +66,7 @@ public sealed class WindowFunctionImpl : FunctionImpl
         this.uri = afi.Uri;
         this.name = afi.Name;
         this.description = afi.Description;
+        this.Deprecated = afi.Deprecated;
         this.nullability = afi.Nullability;
         this.args = afi.Args.ToImmutableList();
         this.options = afi.Options.ToImmutableDictionary();
@@ -201,6 +202,9 @@ public sealed class WindowFunctionImpl : FunctionImpl
     /// <returns>The window function implementation.</returns>
     public WindowFunctionImpl Resolve(string uri, string name, string description)
     {
-        return new WindowFunctionImpl(uri, name, description, this.Nullability, this.Args, this.Options, this.Ordered, this.Variadic, this.Return, this.Decomposable, this.Intermediate, this.WindowType);
+        return new WindowFunctionImpl(uri, name, description, this.Nullability, this.Args, this.Options, this.Ordered, this.Variadic, this.Return, this.Decomposable, this.Intermediate, this.WindowType)
+        {
+            Deprecated = this.Deprecated,
+        };
     }
 }

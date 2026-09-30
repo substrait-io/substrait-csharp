@@ -3,7 +3,7 @@
 
 using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Tree;
-using Substrait.Antlr.Type;
+using Substrait.Antlr.SubstraitType;
 using static Substrait.Core.Extension.Functions.ParameterizedTypeExpression;
 using static Substrait.Core.Type.IType;
 
@@ -128,9 +128,9 @@ public class TypeExpressionParser
         }
 
         /// <inheritdoc/>
-        public ITypeExpression VisitTime(SubstraitTypeParser.TimeContext context)
+        public ITypeExpression VisitPrecisionIntervalCompound(SubstraitTypeParser.PrecisionIntervalCompoundContext context)
         {
-            return WithNullability(context).TIME;
+            throw new NotSupportedException();
         }
 
         /// <inheritdoc/>
@@ -214,7 +214,37 @@ public class TypeExpressionParser
         }
 
         /// <inheritdoc/>
-        public ITypeExpression VisitBinaryExpr(SubstraitTypeParser.BinaryExprContext context)
+        public ITypeExpression VisitOr(SubstraitTypeParser.OrContext context)
+        {
+            throw new NotSupportedException();
+        }
+
+        /// <inheritdoc/>
+        public ITypeExpression VisitAnd(SubstraitTypeParser.AndContext context)
+        {
+            throw new NotSupportedException();
+        }
+
+        /// <inheritdoc/>
+        public ITypeExpression VisitMulDiv(SubstraitTypeParser.MulDivContext context)
+        {
+            throw new NotSupportedException();
+        }
+
+        /// <inheritdoc/>
+        public ITypeExpression VisitAddSub(SubstraitTypeParser.AddSubContext context)
+        {
+            throw new NotSupportedException();
+        }
+
+        /// <inheritdoc/>
+        public ITypeExpression VisitComparison(SubstraitTypeParser.ComparisonContext context)
+        {
+            throw new NotSupportedException();
+        }
+
+        /// <inheritdoc/>
+        public ITypeExpression VisitEquality(SubstraitTypeParser.EqualityContext context)
         {
             throw new NotSupportedException();
         }
@@ -286,13 +316,19 @@ public class TypeExpressionParser
         }
 
         /// <inheritdoc/>
-        public ITypeExpression VisitTimestamp(SubstraitTypeParser.TimestampContext context)
+        public ITypeExpression VisitFunc(SubstraitTypeParser.FuncContext context)
         {
             throw new NotSupportedException();
         }
 
         /// <inheritdoc/>
-        public ITypeExpression VisitTimestampTz(SubstraitTypeParser.TimestampTzContext context)
+        public ITypeExpression VisitSingleFuncParam(SubstraitTypeParser.SingleFuncParamContext context)
+        {
+            throw new NotSupportedException();
+        }
+
+        /// <inheritdoc/>
+        public ITypeExpression VisitFuncParamsWithParens(SubstraitTypeParser.FuncParamsWithParensContext context)
         {
             throw new NotSupportedException();
         }

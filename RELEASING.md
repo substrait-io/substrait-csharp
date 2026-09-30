@@ -4,10 +4,11 @@ Substrait C# releases use the same independent, weekly release model as the
 Substrait Java and Python projects. The NuGet package version describes this
 library; it does not mirror the version of the Substrait specification.
 
-The specification version is the release tag pinned by the
-`third_party/substrait` submodule. A spec update is reviewed and merged as a
-normal dependency change, and may cause a new C# release when it changes package
-behavior.
+The specification version is pinned by the `Substrait.Net.Protobuf`,
+`Substrait.Net.Antlr`, and `Substrait.Net.Extensions` dependencies in
+`Directory.Packages.props`. These packages must use the same specification
+release. A spec update is reviewed and merged as a normal dependency change,
+and may cause a new C# release when it changes package behavior.
 
 ## One-time setup
 

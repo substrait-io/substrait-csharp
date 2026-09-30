@@ -2,21 +2,18 @@
 
 ## Prerequisites
 
-Install the .NET 10 SDK and Git with submodule support. The repository's
+Install the .NET 10 SDK and Git. The repository's
 `global.json` pins the required SDK feature band.
 
-Clone the repository and its pinned Substrait specification:
+Clone the repository:
 
 ```shell
-git clone --recurse-submodules https://github.com/substrait-io/substrait-csharp.git
+git clone https://github.com/substrait-io/substrait-csharp.git
 cd substrait-csharp
 ```
 
-For an existing clone, initialize all submodules:
-
-```shell
-git submodule update --init --recursive
-```
+NuGet restore supplies the specification's generated protobuf bindings, ANTLR
+parsers, and extension definitions. No local code generation is required.
 
 ## Restore, format, build, and test
 
@@ -46,11 +43,21 @@ commands and cross-platform package-consumer matrix.
 
 ## Updating Substrait
 
-`third_party/substrait` pins the upstream specification used to generate
-protobuf and type-parser code. Check out a reviewed upstream revision in that
-directory, regenerate affected sources as appropriate, and commit the submodule
-pointer with the resulting changes. Keep fixture provenance requirements in
-`tests/README.md` in mind when adding or updating test data.
+Update `Substrait.Net.Protobuf`, `Substrait.Net.Antlr`, and
+`Substrait.Net.Extensions` together in `Directory.Packages.props` to the same
+reviewed specification release. Align direct runtime dependencies with the
+packages' minimum versions. Update the package dependency expectations in
+`eng/Validate-Package.ps1` and the related tests and compatibility documentation.
+`CurrentVersion` automatically reads the specification version from the
+`Substrait.Net.Protobuf` assembly metadata; no source generation or manual
+version update is needed. Its Git hash comes from the package's `SubstraitGitHash`
+assembly metadata when available; older packages without that metadata leave it
+empty.
+
+Run the solution tests and standalone package smoke tests: upstream releases
+can change generated APIs, grammar visitors, and extension YAML. Keep fixture
+provenance requirements in `tests/README.md` in mind when adding or updating test
+data.
 
 ## Public API changes
 
@@ -65,7 +72,7 @@ changes.
 
 Use the pull request template and keep each change focused. Explain its
 motivation, compatibility and public API impact, validation performed, and any
-package, generated-code, or submodule considerations. Open an issue before
+package or upstream specification compatibility considerations. Open an issue before
 starting significant changes so the approach can be discussed.
 
 Pull requests are squash-merged. Use Conventional Commit syntax in the pull
