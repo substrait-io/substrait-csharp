@@ -25,17 +25,13 @@ public class PlanToProtoConverter
     /// <returns>The protobuf plan.</returns>
     public Protobuf.Plan From(IPlan plan)
     {
-        if (plan.Roots.Count == 0)
+        if (plan.Relations.Count == 0)
         {
             throw new ArgumentException("Plan must contain at least one relation.");
         }
 
-        if (plan.Roots.Count > 1)
-        {
-            throw new NotImplementedException("Plans with more than one relation are not supported yet.");
-        }
-
-        var context = new ConverterContext();
+        PlanValidation.Validate(plan.Relations);
+        var context = new ConverterContext { PlanRelations = plan.Relations };
         var relationConverter = new RelToProtoConverter();
         var result = new Protobuf.Plan
         {
@@ -48,14 +44,16 @@ public class PlanToProtoConverter
                 Producer = plan.Version.Producer,
             },
         };
-        result.Relations.AddRange(plan.Roots.Select(root => new Protobuf.PlanRel
-        {
-            Root = new Protobuf.RelRoot
+        result.Relations.AddRange(plan.Relations.Select(entry => entry is IPlan.IRoot root
+            ? new Protobuf.PlanRel
             {
-                Input = relationConverter.From(root.Input, context),
-                Names = { root.Names },
-            },
-        }));
+                Root = new Protobuf.RelRoot
+                {
+                    Input = relationConverter.From(root.Input, context),
+                    Names = { root.Names },
+                },
+            }
+            : new Protobuf.PlanRel { Rel = relationConverter.From(entry.Input, context) }));
 
         ExtensionsCollector collected = context.ExtensionsCollector;
         result.ExtensionUrns.AddRange(collected.ExtensionUris.Select((uri, index) => new Protobuf.SimpleExtensionURN
@@ -112,6 +110,18 @@ public class PlanToProtoConverter
         private readonly Context<IExpression, ProtoExpression> expressions = new();
         private readonly Context<IRel, ProtoRel> relations = new();
         private readonly Context<IType, ProtoType> types = new();
+
+        internal IReadOnlyList<IPlan.IRelation>? PlanRelations { get; init; }
+
+        internal void ValidateReference(Reference reference)
+        {
+            if (this.PlanRelations is null)
+            {
+                throw new InvalidOperationException($"Reference ordinal {reference.SubtreeOrdinal} requires a plan reference context. Convert the containing plan instead.");
+            }
+
+            PlanValidation.ValidateBinding(reference, this.PlanRelations);
+        }
 
         /// <summary>Gets the collected extension declarations.</summary>
         public ExtensionsCollector ExtensionsCollector => this.extensions.Build();

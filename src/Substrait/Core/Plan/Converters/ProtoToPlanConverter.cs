@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Collections.Immutable;
 using System.Runtime.Serialization;
 using Substrait.Core.Extension;
+using Substrait.Core.Relation;
 using Substrait.Core.Relation.Converters;
 using Substrait.Tools;
 
@@ -43,27 +43,53 @@ public class ProtoToPlanConverter
         Protobuf.Plan plan,
         ExtensionsDictionary.StrictMode strictMode = ExtensionsDictionary.StrictMode.STRICT)
     {
-        if (plan.Relations.Count > 1)
+        var inputs = new Protobuf.Rel[plan.Relations.Count];
+        var dependencies = new List<IReadOnlyList<int>>(plan.Relations.Count);
+        for (int ordinal = 0; ordinal < plan.Relations.Count; ++ordinal)
         {
-            throw new NotImplementedException("Plans with more than one relation are not supported yet.");
+            Protobuf.PlanRel entry = plan.Relations[ordinal];
+            inputs[ordinal] = entry.RelTypeCase switch
+            {
+                Protobuf.PlanRel.RelTypeOneofCase.Root when entry.Root.Input is not null => entry.Root.Input,
+                Protobuf.PlanRel.RelTypeOneofCase.Rel => entry.Rel,
+                _ => throw new SerializationException($"Plan relation ordinal {ordinal} must have a root input or a non-root relation; its variant or input is unset."),
+            };
+            dependencies.Add(ProtoPlanDependencies.Find(inputs[ordinal], ordinal, plan.Relations.Count));
         }
 
+        IReadOnlyList<int> order = PlanValidation.GetDependencyOrder(dependencies, message => new SerializationException(message));
+        var converted = new IRel?[plan.Relations.Count];
         var relationConverter = this.GetProtoRelConverter(new ExtensionsDictionary.Builder(plan).Build(), strictMode);
-        var roots = plan.Relations.Select(planRelation =>
+        relationConverter.ReferenceResolver = ordinal =>
         {
-            if (planRelation.RelTypeCase != Protobuf.PlanRel.RelTypeOneofCase.Root)
+            PlanValidation.ValidateOrdinal(ordinal, converted.Length, "Plan reference resolution", message => new SerializationException(message));
+            return converted[ordinal] ?? throw new SerializationException($"Reference ordinal {ordinal} has not been resolved in dependency order.");
+        };
+        foreach (int ordinal in order)
+        {
+            try
             {
-                throw new SerializationException("Deserialization error: plan relations must be roots.");
+                // Entries are independent correlation scopes, even when referenced
+                // from a subquery. Never borrow a referring caller's schemas.
+                converted[ordinal] = relationConverter.ToRel(inputs[ordinal]);
             }
+            catch (SerializationException error)
+            {
+                throw new SerializationException($"Plan relation ordinal {ordinal}: {error.Message}", error);
+            }
+        }
 
-            return (IPlan.IRoot)new Plan.Root(
-                relationConverter.ToRel(planRelation.Root.Input),
-                planRelation.Root.Names.ToImmutableList());
+        var entries = plan.Relations.Select((entry, ordinal) =>
+        {
+            IRel input = converted[ordinal] ?? throw new SerializationException($"Plan relation ordinal {ordinal} was not converted.");
+            return entry.RelTypeCase == Protobuf.PlanRel.RelTypeOneofCase.Root
+                ? (IPlan.IRelation)new Plan.Root(input, entry.Root.Names)
+                : new Plan.Relation(input);
         });
 
         Protobuf.Version version = plan.Version;
-        return new Plan(
-            roots,
+        return Plan.FromRelations(
+            entries,
             new Version(
                 version.MajorNumber,
                 version.MinorNumber,

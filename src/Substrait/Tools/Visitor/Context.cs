@@ -41,21 +41,4 @@ public class Context<TNode, TOutput> : IContext<TNode, TOutput>
             this.outputs[node] = (data.Output, data.RefCount);
         }
     }
-
-#if !NET5_0_OR_GREATER
-    private sealed class ReferenceEqualityComparer : IEqualityComparer<object?>, System.Collections.IEqualityComparer
-    {
-        public static ReferenceEqualityComparer Instance { get; } = new ReferenceEqualityComparer();
-
-        public new bool Equals(object? x, object? y)
-        {
-            return ReferenceEquals(x, y);
-        }
-
-        public int GetHashCode(object? obj)
-        {
-            return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj!);
-        }
-    }
-#endif
 }

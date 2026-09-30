@@ -12,6 +12,12 @@ namespace Substrait.Core.Relation;
 /// <typeparam name="TOutput">The type of the output produced by the visitation.</typeparam>
 public abstract class RelVisitor<TContext, TOutput> : IVisitor<IRel, TContext, TOutput>
 {
+    /// <summary>Visits a reference leaf without traversing its target.</summary>
+    /// <param name="op">The reference.</param>
+    /// <param name="context">Input context.</param>
+    /// <returns>The visitor output.</returns>
+    public virtual TOutput Visit(Reference op, TContext context) => this.Visit((IRel)op, context);
+
     /// <summary>
     /// Visits an <see cref="Aggregate"/> operator.
     /// </summary>

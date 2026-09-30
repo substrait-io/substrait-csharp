@@ -1,4 +1,30 @@
 #nullable enable
+Substrait.Core.Plan.IPlan.IRelation
+Substrait.Core.Plan.IPlan.IRelation.Input.get -> Substrait.Core.Relation.IRel!
+Substrait.Core.Plan.IPlan.Relations.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Plan.IPlan.IRelation!>!
+Substrait.Core.Plan.Plan.Relations.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Plan.IPlan.IRelation!>!
+static Substrait.Core.Plan.Plan.FromRelations(System.Collections.Generic.IEnumerable<Substrait.Core.Plan.IPlan.IRelation!>! relations, Substrait.Core.Plan.IVersion! version) -> Substrait.Core.Plan.Plan!
+Substrait.Core.Plan.Plan.Relation
+Substrait.Core.Plan.Plan.Relation.Relation(Substrait.Core.Relation.IRel! input) -> void
+Substrait.Core.Plan.Plan.Relation.Input.get -> Substrait.Core.Relation.IRel!
+Substrait.Core.Plan.Plan.Relation.Equals(Substrait.Core.Plan.Plan.Relation? other) -> bool
+override Substrait.Core.Plan.Plan.Relation.Equals(object? obj) -> bool
+override Substrait.Core.Plan.Plan.Relation.GetHashCode() -> int
+Substrait.Core.Plan.PlanBuilder
+Substrait.Core.Plan.PlanBuilder.PlanBuilder(Substrait.Core.Plan.IVersion? version = null) -> void
+Substrait.Core.Plan.PlanBuilder.RegisterSubplan(Substrait.Core.Relation.IRel! subtree) -> Substrait.Core.Relation.Reference!
+Substrait.Core.Plan.PlanBuilder.AddRoot(Substrait.Core.Relation.IRel! input, System.Collections.Generic.IEnumerable<string!>! names) -> Substrait.Core.Relation.Reference!
+Substrait.Core.Plan.PlanBuilder.Build() -> Substrait.Core.Plan.Plan!
+Substrait.Core.Relation.Reference
+Substrait.Core.Relation.Reference.Reference(int subtreeOrdinal, Substrait.Core.Relation.IRel! target) -> void
+Substrait.Core.Relation.Reference.SubtreeOrdinal.get -> int
+Substrait.Core.Relation.Reference.Target.get -> Substrait.Core.Relation.IRel!
+override Substrait.Core.Relation.Reference.Accept<TContext, TOutput>(Substrait.Core.Relation.RelVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
+override Substrait.Core.Relation.Reference.Transmute.get -> Substrait.Core.Relation.Remap?
+override Substrait.Core.Relation.Reference.NodeEquals(Substrait.Core.Relation.IRel! other) -> bool
+override Substrait.Core.Relation.Reference.GetNodeHashCode() -> int
+virtual Substrait.Core.Relation.RelVisitor<TContext, TOutput>.Visit(Substrait.Core.Relation.Reference! op, TContext context) -> TOutput
+override Substrait.Core.Relation.DefaultRelVisitor<TContext, TOutput>.Visit(Substrait.Core.Relation.Reference! op, TContext context) -> TOutput
 Substrait.Core.Extension.Functions.FunctionImpl.Deprecated.get -> Substrait.Core.Extension.Functions.FunctionImpl.Deprecation?
 Substrait.Core.Extension.Functions.FunctionImpl.Deprecated.init -> void
 Substrait.Core.Extension.Functions.FunctionImpl.Deprecation
@@ -1100,7 +1126,6 @@ Substrait.Core.Extension.Types.TypeVariationImplAnchor.TypeVariationImplAnchor(s
 Substrait.Core.Plan.CurrentVersion
 Substrait.Core.Plan.IPlan
 Substrait.Core.Plan.IPlan.IRoot
-Substrait.Core.Plan.IPlan.IRoot.Input.get -> Substrait.Core.Relation.IRel!
 Substrait.Core.Plan.IPlan.IRoot.Names.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Substrait.Core.Plan.IPlan.Roots.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Plan.IPlan.IRoot!>!
 Substrait.Core.Plan.IPlan.Version.get -> Substrait.Core.Plan.IVersion!

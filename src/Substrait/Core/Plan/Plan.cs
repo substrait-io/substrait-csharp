@@ -19,10 +19,31 @@ public sealed class Plan : IPlan, IEquatable<Plan>
     /// <param name="roots">The roots of the plan.</param>
     /// <param name="version">The version of the plan.</param>
     public Plan(IEnumerable<IRoot> roots, IVersion version)
+        : this(roots.Cast<IRelation>().ToImmutableList(), version)
     {
-        this.Roots = roots.ToImmutableList();
-        this.Version = version;
     }
+
+    private Plan(ImmutableList<IRelation> relations, IVersion version)
+    {
+        PlanValidation.Validate(relations);
+        this.Relations = relations.Select(entry => entry is IRoot root
+            ? (IRelation)new Root(root.Input, root.Names)
+            : new Relation(entry.Input)).ToImmutableList();
+        this.Roots = this.Relations.OfType<IRoot>().ToImmutableList();
+        this.Version = version ?? throw new ArgumentNullException(nameof(version));
+    }
+
+    /// <summary>
+    /// Creates a plan from ordered root and non-root entries. Reference ordinals index this list.
+    /// </summary>
+    /// <param name="relations">All entries in ordinal order.</param>
+    /// <param name="version">The plan version.</param>
+    /// <returns>An immutable, validated plan.</returns>
+    public static Plan FromRelations(IEnumerable<IRelation> relations, IVersion version) =>
+        new(relations.ToImmutableList(), version);
+
+    /// <inheritdoc/>
+    public IReadOnlyList<IRelation> Relations { get; }
 
     /// <inheritdoc/>
     public IReadOnlyList<IRoot> Roots { get; }
@@ -38,7 +59,7 @@ public sealed class Plan : IPlan, IEquatable<Plan>
             return true;
         }
 
-        return other is not null && Enumerable.SequenceEqual(this.Roots, other.Roots) && this.Version.Equals(other.Version);
+        return other is not null && Enumerable.SequenceEqual(this.Relations, other.Relations) && this.Version.Equals(other.Version);
     }
 
     /// <inheritdoc/>
@@ -50,7 +71,32 @@ public sealed class Plan : IPlan, IEquatable<Plan>
     /// <inheritdoc/>
     public override int GetHashCode()
     {
-        return HashCode.Combine(this.Roots.CombineHashCodes(), this.Version);
+        return HashCode.Combine(this.Relations.CombineHashCodes(), this.Version);
+    }
+
+    /// <summary>
+    /// A non-root plan entry, distinct from a root even when its output names are empty.
+    /// </summary>
+    public sealed class Relation : IRelation, IEquatable<Relation>
+    {
+        /// <summary>Initializes a non-root entry.</summary>
+        /// <param name="input">The relation tree.</param>
+        public Relation(IRel input)
+        {
+            this.Input = input ?? throw new ArgumentNullException(nameof(input));
+        }
+
+        /// <inheritdoc/>
+        public IRel Input { get; }
+
+        /// <inheritdoc/>
+        public bool Equals(Relation? other) => other is not null && this.Input.Equals(other.Input);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => this.Equals(obj as Relation);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(nameof(Relation), this.Input);
     }
 
     /// <summary>
@@ -65,7 +111,7 @@ public sealed class Plan : IPlan, IEquatable<Plan>
         /// <param name="names">The output names for the relation.</param>
         public Root(IRel input, IEnumerable<string> names)
         {
-            this.Input = input;
+            this.Input = input ?? throw new ArgumentNullException(nameof(input));
             this.Names = names.ToImmutableList();
         }
 
@@ -95,7 +141,7 @@ public sealed class Plan : IPlan, IEquatable<Plan>
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            return HashCode.Combine(this.Names.CombineHashCodes(), this.Input);
+            return HashCode.Combine(nameof(Root), this.Names.CombineHashCodes(), this.Input);
         }
     }
 }

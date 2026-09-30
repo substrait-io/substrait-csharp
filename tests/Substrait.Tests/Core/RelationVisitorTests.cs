@@ -57,6 +57,23 @@ public sealed class RelationVisitorTests
     }
 
     [TestMethod]
+    public void DispatchersTreatReferencesAsLeavesWithoutVisitingTheirTargets()
+    {
+        Reference reference = new(0, CreateRelationTree(true));
+        Cross relation = new(reference, reference);
+        StringBuilderContext topDownContext = new();
+        StringBuilderContext bottomUpContext = new();
+
+        new RelTopDownDispatcher<StringBuilderContext, VoidOutput>(new RelationPrinter())
+            .Dispatch(relation, topDownContext);
+        new RelBottomUpDispatcher<StringBuilderContext, VoidOutput>(new RelationPrinter())
+            .Dispatch(relation, bottomUpContext);
+
+        Assert.AreEqual("Cross|Reference|Reference|", topDownContext.ToString());
+        Assert.AreEqual("Reference|Reference|Cross|", bottomUpContext.ToString());
+    }
+
+    [TestMethod]
     public void RelationEqualityIncludesNestedInputs()
     {
         Project first = CreateRelationTree(true);

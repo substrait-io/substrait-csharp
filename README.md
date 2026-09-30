@@ -94,9 +94,42 @@ function references but cannot attach their declarations.
 Converting a plan does not add nondeterministic metadata, so repeated protobuf
 serialization of the same internal plan produces the same bytes.
 
-Plan conversion currently supports exactly one relation root. Empty internal
-plans and plans with multiple roots cannot be serialized, and protobuf plans
-with multiple relations cannot be converted to the internal representation.
+Plans can contain ordered mixtures of roots and reusable non-root relations.
+Use `PlanBuilder` to assign reference ordinals and safely share a registered
+subplan across outputs:
+
+```csharp
+using Substrait.Core.Expression;
+using Substrait.Core.Plan;
+using Substrait.Core.Plan.Converters;
+using Substrait.Core.Relation;
+using Substrait.Core.Type;
+
+var schema = new NamedStruct(
+    ["order_id"], TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64]));
+var orders = new NamedTableRead(schema, ["orders"], filter: null);
+
+var builder = new PlanBuilder();
+Reference sharedOrders = builder.RegisterSubplan(orders); // Entry 0, not an output.
+builder.AddRoot(sharedOrders, ["all_order_ids"]);         // Entry 1.
+builder.AddRoot(
+    new Project(sharedOrders, [new Literal.I64Literal(1)]),
+    ["order_id", "marker"]);                             // Entry 2.
+
+Plan plan = builder.Build();
+Substrait.Protobuf.Plan protobuf = new PlanToProtoConverter().From(plan);
+IPlan roundTrip = new ProtoToPlanConverter().From(protobuf);
+```
+
+`IPlan.Relations` is the authoritative ordered list, including non-root entries;
+`Roots` is only its root projection. References point at entry ordinals, not
+root indexes, and each registration creates a new entry without deduplication.
+`Build()` returns an immutable snapshot; later registrations do not change
+earlier plans. References returned by a builder belong to that builder.
+
+Empty plans remain constructible and deserializable, but cannot be serialized.
+See [multi-relation API migration](docs/preview-package.md#multi-relation-plans-and-references)
+for ordering, advanced composition, validation, and correlation limitations.
 
 ## Contributing
 
