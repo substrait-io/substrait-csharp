@@ -168,7 +168,7 @@ public static class ExtensionUtils
 
     private sealed class ReadOnlyCollectionDeserializer(INodeDeserializer inner) : INodeDeserializer
     {
-        public bool Deserialize(IParser parser, Type expectedType, Func<IParser, Type, object?> nestedObjectDeserializer, out object? value)
+        public bool Deserialize(IParser parser, Type expectedType, Func<IParser, Type, object?> nestedObjectDeserializer, out object? value, ObjectDeserializer rootDeserializer)
         {
             if (expectedType.IsGenericType && expectedType.GetGenericTypeDefinition() == typeof(IReadOnlyList<>))
             {
@@ -182,7 +182,7 @@ public static class ExtensionUtils
                 return true;
             }
 
-            return inner.Deserialize(parser, expectedType, nestedObjectDeserializer, out value);
+            return inner.Deserialize(parser, expectedType, nestedObjectDeserializer, out value, rootDeserializer);
         }
     }
 }
