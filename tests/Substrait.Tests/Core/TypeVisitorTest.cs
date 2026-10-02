@@ -4,17 +4,16 @@
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Text;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Core.Extension.Types;
 using Substrait.Core.Type;
 using Substrait.Tools.Visitor;
+using Assembly = System.Reflection.Assembly;
 
 namespace Substrait.Tests.Core.Type;
 
 /// <summary>
 /// Tests for type visitors.
 /// </summary>
-[TestClass]
 public class TypeVisitorTest
 {
     private readonly TypeFactory typeFactory;
@@ -36,8 +35,8 @@ public class TypeVisitorTest
     /// <summary>
     /// Verifies that all sealed classes that implement IType have a corresponding Visit method in TypeVisitor.
     /// </summary>
-    [TestMethod]
-    public void TestTypeVisitorContainsAllSealedClasses()
+    [Test]
+    public async Task TestTypeVisitorContainsAllSealedClasses()
     {
         // Get all types that implement IType
         var itypeTypes = Assembly.GetAssembly(typeof(IType))!
@@ -54,15 +53,15 @@ public class TypeVisitorTest
         // Check if all IType types have corresponding Visit methods in TypeVisitor
         foreach (var type in itypeTypes)
         {
-            Assert.IsTrue(typeVisitorMethods.Contains(type), $"TypeVisitor does not contain a Visit method for {type.Name}");
+            await Assert.That(typeVisitorMethods.Contains(type)).IsTrue().Because($"TypeVisitor does not contain a Visit method for {type.Name}");
         }
     }
 
     /// <summary>
     /// Tests the type visitor with a struct containing all possible types.
     /// </summary>
-    [TestMethod]
-    public void TestTypeVisitor()
+    [Test]
+    public async Task TestTypeVisitor()
     {
         var fields = ImmutableList.Create<IType>(
             this.primitiveTypeFactory.BOOL,
@@ -90,34 +89,34 @@ public class TypeVisitorTest
         string topDownExpected = "Struct|Bool|I8|I16|I32|I64|FP32|FP64|Str|Binary|Date|Time|IntervalDay|IntervalYear|PrecisionTimestamp|PrecisionTimestampTZ|FixedChar|VarChar|FixedBinary|Decimal|";
         string bottomUpExpected = "Bool|I8|I16|I32|I64|FP32|FP64|Str|Binary|Date|Time|IntervalDay|IntervalYear|PrecisionTimestamp|PrecisionTimestampTZ|FixedChar|VarChar|FixedBinary|Decimal|Struct|";
 
-        this.CheckTopDownTraversal(structType, topDownExpected);
-        this.CheckBottomUpTraversal(structType, bottomUpExpected);
+        await this.CheckTopDownTraversal(structType, topDownExpected);
+        await this.CheckBottomUpTraversal(structType, bottomUpExpected);
     }
 
     /// <summary>
     /// Tests the type visitor with an unsupported type.
     /// </summary>
-    [TestMethod]
-    public void TestTypeVisitorWithUnsupportedType()
+    [Test]
+    public async Task TestTypeVisitorWithUnsupportedType()
     {
         var unsupportedType = new UnsupportedType();
         var structType = this.typeFactory.Struct(ImmutableList.Create<IType>(unsupportedType));
-        Assert.ThrowsException<NotSupportedException>(() => this.topDownDispatcher.Dispatch(structType, new StringBuilderContext()));
-        Assert.ThrowsException<NotSupportedException>(() => this.bottomUpDispatcher.Dispatch(structType, new StringBuilderContext()));
+        await Assert.That(() => this.topDownDispatcher.Dispatch(structType, new StringBuilderContext())).ThrowsExactly<NotSupportedException>();
+        await Assert.That(() => this.bottomUpDispatcher.Dispatch(structType, new StringBuilderContext())).ThrowsExactly<NotSupportedException>();
     }
 
-    private void CheckTopDownTraversal(IType type, string expected)
+    private async Task CheckTopDownTraversal(IType type, string expected)
     {
         StringBuilderContext context = new StringBuilderContext();
         this.topDownDispatcher.Dispatch(type, context);
-        Assert.AreEqual(expected, context.ToString());
+        await Assert.That(context.ToString()).IsEqualTo(expected);
     }
 
-    private void CheckBottomUpTraversal(IType type, string expected)
+    private async Task CheckBottomUpTraversal(IType type, string expected)
     {
         StringBuilderContext context = new StringBuilderContext();
         this.bottomUpDispatcher.Dispatch(type, context);
-        Assert.AreEqual(expected, context.ToString());
+        await Assert.That(context.ToString()).IsEqualTo(expected);
     }
 
     private sealed class StringBuilderContext : NoOpContext<IType, VoidOutput>

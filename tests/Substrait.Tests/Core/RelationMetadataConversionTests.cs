@@ -4,7 +4,6 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using Google.Protobuf;
 using Google.Protobuf.Reflection;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Core.Expression;
 using Substrait.Core.Extension;
 using Substrait.Core.Metadata;
@@ -22,18 +21,17 @@ using ProtoRel = Substrait.Protobuf.Rel;
 
 namespace Substrait.Tests.Core;
 
-[TestClass]
 public sealed class RelationMetadataConversionTests
 {
-    [DataTestMethod]
-    [DataRow(0)]
-    [DataRow(1)]
-    [DataRow(2)]
-    [DataRow(3)]
-    [DataRow(4)]
-    [DataRow(5)]
-    [DataRow(6)]
-    public void AllSupportedRelationsPreserveMetadataAndPresence(int variant)
+    [Test]
+    [Arguments(0)]
+    [Arguments(1)]
+    [Arguments(2)]
+    [Arguments(3)]
+    [Arguments(4)]
+    [Arguments(5)]
+    [Arguments(6)]
+    public async Task AllSupportedRelationsPreserveMetadataAndPresence(int variant)
     {
         RelCommon? common = variant switch
         {
@@ -66,30 +64,30 @@ public sealed class RelationMetadataConversionTests
             IRel converted = parsed.Relations[0].Input;
             string name = relation.GetType().Name;
 
-            Assert.AreEqual(relation, converted, name);
-            Assert.AreEqual(relation.GetHashCode(), converted.GetHashCode(), name);
-            Assert.AreEqual(relation.RecordType, converted.RecordType, name);
-            Assert.AreEqual(metadata, converted.Metadata, name);
-            Assert.AreEqual(wire, new PlanToProtoConverter().From(parsed), name);
+            await Assert.That(converted).IsEqualTo(relation).Because(name);
+            await Assert.That(converted.GetHashCode()).IsEqualTo(relation.GetHashCode()).Because(name);
+            await Assert.That(converted.RecordType).IsEqualTo(relation.RecordType).Because(name);
+            await Assert.That(converted.Metadata).IsEqualTo(metadata).Because(name);
+            await Assert.That(new PlanToProtoConverter().From(parsed)).IsEqualTo(wire).Because(name);
 
             ProtoRel standaloneWire = new RelToProtoConverter().From(relation);
             IRel standalone = Reader().ToRel(standaloneWire);
-            Assert.AreEqual(relation, standalone, name);
-            Assert.AreEqual(standaloneWire, new RelToProtoConverter().From(standalone), name);
+            await Assert.That(standalone).IsEqualTo(relation).Because(name);
+            await Assert.That(new RelToProtoConverter().From(standalone)).IsEqualTo(standaloneWire).Because(name);
         }
     }
 
-    [TestMethod]
-    public void OperatorFixturesCoverEverySerializableConcreteRelation()
+    [Test]
+    public async Task OperatorFixturesCoverEverySerializableConcreteRelation()
     {
         System.Type[] actual = Operators(RelationMetadata.Direct).Select(op => op.GetType()).ToArray();
         System.Type[] expected = typeof(IRel).Assembly.GetTypes().Where(type =>
             type.IsSealed && typeof(IRel).IsAssignableFrom(type) && type != typeof(Reference)).ToArray();
-        CollectionAssert.AreEquivalent(expected, actual);
+        await Assert.That(actual).IsEquivalentTo(expected, TUnit.Assertions.Enums.CollectionOrdering.Any);
     }
 
-    [TestMethod]
-    public void NamedTableExtensionsStayAtTheirDistinctLocations()
+    [Test]
+    public async Task NamedTableExtensionsStayAtTheirDistinctLocations()
     {
         RelCommon common = MetadataFacadeTests.CreateCommon();
         common.Emit = null;
@@ -99,18 +97,18 @@ public sealed class RelationMetadataConversionTests
             ReadOnlyAdvancedExtension.FromProto(common.Hint.Constraint.AdvancedExtension));
 
         ProtoRel wire = new RelToProtoConverter().From(read);
-        Assert.AreEqual(common, wire.Read.Common);
-        Assert.AreEqual(common.Hint.AdvancedExtension, wire.Read.AdvancedExtension);
-        Assert.AreEqual(common.Hint.Constraint.AdvancedExtension, wire.Read.NamedTable.AdvancedExtension);
+        await Assert.That(wire.Read.Common).IsEqualTo(common);
+        await Assert.That(wire.Read.AdvancedExtension).IsEqualTo(common.Hint.AdvancedExtension);
+        await Assert.That(wire.Read.NamedTable.AdvancedExtension).IsEqualTo(common.Hint.Constraint.AdvancedExtension);
         NamedTableRead converted = (NamedTableRead)Reader().ToRel(wire);
-        Assert.AreEqual(read, converted);
-        Assert.AreEqual(read.GetHashCode(), converted.GetHashCode());
-        Assert.AreEqual(Schema(), converted.InitialSchema);
-        Assert.AreNotEqual(read, new NamedTableRead(metadata, Schema(), ["orders"], null));
+        await Assert.That(converted).IsEqualTo(read);
+        await Assert.That(converted.GetHashCode()).IsEqualTo(read.GetHashCode());
+        await Assert.That(converted.InitialSchema).IsEqualTo(Schema());
+        await Assert.That(new NamedTableRead(metadata, Schema(), ["orders"], null)).IsNotEqualTo(read);
     }
 
-    [TestMethod]
-    public void CallerOwnedImportsAndAllExportsAreDetached()
+    [Test]
+    public async Task CallerOwnedImportsAndAllExportsAreDetached()
     {
         RelCommon common = MetadataFacadeTests.CreateCommon();
         common.Emit = null;
@@ -126,51 +124,51 @@ public sealed class RelationMetadataConversionTests
         wire.Relations[0].Root.Input.Read.AdvancedExtension.Optimization.Clear();
         wire.Relations[0].Root.Input.Read.NamedTable.AdvancedExtension.Enhancement.Value = ByteString.Empty;
 
-        Assert.AreEqual(expected, new PlanToProtoConverter().From(converted));
-        Assert.AreEqual(expected.Relations[0].Root.Input, new RelToProtoConverter().From(standalone));
-        Assert.AreEqual(hash, converted.GetHashCode());
+        await Assert.That(new PlanToProtoConverter().From(converted)).IsEqualTo(expected);
+        await Assert.That(new RelToProtoConverter().From(standalone)).IsEqualTo(expected.Relations[0].Root.Input);
+        await Assert.That(converted.GetHashCode()).IsEqualTo(hash);
         ProtoPlan exported = new PlanToProtoConverter().From(converted);
         exported.Relations[0].Root.Input.Read.Common.Hint.Alias = "export changed";
         exported.Relations[0].Root.Input.Read.NamedTable.AdvancedExtension.Optimization.Clear();
-        Assert.AreEqual(expected, new PlanToProtoConverter().From(converted));
+        await Assert.That(new PlanToProtoConverter().From(converted)).IsEqualTo(expected);
     }
 
-    [TestMethod]
-    public void MetadataIsTheOnlySourceOfEmitBehavior()
+    [Test]
+    public async Task MetadataIsTheOnlySourceOfEmitBehavior()
     {
         Remap remap = new([0, 0]);
         RelationMetadata metadata = RelationMetadata.FromRemap(remap);
         NamedTableRead read = Read(metadata);
-        Assert.AreSame(metadata.Transmute, read.Transmute);
-        Assert.AreEqual(2, read.RecordType.Fields.Count);
-        Assert.AreEqual(remap, read.Transmute);
-        Assert.AreEqual(RelCommon.EmitKindOneofCase.Direct, Read().Metadata.Common!.EmitKindCase);
-        Assert.AreEqual(RelCommon.EmitKindOneofCase.Direct, new NamedTableRead(Schema(), ["orders"], null, null).Metadata.Common!.EmitKindCase);
+        await Assert.That(read.Transmute).IsSameReferenceAs(metadata.Transmute);
+        await Assert.That(read.RecordType.Fields.Count).IsEqualTo(2);
+        await Assert.That(read.Transmute).IsEqualTo(remap);
+        await Assert.That(Read().Metadata.Common!.EmitKindCase).IsEqualTo(RelCommon.EmitKindOneofCase.Direct);
+        await Assert.That(new NamedTableRead(Schema(), ["orders"], null, null).Metadata.Common!.EmitKindCase).IsEqualTo(RelCommon.EmitKindOneofCase.Direct);
 
         RelCommon common = new() { Hint = new() { Alias = "hint-only", OutputNames = { "hinted_name" } } };
         NamedTableRead hinted = Read(new(ReadOnlyRelCommon.FromProto(common)));
-        Assert.AreEqual(Read().RecordType, hinted.RecordType);
-        CollectionAssert.AreEqual(Read().InitialSchema.Names.ToArray(), hinted.InitialSchema.Names.ToArray());
-        Assert.AreNotEqual(Read(), hinted);
-        Assert.IsNull(new Reference(0, hinted).Metadata.Common);
+        await Assert.That(hinted.RecordType).IsEqualTo(Read().RecordType);
+        await Assert.That(hinted.InitialSchema.Names.ToArray()).IsEquivalentTo(Read().InitialSchema.Names.ToArray(), TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(hinted).IsNotEqualTo(Read());
+        await Assert.That(new Reference(0, hinted).Metadata.Common).IsNull();
     }
 
-    [TestMethod]
-    public void StandaloneConvertersRejectExplicitZeroAnchor()
+    [Test]
+    public async Task StandaloneConvertersRejectExplicitZeroAnchor()
     {
         NamedTableRead read = Read(new(ReadOnlyRelCommon.FromProto(new() { RelAnchor = 0 })));
-        Assert.ThrowsException<ArgumentException>(() => new RelToProtoConverter().From(read));
+        await Assert.That(() => new RelToProtoConverter().From(read)).ThrowsExactly<ArgumentException>();
         ProtoRel wire = new RelToProtoConverter().From(Read());
         wire.Read.Common.RelAnchor = 0;
-        Assert.ThrowsException<SerializationException>(() => Reader().ToRel(wire));
+        await Assert.That(() => Reader().ToRel(wire)).ThrowsExactly<SerializationException>();
     }
 
-    [DataTestMethod]
-    [DataRow(0)]
-    [DataRow(1)]
-    [DataRow(2)]
-    [DataRow(3)]
-    public void MetadataSurvivesInsideEverySubqueryKind(int kind)
+    [Test]
+    [Arguments(0)]
+    [Arguments(1)]
+    [Arguments(2)]
+    [Arguments(3)]
+    public async Task MetadataSurvivesInsideEverySubqueryKind(int kind)
     {
         ProtoRel nested = new RelToProtoConverter().From(Read());
         nested.Read.Common = MetadataFacadeTests.CreateCommon();
@@ -187,9 +185,9 @@ public sealed class RelationMetadataConversionTests
         ProtoPlan wire = WirePlan(relation);
         IPlan plan = Decoder().FromBytes(wire.ToByteArray(), ExtensionsDictionary.StrictMode.OFF);
         IRel subquery = PlanReferenceConversionTests.GetSubquery(((Project)plan.Relations[0].Input).Expressions[0]);
-        Assert.AreEqual(nested.Read.Common, subquery.Metadata.Common!.ToProto());
-        Assert.AreEqual(nested.Read.AdvancedExtension, subquery.Metadata.AdvancedExtension!.ToProto());
-        Assert.AreEqual(wire, new PlanToProtoConverter().From(plan));
+        await Assert.That(subquery.Metadata.Common!.ToProto()).IsEqualTo(nested.Read.Common);
+        await Assert.That(subquery.Metadata.AdvancedExtension!.ToProto()).IsEqualTo(nested.Read.AdvancedExtension);
+        await Assert.That(new PlanToProtoConverter().From(plan)).IsEqualTo(wire);
     }
 
     internal static ProtoToPlanConverter Decoder() => new(new ExtensionsCollection());

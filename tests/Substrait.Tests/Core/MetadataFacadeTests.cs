@@ -4,14 +4,13 @@ using System.Reflection;
 using Google.Protobuf;
 using Google.Protobuf.Reflection;
 using Google.Protobuf.WellKnownTypes;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Core.Metadata;
 using ProtoAdvanced = Substrait.Protobuf.AdvancedExtension;
 using ProtoCommon = Substrait.Protobuf.RelCommon;
+using StringValue = Google.Protobuf.WellKnownTypes.StringValue;
 
 namespace Substrait.Tests.Core;
 
-[TestClass]
 public sealed class MetadataFacadeTests
 {
     private static readonly int[] ExpectedMapping = [2, 0, 2];
@@ -30,24 +29,21 @@ public sealed class MetadataFacadeTests
         (Any.Descriptor, typeof(ReadOnlyAny)),
     ];
 
-    [TestMethod]
-    public void EveryMetadataFieldHasATypedReadOnlyProperty()
+    [Test]
+    public async Task EveryMetadataFieldHasATypedReadOnlyProperty()
     {
         foreach (var (descriptor, facade) in Facades)
         {
-            Assert.IsTrue(facade.IsSealed);
-            Assert.IsFalse(typeof(IMessage).IsAssignableFrom(facade));
-            Assert.AreEqual(0, facade.GetConstructors().Length);
-            Assert.IsNull(facade.GetMethod("FromOwnedProto", BindingFlags.Public | BindingFlags.Static));
-            Assert.AreEqual(
-                descriptor.Fields.InFieldNumberOrder().Count + descriptor.RealOneofCount,
-                facade.GetProperties(BindingFlags.Public | BindingFlags.Instance).Length,
-                descriptor.FullName);
+            await Assert.That(facade.IsSealed).IsTrue();
+            await Assert.That(typeof(IMessage).IsAssignableFrom(facade)).IsFalse();
+            await Assert.That(facade.GetConstructors().Length).IsEqualTo(0);
+            await Assert.That(facade.GetMethod("FromOwnedProto", BindingFlags.Public | BindingFlags.Static)).IsNull();
+            await Assert.That(facade.GetProperties(BindingFlags.Public | BindingFlags.Instance).Length).IsEqualTo(descriptor.Fields.InFieldNumberOrder().Count + descriptor.RealOneofCount).Because(descriptor.FullName);
             foreach (FieldDescriptor field in descriptor.Fields.InFieldNumberOrder())
             {
                 PropertyInfo? property = facade.GetProperty(field.PropertyName);
-                Assert.IsNotNull(property, field.FullName);
-                Assert.IsFalse(property.CanWrite, field.FullName);
+                await Assert.That(property).IsNotNull().Because(field.FullName);
+                await Assert.That(property.CanWrite).IsFalse().Because(field.FullName);
 
                 System.Type expected = field.FieldType == FieldType.Message
                     ? Facades.Single(pair => pair.Descriptor == field.MessageType).Facade
@@ -66,41 +62,41 @@ public sealed class MetadataFacadeTests
                     expected = typeof(Nullable<>).MakeGenericType(expected);
                 }
 
-                Assert.AreEqual(expected, property.PropertyType, field.FullName);
+                await Assert.That(property.PropertyType).IsEqualTo(expected).Because(field.FullName);
             }
         }
     }
 
-    [TestMethod]
-    public void BinaryRoundTripPreservesEveryMetadataFieldAndUnknownData()
+    [Test]
+    public async Task BinaryRoundTripPreservesEveryMetadataFieldAndUnknownData()
     {
         ProtoCommon original = CreateCommon();
         ReadOnlyRelCommon facade = ReadOnlyRelCommon.FromProto(ProtoCommon.Parser.ParseFrom(original.ToByteArray()));
         ProtoCommon roundTrip = ProtoCommon.Parser.ParseFrom(facade.ToProto().ToByteArray());
 
-        Assert.AreEqual(original, roundTrip);
-        CollectionAssert.AreEqual(original.ToByteArray(), roundTrip.ToByteArray());
-        Assert.AreEqual(uint.MaxValue, facade.RelAnchor);
-        Assert.AreEqual(ProtoCommon.EmitKindOneofCase.Emit, facade.EmitKindCase);
-        CollectionAssert.AreEqual(ExpectedMapping, facade.Emit!.OutputMapping.ToArray());
-        Assert.AreEqual("orders", facade.Hint!.Alias);
-        Assert.AreEqual(12.5, facade.Hint.Stats!.RowCount);
-        Assert.AreEqual(64.0, facade.Hint.Stats.RecordSize);
-        CollectionAssert.AreEqual(ExpectedNames, facade.Hint.OutputNames.ToArray());
-        Assert.AreEqual(7, facade.Hint.SavedComputations[0].ComputationId);
-        Assert.AreEqual(7, facade.Hint.LoadedComputations[0].ComputationIdReference);
-        Assert.AreEqual(123456, (int)facade.Hint.SavedComputations[0].Type);
+        await Assert.That(roundTrip).IsEqualTo(original);
+        await Assert.That(roundTrip.ToByteArray()).IsEquivalentTo(original.ToByteArray(), TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(facade.RelAnchor).IsEqualTo(uint.MaxValue);
+        await Assert.That(facade.EmitKindCase).IsEqualTo(ProtoCommon.EmitKindOneofCase.Emit);
+        await Assert.That(facade.Emit!.OutputMapping.ToArray()).IsEquivalentTo(ExpectedMapping, TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(facade.Hint!.Alias).IsEqualTo("orders");
+        await Assert.That(facade.Hint.Stats!.RowCount).IsEqualTo(12.5);
+        await Assert.That(facade.Hint.Stats.RecordSize).IsEqualTo(64.0);
+        await Assert.That(facade.Hint.OutputNames.ToArray()).IsEquivalentTo(ExpectedNames, TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(facade.Hint.SavedComputations[0].ComputationId).IsEqualTo(7);
+        await Assert.That(facade.Hint.LoadedComputations[0].ComputationIdReference).IsEqualTo(7);
+        await Assert.That((int)facade.Hint.SavedComputations[0].Type).IsEqualTo(123456);
 
-        AssertExtensions(original.AdvancedExtension, facade.AdvancedExtension!);
-        AssertExtensions(original.Hint.AdvancedExtension, facade.Hint.AdvancedExtension!);
-        AssertExtensions(original.Hint.Stats.AdvancedExtension, facade.Hint.Stats.AdvancedExtension!);
-        AssertExtensions(original.Hint.Constraint.AdvancedExtension, facade.Hint.Constraint!.AdvancedExtension!);
-        AssertExtensions(original.Hint.SavedComputations[0].AdvancedExtension, facade.Hint.SavedComputations[0].AdvancedExtension!);
-        AssertExtensions(original.Hint.LoadedComputations[0].AdvancedExtension, facade.Hint.LoadedComputations[0].AdvancedExtension!);
+        await AssertExtensions(original.AdvancedExtension, facade.AdvancedExtension!);
+        await AssertExtensions(original.Hint.AdvancedExtension, facade.Hint.AdvancedExtension!);
+        await AssertExtensions(original.Hint.Stats.AdvancedExtension, facade.Hint.Stats.AdvancedExtension!);
+        await AssertExtensions(original.Hint.Constraint.AdvancedExtension, facade.Hint.Constraint!.AdvancedExtension!);
+        await AssertExtensions(original.Hint.SavedComputations[0].AdvancedExtension, facade.Hint.SavedComputations[0].AdvancedExtension!);
+        await AssertExtensions(original.Hint.LoadedComputations[0].AdvancedExtension, facade.Hint.LoadedComputations[0].AdvancedExtension!);
     }
 
-    [TestMethod]
-    public void MutatingSourceMessagesAndCollectionsCannotChangeSnapshotOrHash()
+    [Test]
+    public async Task MutatingSourceMessagesAndCollectionsCannotChangeSnapshotOrHash()
     {
         ProtoCommon source = CreateCommon();
         ProtoCommon expected = source.Clone();
@@ -121,13 +117,13 @@ public sealed class MetadataFacadeTests
         source.Hint.LoadedComputations[0].ComputationIdReference = 8;
         source.Hint = new();
 
-        Assert.AreEqual(expected, facade.ToProto());
-        Assert.AreEqual(hash, facade.GetHashCode());
-        Assert.AreEqual("stable", dictionary[ReadOnlyRelCommon.FromProto(expected)]);
+        await Assert.That(facade.ToProto()).IsEqualTo(expected);
+        await Assert.That(facade.GetHashCode()).IsEqualTo(hash);
+        await Assert.That(dictionary[ReadOnlyRelCommon.FromProto(expected)]).IsEqualTo("stable");
     }
 
-    [TestMethod]
-    public void ExportsAtEveryLevelAreDetachedAndCollectionsRejectMutation()
+    [Test]
+    public async Task ExportsAtEveryLevelAreDetachedAndCollectionsRejectMutation()
     {
         ProtoCommon original = CreateCommon();
         ReadOnlyRelCommon facade = ReadOnlyRelCommon.FromProto(original);
@@ -138,27 +134,27 @@ public sealed class MetadataFacadeTests
         facade.Hint.SavedComputations[0].ToProto().AdvancedExtension.Optimization.Clear();
         facade.AdvancedExtension!.Optimization[0].ToProto().Value = ByteString.Empty;
 
-        Assert.ThrowsException<NotSupportedException>(() => ((IList<int>)facade.Emit!.OutputMapping).Add(99));
-        Assert.ThrowsException<NotSupportedException>(() => ((IList<string>)facade.Hint.OutputNames)[0] = "changed");
-        Assert.ThrowsException<NotSupportedException>(() => ((IList<ReadOnlyAny>)facade.AdvancedExtension.Optimization).Clear());
-        Assert.ThrowsException<NotSupportedException>(() => ((IList<ReadOnlyRelCommonHintSavedComputation>)facade.Hint.SavedComputations).Clear());
-        Assert.AreEqual(original, facade.ToProto());
-        Assert.AreSame(facade.Hint, facade.Hint);
-        Assert.AreSame(facade.Hint.OutputNames, facade.Hint.OutputNames);
-        Assert.AreSame(facade.AdvancedExtension.Optimization[0], facade.AdvancedExtension.Optimization[0]);
+        await Assert.That(() => ((IList<int>)facade.Emit!.OutputMapping).Add(99)).ThrowsExactly<NotSupportedException>();
+        await Assert.That(() => ((IList<string>)facade.Hint.OutputNames)[0] = "changed").ThrowsExactly<NotSupportedException>();
+        await Assert.That(() => ((IList<ReadOnlyAny>)facade.AdvancedExtension.Optimization).Clear()).ThrowsExactly<NotSupportedException>();
+        await Assert.That(() => ((IList<ReadOnlyRelCommonHintSavedComputation>)facade.Hint.SavedComputations).Clear()).ThrowsExactly<NotSupportedException>();
+        await Assert.That(facade.ToProto()).IsEqualTo(original);
+        await Assert.That(facade.Hint).IsSameReferenceAs(facade.Hint);
+        await Assert.That(facade.Hint.OutputNames).IsSameReferenceAs(facade.Hint.OutputNames);
+        await Assert.That(facade.AdvancedExtension.Optimization[0]).IsSameReferenceAs(facade.AdvancedExtension.Optimization[0]);
     }
 
-    [TestMethod]
-    public void OptionalFieldsEmptyMessagesAndEmitCasesRetainPresence()
+    [Test]
+    public async Task OptionalFieldsEmptyMessagesAndEmitCasesRetainPresence()
     {
         ReadOnlyRelCommon absent = ReadOnlyRelCommon.FromProto(new());
-        Assert.IsNull(absent.RelAnchor);
-        Assert.IsNull(absent.Hint);
-        Assert.IsNull(absent.AdvancedExtension);
-        Assert.IsNull(absent.Direct);
-        Assert.IsNull(absent.Emit);
-        Assert.AreEqual(ProtoCommon.EmitKindOneofCase.None, absent.EmitKindCase);
-        Assert.IsFalse(absent.ToProto().HasRelAnchor);
+        await Assert.That(absent.RelAnchor).IsNull();
+        await Assert.That(absent.Hint).IsNull();
+        await Assert.That(absent.AdvancedExtension).IsNull();
+        await Assert.That(absent.Direct).IsNull();
+        await Assert.That(absent.Emit).IsNull();
+        await Assert.That(absent.EmitKindCase).IsEqualTo(ProtoCommon.EmitKindOneofCase.None);
+        await Assert.That(absent.ToProto().HasRelAnchor).IsFalse();
 
         ReadOnlyRelCommon empty = ReadOnlyRelCommon.FromProto(new()
         {
@@ -167,47 +163,43 @@ public sealed class MetadataFacadeTests
             AdvancedExtension = new() { Enhancement = new() },
             Emit = new(),
         });
-        Assert.AreEqual(0U, empty.RelAnchor);
-        Assert.IsTrue(empty.ToProto().HasRelAnchor);
-        Assert.IsNotNull(empty.Hint!.Stats);
-        Assert.IsNotNull(empty.Hint.Constraint);
-        Assert.IsNotNull(empty.AdvancedExtension!.Enhancement);
-        Assert.AreEqual(0, empty.Emit!.OutputMapping.Count);
-        Assert.AreEqual(ProtoCommon.EmitKindOneofCase.Emit, empty.EmitKindCase);
-        Assert.IsNull(empty.Direct);
+        await Assert.That(empty.RelAnchor).IsEqualTo(0U);
+        await Assert.That(empty.ToProto().HasRelAnchor).IsTrue();
+        await Assert.That(empty.Hint!.Stats).IsNotNull();
+        await Assert.That(empty.Hint.Constraint).IsNotNull();
+        await Assert.That(empty.AdvancedExtension!.Enhancement).IsNotNull();
+        await Assert.That(empty.Emit!.OutputMapping.Count).IsEqualTo(0);
+        await Assert.That(empty.EmitKindCase).IsEqualTo(ProtoCommon.EmitKindOneofCase.Emit);
+        await Assert.That(empty.Direct).IsNull();
 
         ProtoCommon direct = new() { Direct = AddUnknownField(new ProtoCommon.Types.Direct(), ProtoCommon.Types.Direct.Parser) };
         ReadOnlyRelCommon explicitDirect = ReadOnlyRelCommon.FromProto(direct);
-        Assert.AreEqual(ProtoCommon.EmitKindOneofCase.Direct, explicitDirect.EmitKindCase);
-        Assert.IsNotNull(explicitDirect.Direct);
-        Assert.IsNull(explicitDirect.Emit);
-        Assert.AreEqual(direct, explicitDirect.ToProto());
+        await Assert.That(explicitDirect.EmitKindCase).IsEqualTo(ProtoCommon.EmitKindOneofCase.Direct);
+        await Assert.That(explicitDirect.Direct).IsNotNull();
+        await Assert.That(explicitDirect.Emit).IsNull();
+        await Assert.That(explicitDirect.ToProto()).IsEqualTo(direct);
     }
 
-    [TestMethod]
-    public void EqualityAndHashingFollowTheCompleteBackingMessages()
+    [Test]
+    public async Task EqualityAndHashingFollowTheCompleteBackingMessages()
     {
         ProtoCommon original = CreateCommon();
         ReadOnlyRelCommon first = ReadOnlyRelCommon.FromProto(original);
         ReadOnlyRelCommon second = ReadOnlyRelCommon.FromProto(original);
-        Assert.AreEqual(first, second);
-        Assert.AreEqual(first.GetHashCode(), second.GetHashCode());
-        Assert.IsTrue(first.Equals((object)second));
-        Assert.IsFalse(first.Equals(null));
-        Assert.IsFalse(first.Equals((object)original));
+        await Assert.That(second).IsEqualTo(first);
+        await Assert.That(second.GetHashCode()).IsEqualTo(first.GetHashCode());
+        await Assert.That(first.Equals((object)second)).IsTrue();
+        await Assert.That(first.Equals((object)original)).IsFalse();
+        await Assert.That(first.Equals(null)).IsFalse();
 
         original.Hint.Alias = "different";
-        Assert.AreNotEqual(first, ReadOnlyRelCommon.FromProto(original));
-        Assert.AreNotEqual(
-            ReadOnlyRelCommon.FromProto(new()),
-            ReadOnlyRelCommon.FromProto(AddUnknownField(new ProtoCommon(), ProtoCommon.Parser)));
-        Assert.AreNotEqual(
-            ReadOnlyAny.FromProto(new() { TypeUrl = "unknown", Value = ByteString.CopyFrom([1]) }),
-            ReadOnlyAny.FromProto(new() { TypeUrl = "unknown", Value = ByteString.CopyFrom([2]) }));
+        await Assert.That(ReadOnlyRelCommon.FromProto(original)).IsNotEqualTo(first);
+        await Assert.That(ReadOnlyRelCommon.FromProto(AddUnknownField(new ProtoCommon(), ProtoCommon.Parser))).IsNotEqualTo(ReadOnlyRelCommon.FromProto(new()));
+        await Assert.That(ReadOnlyAny.FromProto(new() { TypeUrl = "unknown", Value = ByteString.CopyFrom([2]) })).IsNotEqualTo(ReadOnlyAny.FromProto(new() { TypeUrl = "unknown", Value = ByteString.CopyFrom([1]) }));
     }
 
-    [TestMethod]
-    public void EveryFacadeHasSafeCopyingFactoriesAndDetachedExports()
+    [Test]
+    public async Task EveryFacadeHasSafeCopyingFactoriesAndDetachedExports()
     {
         foreach (var (descriptor, facade) in Facades)
         {
@@ -216,34 +208,33 @@ public sealed class MetadataFacadeTests
             MethodInfo export = facade.GetMethod("ToProto")!;
             object snapshot = factory.Invoke(null, [original])!;
             IMessage copy = (IMessage)export.Invoke(snapshot, null)!;
-            Assert.AreNotSame(original, copy);
-            Assert.AreEqual(original, copy);
-            Assert.AreEqual(snapshot, factory.Invoke(null, [copy]));
-            TargetInvocationException error = Assert.ThrowsException<TargetInvocationException>(
-                () => factory.Invoke(null, [null]));
-            Assert.IsInstanceOfType<ArgumentNullException>(error.InnerException);
+            await Assert.That(copy).IsNotSameReferenceAs(original);
+            await Assert.That(copy).IsEqualTo(original);
+            await Assert.That(factory.Invoke(null, [copy])).IsEqualTo(snapshot);
+            TargetInvocationException error = await Assert.That(() => factory.Invoke(null, [null])).ThrowsExactly<TargetInvocationException>().And.IsNotNull();
+            await Assert.That(error.InnerException).IsAssignableTo<ArgumentNullException>();
         }
     }
 
-    [TestMethod]
-    public void OwnedConstructionSharesOnlyPrivatelyHeldStorage()
+    [Test]
+    public async Task OwnedConstructionSharesOnlyPrivatelyHeldStorage()
     {
         ProtoCommon original = CreateCommon();
         ReadOnlyRelCommon owned = (ReadOnlyRelCommon)typeof(ReadOnlyRelCommon)
             .GetMethod("FromOwnedProto", BindingFlags.NonPublic | BindingFlags.Static)!.Invoke(null, [original])!;
         ReadOnlyRelCommon copied = ReadOnlyRelCommon.FromProto(original);
 
-        Assert.AreSame(original, Backing(owned));
-        Assert.AreSame(original.Hint, Backing(owned.Hint!));
-        Assert.AreSame(original.Hint.SavedComputations[0], Backing(owned.Hint!.SavedComputations[0]));
-        Assert.AreSame(original.AdvancedExtension.Optimization[0], Backing(owned.AdvancedExtension!.Optimization[0]));
-        Assert.AreNotSame(original, Backing(copied));
-        Assert.AreNotSame(original.Hint, Backing(copied.Hint!));
-        Assert.AreEqual(copied, owned);
+        await Assert.That(Backing(owned)).IsSameReferenceAs(original);
+        await Assert.That(Backing(owned.Hint!)).IsSameReferenceAs(original.Hint);
+        await Assert.That(Backing(owned.Hint!.SavedComputations[0])).IsSameReferenceAs(original.Hint.SavedComputations[0]);
+        await Assert.That(Backing(owned.AdvancedExtension!.Optimization[0])).IsSameReferenceAs(original.AdvancedExtension.Optimization[0]);
+        await Assert.That(Backing(copied)).IsNotSameReferenceAs(original);
+        await Assert.That(Backing(copied.Hint!)).IsNotSameReferenceAs(original.Hint);
+        await Assert.That(owned).IsEqualTo(copied);
     }
 
-    [TestMethod]
-    public void JsonRoundTripUsesRegisteredPayloadDescriptors()
+    [Test]
+    public async Task JsonRoundTripUsesRegisteredPayloadDescriptors()
     {
         var registry = TypeRegistry.FromMessages(StringValue.Descriptor);
         JsonFormatter formatter = new(JsonFormatter.Settings.Default.WithTypeRegistry(registry));
@@ -260,23 +251,23 @@ public sealed class MetadataFacadeTests
         };
 
         ReadOnlyRelCommon facade = ReadOnlyRelCommon.FromProto(parser.Parse<ProtoCommon>(formatter.Format(original)));
-        Assert.AreEqual(original, parser.Parse<ProtoCommon>(formatter.Format(facade.ToProto())));
+        await Assert.That(parser.Parse<ProtoCommon>(formatter.Format(facade.ToProto()))).IsEqualTo(original);
     }
 
     private static object? Backing(object facade) =>
         facade.GetType().GetField("value", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(facade);
 
-    private static void AssertExtensions(ProtoAdvanced original, ReadOnlyAdvancedExtension facade)
+    private static async Task AssertExtensions(ProtoAdvanced original, ReadOnlyAdvancedExtension facade)
     {
-        Assert.AreEqual(original, facade.ToProto());
-        Assert.AreEqual(2, facade.Optimization.Count);
+        await Assert.That(facade.ToProto()).IsEqualTo(original);
+        await Assert.That(facade.Optimization.Count).IsEqualTo(2);
         for (int index = 0; index < original.Optimization.Count; ++index)
         {
-            Assert.AreEqual(original.Optimization[index].TypeUrl, facade.Optimization[index].TypeUrl);
-            Assert.AreEqual(original.Optimization[index].Value, facade.Optimization[index].Value);
+            await Assert.That(facade.Optimization[index].TypeUrl).IsEqualTo(original.Optimization[index].TypeUrl);
+            await Assert.That(facade.Optimization[index].Value).IsEqualTo(original.Optimization[index].Value);
         }
 
-        Assert.AreEqual(original.Enhancement, facade.Enhancement!.ToProto());
+        await Assert.That(facade.Enhancement!.ToProto()).IsEqualTo(original.Enhancement);
     }
 
     internal static ProtoCommon CreateCommon() => AddUnknownField(new ProtoCommon

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Google.Protobuf;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Core.Type;
 using static Substrait.Core.Expression.Literal;
 using static Substrait.Core.Type.IType;
@@ -12,64 +11,61 @@ namespace Substrait.Tests.Core;
 /// <summary>
 /// Tests substrait literals.
 /// </summary>
-[TestClass]
 public class LiteralTests
 {
     /// <summary>
     /// Gets simple literal equals test cases.
     /// </summary>
-    public static IEnumerable<object[]> SimpleLiteralEqualsTestCases
+    /// <returns>Literal and constructor argument types with two distinct values.</returns>
+    public static IEnumerable<(System.Type LiteralType, System.Type ValueType, object Value1, object Value2)> SimpleLiteralEqualsTestCases()
     {
-        get
-        {
-            return new[]
-            {
-                new object[] { typeof(BoolLiteral), typeof(bool), true, false },
-                new object[] { typeof(I8Literal), typeof(int), 123, 456 },
-                new object[] { typeof(I16Literal), typeof(int), 123, 456 },
-                new object[] { typeof(I32Literal), typeof(int), 123, 456 },
-                new object[] { typeof(I64Literal), typeof(long), 12345, 67890 },
-                new object[] { typeof(FP32Literal), typeof(int), 123, 456 },
-                new object[] { typeof(FP64Literal), typeof(int), 123, 456 },
-                new object[] { typeof(DateLiteral), typeof(int), 123, 456 },
-                new object[] { typeof(TimeLiteral), typeof(long), 12345, 67890 },
-                new object[] { typeof(StrLiteral), typeof(string), "abc", "def" },
-                new object[] { typeof(BinaryLiteral), typeof(ByteString), ByteString.FromBase64("abcd"), ByteString.FromBase64("cdef") },
-                new object[] { typeof(FixedCharLiteral), typeof(string), "abc", "def" },
-                new object[] { typeof(FixedBinaryLiteral), typeof(ByteString), ByteString.FromBase64("abcd"), ByteString.FromBase64("cdef") },
-            };
-        }
+        return
+        [
+            (typeof(BoolLiteral), typeof(bool), true, false),
+            (typeof(I8Literal), typeof(int), 123, 456),
+            (typeof(I16Literal), typeof(int), 123, 456),
+            (typeof(I32Literal), typeof(int), 123, 456),
+            (typeof(I64Literal), typeof(long), 12345, 67890),
+            (typeof(FP32Literal), typeof(int), 123, 456),
+            (typeof(FP64Literal), typeof(int), 123, 456),
+            (typeof(DateLiteral), typeof(int), 123, 456),
+            (typeof(TimeLiteral), typeof(long), 12345, 67890),
+            (typeof(StrLiteral), typeof(string), "abc", "def"),
+            (typeof(BinaryLiteral), typeof(ByteString), ByteString.FromBase64("abcd"), ByteString.FromBase64("cdef")),
+            (typeof(FixedCharLiteral), typeof(string), "abc", "def"),
+            (typeof(FixedBinaryLiteral), typeof(ByteString), ByteString.FromBase64("abcd"), ByteString.FromBase64("cdef")),
+        ];
     }
 
     /// <summary>
     /// Tests null literal equality.
     /// </summary>
-    [TestMethod]
-    public void TestNullLiteralEquals()
+    [Test]
+    public async Task TestNullLiteralEquals()
     {
         var v1 = new NullLiteral(TypeFactory.NULLABLE.I64);
         var v2 = new NullLiteral(TypeFactory.NULLABLE.I64);
         var v3 = new NullLiteral(TypeFactory.NULLABLE.I32);
 
-        Assert.AreEqual(v1, v2);
-        Assert.AreNotEqual(v1, v3);
+        await Assert.That(v2).IsEqualTo(v1);
+        await Assert.That(v3).IsNotEqualTo(v1);
 
-        Assert.AreEqual(v1.GetHashCode(), v2.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v3.GetHashCode());
+        await Assert.That(v2.GetHashCode()).IsEqualTo(v1.GetHashCode());
+        await Assert.That(v3.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
     }
 
     /// <summary>
     /// Tests null literal equality.
     /// If the base type is not nullable, the literal type should entail corresponding nullable type.
     /// </summary>
-    [TestMethod]
-    public void TestNullLiteralEqualsWithNonNullType()
+    [Test]
+    public async Task TestNullLiteralEqualsWithNonNullType()
     {
         var v1 = new NullLiteral(TypeFactory.NULLABLE.I64);
         var v2 = new NullLiteral(TypeFactory.REQUIRED.I64);
 
-        Assert.AreEqual(v1, v2);
-        Assert.AreEqual(v1.GetHashCode(), v2.GetHashCode());
+        await Assert.That(v2).IsEqualTo(v1);
+        await Assert.That(v2.GetHashCode()).IsEqualTo(v1.GetHashCode());
     }
 
     /// <summary>
@@ -79,33 +75,31 @@ public class LiteralTests
     /// <param name="valueType">type of value to construct literal.</param>
     /// <param name="value1">first value for test.</param>
     /// <param name="value2">second value for test.</param>
-    [TestMethod]
-    [DynamicData(nameof(SimpleLiteralEqualsTestCases))]
-    [DataTestMethod]
-    public void TestSimpleLiteralEquals(System.Type literalType, System.Type valueType, object value1, object value2)
+    [Test]
+    [MethodDataSource(nameof(SimpleLiteralEqualsTestCases))]
+    public async Task TestSimpleLiteralEquals(System.Type literalType, System.Type valueType, object value1, object value2)
     {
-        var ctor = literalType.GetConstructor(new[] { valueType, typeof(NullableType) });
-        Assert.IsNotNull(ctor);
+        var ctor = await Assert.That(literalType.GetConstructor(new[] { valueType, typeof(NullableType) })).IsNotNull();
 
         var v1 = ctor.Invoke(new object[] { value1, NullableType.Required });
         var v2 = ctor.Invoke(new object[] { value1, NullableType.Required });
         var v3 = ctor.Invoke(new object[] { value2, NullableType.Required });
         var v4 = ctor.Invoke(new object[] { value1, NullableType.Nullable });
 
-        Assert.AreEqual(v1, v2);
-        Assert.AreNotEqual(v1, v3);
-        Assert.AreNotEqual(v1, v4);
+        await Assert.That(v2).IsEqualTo(v1);
+        await Assert.That(v3).IsNotEqualTo(v1);
+        await Assert.That(v4).IsNotEqualTo(v1);
 
-        Assert.AreEqual(v1.GetHashCode(), v2.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v3.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v4.GetHashCode());
+        await Assert.That(v2.GetHashCode()).IsEqualTo(v1.GetHashCode());
+        await Assert.That(v3.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
+        await Assert.That(v4.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
     }
 
     /// <summary>
     /// Tests precision timestamp literal equals.
     /// </summary>
-    [TestMethod]
-    public void TestPrecisionTimestampLiteralEquals()
+    [Test]
+    public async Task TestPrecisionTimestampLiteralEquals()
     {
         var v1 = new PrecisionTimestampLiteral(12345, 5, NullableType.Required);
         var v2 = new PrecisionTimestampLiteral(12345, 5, NullableType.Required);
@@ -113,22 +107,22 @@ public class LiteralTests
         var v4 = new PrecisionTimestampLiteral(12345, 5, NullableType.Nullable);
         var v5 = new PrecisionTimestampLiteral(12345, 3, NullableType.Nullable);
 
-        Assert.AreEqual(v1, v2);
-        Assert.AreNotEqual(v1, v3);
-        Assert.AreNotEqual(v1, v4);
-        Assert.AreNotEqual(v1, v5);
+        await Assert.That(v2).IsEqualTo(v1);
+        await Assert.That(v3).IsNotEqualTo(v1);
+        await Assert.That(v4).IsNotEqualTo(v1);
+        await Assert.That(v5).IsNotEqualTo(v1);
 
-        Assert.AreEqual(v1.GetHashCode(), v2.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v3.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v4.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v5.GetHashCode());
+        await Assert.That(v2.GetHashCode()).IsEqualTo(v1.GetHashCode());
+        await Assert.That(v3.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
+        await Assert.That(v4.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
+        await Assert.That(v5.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
     }
 
     /// <summary>
     /// Tests precision timestamp tz literal equals.
     /// </summary>
-    [TestMethod]
-    public void TestPrecisionTimestampLiteralTZEquals()
+    [Test]
+    public async Task TestPrecisionTimestampLiteralTZEquals()
     {
         var v1 = new PrecisionTimestampTZLiteral(12345, 5, NullableType.Required);
         var v2 = new PrecisionTimestampTZLiteral(12345, 5, NullableType.Required);
@@ -136,22 +130,22 @@ public class LiteralTests
         var v4 = new PrecisionTimestampTZLiteral(12345, 5, NullableType.Nullable);
         var v5 = new PrecisionTimestampTZLiteral(12345, 3, NullableType.Nullable);
 
-        Assert.AreEqual(v1, v2);
-        Assert.AreNotEqual(v1, v3);
-        Assert.AreNotEqual(v1, v4);
-        Assert.AreNotEqual(v1, v5);
+        await Assert.That(v2).IsEqualTo(v1);
+        await Assert.That(v3).IsNotEqualTo(v1);
+        await Assert.That(v4).IsNotEqualTo(v1);
+        await Assert.That(v5).IsNotEqualTo(v1);
 
-        Assert.AreEqual(v1.GetHashCode(), v2.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v3.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v4.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v5.GetHashCode());
+        await Assert.That(v2.GetHashCode()).IsEqualTo(v1.GetHashCode());
+        await Assert.That(v3.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
+        await Assert.That(v4.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
+        await Assert.That(v5.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
     }
 
     /// <summary>
     /// Tests varchar literal equals.
     /// </summary>
-    [TestMethod]
-    public void TestVarCharLiteralEquals()
+    [Test]
+    public async Task TestVarCharLiteralEquals()
     {
         var v1 = new VarCharLiteral("abcd", 16, NullableType.Required);
         var v2 = new VarCharLiteral("abcd", 16, NullableType.Required);
@@ -159,22 +153,22 @@ public class LiteralTests
         var v4 = new VarCharLiteral("abcd", 16, NullableType.Nullable);
         var v5 = new VarCharLiteral("abcd", 9, NullableType.Nullable);
 
-        Assert.AreEqual(v1, v2);
-        Assert.AreNotEqual(v1, v3);
-        Assert.AreNotEqual(v1, v4);
-        Assert.AreNotEqual(v1, v5);
+        await Assert.That(v2).IsEqualTo(v1);
+        await Assert.That(v3).IsNotEqualTo(v1);
+        await Assert.That(v4).IsNotEqualTo(v1);
+        await Assert.That(v5).IsNotEqualTo(v1);
 
-        Assert.AreEqual(v1.GetHashCode(), v2.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v3.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v4.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v5.GetHashCode());
+        await Assert.That(v2.GetHashCode()).IsEqualTo(v1.GetHashCode());
+        await Assert.That(v3.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
+        await Assert.That(v4.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
+        await Assert.That(v5.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
     }
 
     /// <summary>
     /// Tests decimal literal equals.
     /// </summary>
-    [TestMethod]
-    public void TestDecimalLiteralEquals()
+    [Test]
+    public async Task TestDecimalLiteralEquals()
     {
         var v1 = new DecimalLiteral(ByteString.FromBase64("abcd"), 10, 3, NullableType.Required);
         var v2 = new DecimalLiteral(ByteString.FromBase64("abcd"), 10, 3, NullableType.Required);
@@ -183,24 +177,24 @@ public class LiteralTests
         var v5 = new DecimalLiteral(ByteString.FromBase64("abcd"), 12, 3, NullableType.Required);
         var v6 = new DecimalLiteral(ByteString.FromBase64("abcd"), 10, 4, NullableType.Required);
 
-        Assert.AreEqual(v1, v2);
-        Assert.AreNotEqual(v1, v3);
-        Assert.AreNotEqual(v1, v4);
-        Assert.AreNotEqual(v1, v5);
-        Assert.AreNotEqual(v1, v6);
+        await Assert.That(v2).IsEqualTo(v1);
+        await Assert.That(v3).IsNotEqualTo(v1);
+        await Assert.That(v4).IsNotEqualTo(v1);
+        await Assert.That(v5).IsNotEqualTo(v1);
+        await Assert.That(v6).IsNotEqualTo(v1);
 
-        Assert.AreEqual(v1.GetHashCode(), v2.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v3.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v4.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v5.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v6.GetHashCode());
+        await Assert.That(v2.GetHashCode()).IsEqualTo(v1.GetHashCode());
+        await Assert.That(v3.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
+        await Assert.That(v4.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
+        await Assert.That(v5.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
+        await Assert.That(v6.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
     }
 
     /// <summary>
     /// Tests struct literal equals.
     /// </summary>
-    [TestMethod]
-    public void TestStructLiteralEquals()
+    [Test]
+    public async Task TestStructLiteralEquals()
     {
         var v1 = new StructLiteral([new I64Literal(1), new StrLiteral("abc")], NullableType.Required);
         var v2 = new StructLiteral([new I64Literal(1), new StrLiteral("abc")], NullableType.Required);
@@ -208,14 +202,14 @@ public class LiteralTests
         var v4 = new StructLiteral([new I64Literal(1), new StrLiteral("abc")], NullableType.Nullable);
         var v5 = new StructLiteral([new I32Literal(1), new StrLiteral("abc")], NullableType.Nullable);
 
-        Assert.AreEqual(v1, v2);
-        Assert.AreNotEqual(v1, v3);
-        Assert.AreNotEqual(v1, v4);
-        Assert.AreNotEqual(v1, v5);
+        await Assert.That(v2).IsEqualTo(v1);
+        await Assert.That(v3).IsNotEqualTo(v1);
+        await Assert.That(v4).IsNotEqualTo(v1);
+        await Assert.That(v5).IsNotEqualTo(v1);
 
-        Assert.AreEqual(v1.GetHashCode(), v2.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v3.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v4.GetHashCode());
-        Assert.AreNotEqual(v1.GetHashCode(), v5.GetHashCode());
+        await Assert.That(v2.GetHashCode()).IsEqualTo(v1.GetHashCode());
+        await Assert.That(v3.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
+        await Assert.That(v4.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
+        await Assert.That(v5.GetHashCode()).IsNotEqualTo(v1.GetHashCode());
     }
 }

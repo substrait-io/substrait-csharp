@@ -1,18 +1,16 @@
 // Copyright (c) Microsoft Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Core.Extension.Types;
 using Substrait.Core.Type;
 using Substrait.Tools;
 
 namespace Substrait.Tests.Tools;
 
-[TestClass]
 public sealed class TypeUtilsTests
 {
-    [TestMethod]
-    public void ConcatCombinesNamedStructs()
+    [Test]
+    public async Task ConcatCombinesNamedStructs()
     {
         var first = new NamedStruct(
             ["a", "b", "c"],
@@ -27,15 +25,15 @@ public sealed class TypeUtilsTests
 
         NamedStruct result = first.Concat(second);
 
-        AssertSequenceEqual(["a", "b", "c", "x", "y"], result.Names);
-        AssertSequenceEqual(
+        await AssertSequenceEqual(["a", "b", "c", "x", "y"], result.Names);
+        await AssertSequenceEqual(
             [TypeFactory.REQUIRED.BOOL, TypeFactory.REQUIRED.STR, TypeFactory.REQUIRED.BINARY, TypeFactory.REQUIRED.FP64, TypeFactory.REQUIRED.FP32],
             result.Struct.Fields);
-        Assert.AreEqual(IType.NullableType.Required, result.Struct.Nullable);
+        await Assert.That(result.Struct.Nullable).IsEqualTo(IType.NullableType.Required);
     }
 
-    [TestMethod]
-    public void ConcatCombinesNamedStructSequence()
+    [Test]
+    public async Task ConcatCombinesNamedStructSequence()
     {
         var first = new NamedStruct(["i"], TypeFactory.NULLABLE.Struct([TypeFactory.REQUIRED.BOOL]));
         var second = new NamedStruct(["j"], TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.FP64]));
@@ -43,15 +41,15 @@ public sealed class TypeUtilsTests
 
         NamedStruct result = TypeUtils.Concat([first, second, third]);
 
-        AssertSequenceEqual(["i", "j", "k"], result.Names);
-        AssertSequenceEqual(
+        await AssertSequenceEqual(["i", "j", "k"], result.Names);
+        await AssertSequenceEqual(
             [TypeFactory.REQUIRED.BOOL, TypeFactory.REQUIRED.FP64, TypeFactory.REQUIRED.STR],
             result.Struct.Fields);
-        Assert.AreEqual(IType.NullableType.Required, result.Struct.Nullable);
+        await Assert.That(result.Struct.Nullable).IsEqualTo(IType.NullableType.Required);
     }
 
-    [TestMethod]
-    public void RenameReplacesNamesAndPreservesStruct()
+    [Test]
+    public async Task RenameReplacesNamesAndPreservesStruct()
     {
         var namedStruct = new NamedStruct(
             ["i", "j"],
@@ -59,13 +57,13 @@ public sealed class TypeUtilsTests
 
         NamedStruct result = namedStruct.Rename(["x", "y"]);
 
-        AssertSequenceEqual(["x", "y"], result.Names);
-        Assert.AreSame(namedStruct.Struct, result.Struct);
+        await AssertSequenceEqual(["x", "y"], result.Names);
+        await Assert.That(result.Struct).IsSameReferenceAs(namedStruct.Struct);
     }
 
-    [DataTestMethod]
-    [DynamicData(nameof(GetTypeComparisonCases), DynamicDataSourceType.Method)]
-    public void TypeEqualityComparerHonorsComparisonMode(IType first, IType second, bool sameTypeParameters)
+    [Test]
+    [MethodDataSource(nameof(GetTypeComparisonCases))]
+    public async Task TypeEqualityComparerHonorsComparisonMode(IType first, IType second, bool sameTypeParameters)
     {
         bool sameBaseType = first.GetType() == second.GetType()
             && first.InputNodes.Select(type => type.GetType()).SequenceEqual(second.InputNodes.Select(type => type.GetType()));
@@ -74,13 +72,12 @@ public sealed class TypeUtilsTests
         bool sameTypeVariation = first.TypeVariation.EqualsWithNull(second.TypeVariation)
             && first.InputNodes.Select(type => type.TypeVariation).SequenceEqual(second.InputNodes.Select(type => type.TypeVariation));
 
-        Assert.AreEqual(sameBaseType, first.Equals(second, ITypeComparison.IgnoreNullability));
-        Assert.AreEqual(sameBaseType && sameNullability, first.Equals(second, ITypeComparison.IgnoreTypeParameters));
-        Assert.AreEqual(sameBaseType && sameNullability && sameTypeParameters, first.Equals(second, ITypeComparison.IgnoreTypeVariation));
-        Assert.AreEqual(sameBaseType && sameNullability && sameTypeParameters && sameTypeVariation, first.Equals(second, ITypeComparison.Strict));
+        await Assert.That(first.Equals(second, ITypeComparison.IgnoreNullability)).IsEqualTo(sameBaseType);
+        await Assert.That(first.Equals(second, ITypeComparison.IgnoreTypeParameters)).IsEqualTo(sameBaseType && sameNullability);
+        await Assert.That(first.Equals(second, ITypeComparison.IgnoreTypeVariation)).IsEqualTo(sameBaseType && sameNullability && sameTypeParameters);
+        await Assert.That(first.Equals(second, ITypeComparison.Strict)).IsEqualTo(sameBaseType && sameNullability && sameTypeParameters && sameTypeVariation);
     }
-
-    private static IEnumerable<object?[]> GetTypeComparisonCases()
+    public static IEnumerable<Func<(IType First, IType Second, bool SameTypeParameters)>> GetTypeComparisonCases()
     {
         TypeFactory required = TypeFactory.REQUIRED;
         TypeFactory nullable = TypeFactory.NULLABLE;
@@ -107,7 +104,7 @@ public sealed class TypeUtilsTests
             {
                 foreach (IType second in types)
                 {
-                    yield return [first, second, true];
+                    yield return () => (first, second, true);
                 }
             }
         }
@@ -134,7 +131,7 @@ public sealed class TypeUtilsTests
             {
                 foreach ((IType secondType, int secondGroup) in types)
                 {
-                    yield return [firstType, secondType, firstGroup == secondGroup];
+                    yield return () => (firstType, secondType, firstGroup == secondGroup);
                 }
             }
         }
@@ -160,7 +157,7 @@ public sealed class TypeUtilsTests
         {
             foreach ((IType second, int secondGroup) in structTypes)
             {
-                yield return [first, second, firstGroup == secondGroup];
+                yield return () => (first, second, firstGroup == secondGroup);
             }
         }
     }
@@ -182,8 +179,8 @@ public sealed class TypeUtilsTests
         types.Add((nullable.ResolveTypeWithNullability(type, secondVariation), parameterGroup));
     }
 
-    private static void AssertSequenceEqual<T>(IEnumerable<T> expected, IEnumerable<T> actual)
+    private static async Task AssertSequenceEqual<T>(IEnumerable<T> expected, IEnumerable<T> actual)
     {
-        Assert.IsTrue(expected.SequenceEqual(actual), $"Expected [{string.Join(", ", expected)}], but found [{string.Join(", ", actual)}].");
+        await Assert.That(expected.SequenceEqual(actual)).IsTrue().Because($"Expected [{string.Join(", ", expected)}], but found [{string.Join(", ", actual)}].");
     }
 }

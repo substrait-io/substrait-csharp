@@ -24,8 +24,25 @@ dotnet restore Substrait.sln
 dotnet run --project tools/Substrait.MetadataGenerator --configuration Release --no-restore -- --check
 dotnet format Substrait.sln --verify-no-changes --no-restore
 dotnet build Substrait.sln --configuration Release --no-restore
-dotnet test Substrait.sln --configuration Release --no-build
+dotnet test --solution Substrait.sln --configuration Release --no-build
 ```
+
+Tests use TUnit with Microsoft.Testing.Platform, selected by `global.json`.
+The library tests run on both .NET 8 and .NET 10; generator tests run on .NET 10.
+Use `--solution` or `--project` rather than a positional path. Add `--report-trx`
+to produce the same TRX reports as CI; VSTest's `--logger trx` is not supported.
+For example, run one test class on .NET 8 with:
+
+```shell
+dotnet test --project tests/Substrait.Tests/Substrait.Tests.csproj --configuration Release --no-build --framework net8.0 --treenode-filter "/*/*/PlanBuilderTests/*"
+```
+
+Use `[Test]` with `[Arguments]` or strongly typed `[MethodDataSource]` data for
+parameterized cases, and await TUnit assertions. Tests run in parallel by
+default: keep mutable state local to each test and use unique temporary paths.
+Data sources with mutable arguments return factories to isolate each test run.
+Test projects use C# 13 for TUnit's assertion overload resolution; the library's
+language version is unchanged.
 
 ## Package validation
 

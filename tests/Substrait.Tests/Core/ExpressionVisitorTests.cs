@@ -4,7 +4,6 @@
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Text;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Core.Expression;
 using Substrait.Core.Extension.Functions;
 using Substrait.Core.Relation;
@@ -12,13 +11,13 @@ using Substrait.Core.Type;
 using Substrait.Tools.Visitor;
 using static Substrait.Core.Expression.Expression;
 using static Substrait.Core.Expression.Literal;
+using Assembly = System.Reflection.Assembly;
 
 namespace Substrait.Tests.Core.Expression;
 
 /// <summary>
 /// Tests for expression visitors.
 /// </summary>
-[TestClass]
 public class ExpressionVisitorTests
 {
     private readonly ExpressionTopDownDispatcher<StringBuilderContext, VoidOutput> topDownDispatcher;
@@ -36,8 +35,8 @@ public class ExpressionVisitorTests
     /// <summary>
     /// Verifies that all sealed classes that implement IExpression have a corresponding Visit method in ExpressionVisitor.
     /// </summary>
-    [TestMethod]
-    public void TestExpressionVisitorContainsAllSealedClasses()
+    [Test]
+    public async Task TestExpressionVisitorContainsAllSealedClasses()
     {
         // Get all types that implement IExpression
         var iexpressionTypes = Assembly.GetAssembly(typeof(IExpression))!
@@ -54,73 +53,73 @@ public class ExpressionVisitorTests
         // Check if all IExpression types have corresponding Visit methods in ExpressionVisitor
         foreach (var type in iexpressionTypes)
         {
-            Assert.IsTrue(expressionVisitorMethods.Contains(type), $"ExpressionVisitor does not contain a Visit method for {type.Name}");
+            await Assert.That(expressionVisitorMethods.Contains(type)).IsTrue().Because($"ExpressionVisitor does not contain a Visit method for {type.Name}");
         }
     }
 
     /// <summary>
     /// Tests the expression visitor with a cast expression.
     /// </summary>
-    [TestMethod]
-    public void TestCastExpression()
+    [Test]
+    public async Task TestCastExpression()
     {
         var castExpr = new Cast(TypeFactory.REQUIRED.I64, new StrLiteral("123"), Cast.FailureBehavior.ThrowException);
-        this.CheckTopDownTraversal(castExpr, "Cast|StrLiteral|");
+        await this.CheckTopDownTraversal(castExpr, "Cast|StrLiteral|");
     }
 
     /// <summary>
     /// Tests the expression visitor with a scalar function invocation.
     /// </summary>
-    [TestMethod]
-    public void TestScalarFunctionInvocation()
+    [Test]
+    public async Task TestScalarFunctionInvocation()
     {
         var scalarFunctionImpl = new ScalarFunctionImpl("urix", "fname1", "fdesc", FunctionImpl.NullabilityMode.Mirror, new[] { new ValueArgument("i64", "vname", "vdesc", true) }, ImmutableDictionary<string, IOption>.Empty, null, null, "i64");
         var scalarFunctionInvocation = new ScalarFunctionInvocation(scalarFunctionImpl.Uri, scalarFunctionImpl.Key, ImmutableList.Create(new I64Literal(1)), TypeFactory.REQUIRED.I64, scalarFunctionImpl);
-        this.CheckTopDownTraversal(scalarFunctionInvocation, "ScalarFunctionInvocation|I64Literal|");
+        await this.CheckTopDownTraversal(scalarFunctionInvocation, "ScalarFunctionInvocation|I64Literal|");
     }
 
     /// <summary>
     /// Tests the expression visitor with an if-then expression.
     /// </summary>
-    [TestMethod]
-    public void TestIfThenExpression()
+    [Test]
+    public async Task TestIfThenExpression()
     {
         (IExpression, IExpression) ifClause = (new BoolLiteral(true), new I64Literal(1));
         var ifThenExpr = new IfThen(new[] { ifClause }.Cast<(IExpression Condition, IExpression Then)>(), new I64Literal(1234));
-        this.CheckTopDownTraversal(ifThenExpr, "IfThen|BoolLiteral|I64Literal|I64Literal|");
+        await this.CheckTopDownTraversal(ifThenExpr, "IfThen|BoolLiteral|I64Literal|I64Literal|");
     }
 
     /// <summary>
     /// Tests the expression visitor with a field reference.
     /// </summary>
-    [TestMethod]
-    public void TestFieldReference()
+    [Test]
+    public async Task TestFieldReference()
     {
         var fieldRef = new FieldReference(TypeFactory.REQUIRED.I64, 1, 2);
-        this.CheckTopDownTraversal(fieldRef, "FieldReference|");
+        await this.CheckTopDownTraversal(fieldRef, "FieldReference|");
     }
 
     /// <summary>
     /// Tests the expression visitor with various literals.
     /// </summary>
-    [TestMethod]
-    public void TestLiterals()
+    [Test]
+    public async Task TestLiterals()
     {
         var boolLiteral = new BoolLiteral(true);
-        this.CheckTopDownTraversal(boolLiteral, "BoolLiteral|");
+        await this.CheckTopDownTraversal(boolLiteral, "BoolLiteral|");
 
         var i64Literal = new I64Literal(123);
-        this.CheckTopDownTraversal(i64Literal, "I64Literal|");
+        await this.CheckTopDownTraversal(i64Literal, "I64Literal|");
 
         var strLiteral = new StrLiteral("test");
-        this.CheckTopDownTraversal(strLiteral, "StrLiteral|");
+        await this.CheckTopDownTraversal(strLiteral, "StrLiteral|");
     }
 
     /// <summary>
     /// Tests the expression visitor with a struct expression.
     /// </summary>
-    [TestMethod]
-    public void TestStructExpression()
+    [Test]
+    public async Task TestStructExpression()
     {
         var structExpr = new Struct(new IExpression[]
         {
@@ -132,15 +131,15 @@ public class ExpressionVisitorTests
         string topDownExpected = "Struct|BoolLiteral|I64Literal|StrLiteral|";
         string bottomUpExpected = "BoolLiteral|I64Literal|StrLiteral|Struct|";
 
-        this.CheckTopDownTraversal(structExpr, topDownExpected);
-        this.CheckBottomUpTraversal(structExpr, bottomUpExpected);
+        await this.CheckTopDownTraversal(structExpr, topDownExpected);
+        await this.CheckBottomUpTraversal(structExpr, bottomUpExpected);
     }
 
     /// <summary>
     /// Tests the expression visitor with a set predicate subquery expression.
     /// </summary>
-    [TestMethod]
-    public void TestSetPredicateSubquery()
+    [Test]
+    public async Task TestSetPredicateSubquery()
     {
         var setPredicateExpr = new SetPredicateSubquery(
             new VirtualTableRead(new NamedStruct(["a"], TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64])), [new Struct([new I64Literal(456)])], filter: null),
@@ -149,15 +148,15 @@ public class ExpressionVisitorTests
         string topDownExpected = "SetPredicateSubquery|";
         string bottomUpExpected = "SetPredicateSubquery|";
 
-        this.CheckTopDownTraversal(setPredicateExpr, topDownExpected);
-        this.CheckBottomUpTraversal(setPredicateExpr, bottomUpExpected);
+        await this.CheckTopDownTraversal(setPredicateExpr, topDownExpected);
+        await this.CheckBottomUpTraversal(setPredicateExpr, bottomUpExpected);
     }
 
     /// <summary>
     /// Tests the expression visitor with a set comparison subquery expression.
     /// </summary>
-    [TestMethod]
-    public void TestSetComparisonSubquery()
+    [Test]
+    public async Task TestSetComparisonSubquery()
     {
         var setComparisonExpr = new SetComparisonSubquery(
             new I64Literal(123),
@@ -168,22 +167,22 @@ public class ExpressionVisitorTests
         string topDownExpected = "SetComparisonSubquery|I64Literal|";
         string bottomUpExpected = "I64Literal|SetComparisonSubquery|";
 
-        this.CheckTopDownTraversal(setComparisonExpr, topDownExpected);
-        this.CheckBottomUpTraversal(setComparisonExpr, bottomUpExpected);
+        await this.CheckTopDownTraversal(setComparisonExpr, topDownExpected);
+        await this.CheckBottomUpTraversal(setComparisonExpr, bottomUpExpected);
     }
 
-    private void CheckTopDownTraversal(IExpression expr, string expected)
+    private async Task CheckTopDownTraversal(IExpression expr, string expected)
     {
         StringBuilderContext context = new StringBuilderContext();
         this.topDownDispatcher.Dispatch(expr, context);
-        Assert.AreEqual(expected, context.ToString());
+        await Assert.That(context.ToString()).IsEqualTo(expected);
     }
 
-    private void CheckBottomUpTraversal(IExpression expr, string expected)
+    private async Task CheckBottomUpTraversal(IExpression expr, string expected)
     {
         StringBuilderContext context = new StringBuilderContext();
         this.bottomUpDispatcher.Dispatch(expr, context);
-        Assert.AreEqual(expected, context.ToString());
+        await Assert.That(context.ToString()).IsEqualTo(expected);
     }
 
     private sealed class StringBuilderContext : NoOpContext<IExpression, VoidOutput>

@@ -3,22 +3,20 @@
 
 using Google.Protobuf;
 using Google.Protobuf.Collections;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Core.Extension;
 using Substrait.Protobuf;
 using Substrait.Tools;
 
 namespace Substrait.Tests.Tools;
 
-[TestClass]
 public sealed class SerializationSupportTests
 {
     private static readonly string[] ExpectedExtensionUris = ["functions.yaml", "types.yaml"];
     private static readonly int[] ExpectedSingleRepeatedValue = [1];
     private static readonly int[] ExpectedRepeatedValues = [1, 2, 3];
 
-    [TestMethod]
-    public void FileUtilsPreservesBinaryAndJsonPlanSemantics()
+    [Test]
+    public async Task FileUtilsPreservesBinaryAndJsonPlanSemantics()
     {
         Plan expected = new()
         {
@@ -39,9 +37,9 @@ public sealed class SerializationSupportTests
             FileUtils.WritePlan(expected, binaryPath, FileUtils.FileType.Protobuf);
             FileUtils.WritePlan(expected, jsonPath, FileUtils.FileType.Json);
 
-            CollectionAssert.AreEqual(expected.ToByteArray(), File.ReadAllBytes(binaryPath));
-            Assert.AreEqual(expected, FileUtils.FetchPlan(binaryPath, FileUtils.FileType.Protobuf));
-            Assert.AreEqual(expected, FileUtils.FetchPlan(jsonPath, FileUtils.FileType.Json));
+            await Assert.That(File.ReadAllBytes(binaryPath)).IsEquivalentTo(expected.ToByteArray(), TUnit.Assertions.Enums.CollectionOrdering.Matching);
+            await Assert.That(FileUtils.FetchPlan(binaryPath, FileUtils.FileType.Protobuf)).IsEqualTo(expected);
+            await Assert.That(FileUtils.FetchPlan(jsonPath, FileUtils.FileType.Json)).IsEqualTo(expected);
         }
         finally
         {
@@ -52,49 +50,49 @@ public sealed class SerializationSupportTests
         }
     }
 
-    [TestMethod]
-    public void ExtensionsCollectorAssignsStableAnchors()
+    [Test]
+    public async Task ExtensionsCollectorAssignsStableAnchors()
     {
         ExtensionsCollector.Builder builder = new();
 
-        Assert.AreEqual(0, builder.Collect(ExtensionsCollector.ExtensionType.Function, "functions.yaml", "add"));
-        Assert.AreEqual(0, builder.Collect(ExtensionsCollector.ExtensionType.Function, "functions.yaml", "add"));
-        Assert.AreEqual(1, builder.Collect(ExtensionsCollector.ExtensionType.Function, "functions.yaml", "subtract"));
-        Assert.AreEqual(1, builder.Collect(ExtensionsCollector.ExtensionType.TypeVariation, "types.yaml", "unsigned"));
+        await Assert.That(builder.Collect(ExtensionsCollector.ExtensionType.Function, "functions.yaml", "add")).IsEqualTo(0);
+        await Assert.That(builder.Collect(ExtensionsCollector.ExtensionType.Function, "functions.yaml", "add")).IsEqualTo(0);
+        await Assert.That(builder.Collect(ExtensionsCollector.ExtensionType.Function, "functions.yaml", "subtract")).IsEqualTo(1);
+        await Assert.That(builder.Collect(ExtensionsCollector.ExtensionType.TypeVariation, "types.yaml", "unsigned")).IsEqualTo(1);
 
         ExtensionsCollector collector = builder.Build();
-        CollectionAssert.AreEqual(ExpectedExtensionUris, collector.ExtensionUris.ToArray());
-        Assert.AreEqual(3, collector.Extensions.Count);
+        await Assert.That(collector.ExtensionUris.ToArray()).IsEquivalentTo(ExpectedExtensionUris, TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(collector.Extensions.Count).IsEqualTo(3);
     }
 
-    [TestMethod]
-    public void AllocateAndAddRangePreservesExistingValues()
+    [Test]
+    public async Task AllocateAndAddRangePreservesExistingValues()
     {
         RepeatedField<int> values = [1];
 
         values.AllocateAndAddRange(2, [2, 3]);
 
-        CollectionAssert.AreEqual(ExpectedRepeatedValues, values.ToArray());
-        Assert.IsTrue(values.Capacity >= 3);
+        await Assert.That(values.ToArray()).IsEquivalentTo(ExpectedRepeatedValues, TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(values.Capacity >= 3).IsTrue();
     }
 
-    [TestMethod]
-    public void AllocateAndAddRangeRejectsNegativeCount()
+    [Test]
+    public async Task AllocateAndAddRangeRejectsNegativeCount()
     {
         RepeatedField<int> values = [1];
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => values.AllocateAndAddRange(-1, []));
-        CollectionAssert.AreEqual(ExpectedSingleRepeatedValue, values.ToArray());
+        await Assert.That(() => values.AllocateAndAddRange(-1, [])).ThrowsExactly<ArgumentOutOfRangeException>();
+        await Assert.That(values.ToArray()).IsEquivalentTo(ExpectedSingleRepeatedValue, TUnit.Assertions.Enums.CollectionOrdering.Matching);
     }
 
-    [TestMethod]
-    public void UniqueListUnsupportedMutationsThrowNotSupportedException()
+    [Test]
+    public async Task UniqueListUnsupportedMutationsThrowNotSupportedException()
     {
         UniqueList<int> values = [1];
 
-        Assert.ThrowsException<NotSupportedException>(() => ((IList<int>)values)[0] = 2);
-        Assert.ThrowsException<NotSupportedException>(() => ((IList<int>)values).Insert(0, 2));
-        Assert.ThrowsException<NotSupportedException>(() => ((IList<int>)values).RemoveAt(0));
-        Assert.ThrowsException<NotSupportedException>(() => ((IList<int>)values).Remove(1));
+        await Assert.That(() => ((IList<int>)values)[0] = 2).ThrowsExactly<NotSupportedException>();
+        await Assert.That(() => ((IList<int>)values).Insert(0, 2)).ThrowsExactly<NotSupportedException>();
+        await Assert.That(() => ((IList<int>)values).RemoveAt(0)).ThrowsExactly<NotSupportedException>();
+        await Assert.That(() => ((IList<int>)values).Remove(1)).ThrowsExactly<NotSupportedException>();
     }
 }

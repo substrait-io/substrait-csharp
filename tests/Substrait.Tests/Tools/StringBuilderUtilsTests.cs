@@ -2,66 +2,62 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Text;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Tools;
 using static Substrait.Tools.StringBuilderUtils;
 
 namespace Substrait.Tests.Tools;
 
-[TestClass]
 public sealed class StringBuilderUtilsTests
 {
     private static readonly char[] Space = [' '];
     private static readonly char[] HelloSuffix = ['l', 'e', 'o'];
 
-    [TestMethod]
-    public void AppendTypeNameFormatsBuiltInNestedAndGenericTypes()
+    [Test]
+    public async Task AppendTypeNameFormatsBuiltInNestedAndGenericTypes()
     {
         var builder = new StringBuilder();
-        Assert.AreEqual("string", builder.AppendTypeName(typeof(string)).ToString());
+        await Assert.That(builder.AppendTypeName(typeof(string)).ToString()).IsEqualTo("string");
 
         builder.Clear();
-        Assert.AreEqual("StringBuilderUtilsTests.NestedType", builder.AppendTypeName(typeof(NestedType)).ToString());
+        await Assert.That(builder.AppendTypeName(typeof(NestedType)).ToString()).IsEqualTo("StringBuilderUtilsTests.NestedType");
 
         builder.Clear();
-        Assert.AreEqual("NestedType", builder.AppendTypeName(typeof(NestedType), qualifyDeclaringTypes: false).ToString());
+        await Assert.That(builder.AppendTypeName(typeof(NestedType), qualifyDeclaringTypes: false).ToString()).IsEqualTo("NestedType");
 
         builder.Clear();
-        Assert.AreEqual(
-            "List<Dictionary<int,string>>",
-            builder.AppendTypeName(typeof(List<Dictionary<int, string>>), qualifyDeclaringTypes: false).ToString());
+        await Assert.That(builder.AppendTypeName(typeof(List<Dictionary<int, string>>), qualifyDeclaringTypes: false).ToString()).IsEqualTo("List<Dictionary<int,string>>");
     }
 
-    [TestMethod]
-    public void TrimEndRemovesOnlyMatchingSuffixCharacters()
+    [Test]
+    public async Task TrimEndRemovesOnlyMatchingSuffixCharacters()
     {
-        Assert.AreEqual("abcde", new StringBuilder("abcde  ").TrimEnd(Space).ToString());
-        Assert.AreEqual("abcdeh", new StringBuilder("abcdehello").TrimEnd(HelloSuffix).ToString());
-        Assert.AreEqual("abcde", new StringBuilder("abcde").TrimEnd(Space).ToString());
+        await Assert.That(new StringBuilder("abcde  ").TrimEnd(Space).ToString()).IsEqualTo("abcde");
+        await Assert.That(new StringBuilder("abcdehello").TrimEnd(HelloSuffix).ToString()).IsEqualTo("abcdeh");
+        await Assert.That(new StringBuilder("abcde").TrimEnd(Space).ToString()).IsEqualTo("abcde");
     }
 
-    [TestMethod]
-    public void EndsWithRecognizesSuffixes()
+    [Test]
+    public async Task EndsWithRecognizesSuffixes()
     {
         var builder = new StringBuilder("abcde");
 
-        Assert.IsTrue(builder.EndsWith("e"));
-        Assert.IsTrue(builder.EndsWith("de"));
-        Assert.IsTrue(builder.EndsWith("cde"));
-        Assert.IsTrue(builder.EndsWith("bcde"));
-        Assert.IsTrue(builder.EndsWith("abcde"));
-        Assert.IsFalse(builder.EndsWith(" abcde"));
-        Assert.IsFalse(builder.EndsWith(" "));
+        await Assert.That(builder.EndsWith("e")).IsTrue();
+        await Assert.That(builder.EndsWith("de")).IsTrue();
+        await Assert.That(builder.EndsWith("cde")).IsTrue();
+        await Assert.That(builder.EndsWith("bcde")).IsTrue();
+        await Assert.That(builder.EndsWith("abcde")).IsTrue();
+        await Assert.That(builder.EndsWith(" abcde")).IsFalse();
+        await Assert.That(builder.EndsWith(" ")).IsFalse();
     }
 
-    [TestMethod]
-    public void IndentAppendsCharactersForEachLevel()
+    [Test]
+    public async Task IndentAppendsCharactersForEachLevel()
     {
         var builder = new StringBuilder();
         var indent = new IndentChar('!', 2);
 
-        Assert.AreEqual(string.Empty, builder.Indent(indent, 0).ToString());
-        Assert.AreEqual("!!!!", builder.Indent(indent, 2).ToString());
+        await Assert.That(builder.Indent(indent, 0).ToString()).IsEqualTo(string.Empty);
+        await Assert.That(builder.Indent(indent, 2).ToString()).IsEqualTo("!!!!");
     }
 
     private sealed class NestedType
