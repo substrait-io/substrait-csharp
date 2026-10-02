@@ -166,31 +166,31 @@ foreach ($targetFramework in @('net10.0', 'net8.0', 'netstandard2.0')) {
 $expectedDependencyGroups = [ordered]@{
     'net10.0' = [ordered]@{
         'Antlr4.Runtime.Standard' = '4.13.1'
-        'Google.Protobuf' = '3.35.1'
+        'Google.Protobuf' = '3.36.2'
         'Substrait.Net.Antlr' = '0.104.0'
         'Substrait.Net.Extensions' = '0.104.0'
         'Substrait.Net.Protobuf' = '0.104.0'
-        'YamlDotNet' = '15.1.2'
+        'YamlDotNet' = '18.1.0'
     }
     'net8.0' = [ordered]@{
         'Antlr4.Runtime.Standard' = '4.13.1'
-        'Google.Protobuf' = '3.35.1'
+        'Google.Protobuf' = '3.36.2'
         'Substrait.Net.Antlr' = '0.104.0'
         'Substrait.Net.Extensions' = '0.104.0'
         'Substrait.Net.Protobuf' = '0.104.0'
-        'YamlDotNet' = '15.1.2'
+        'YamlDotNet' = '18.1.0'
     }
     '.NETStandard2.0' = [ordered]@{
         'Antlr4.Runtime.Standard' = '4.13.1'
-        'Google.Protobuf' = '3.35.1'
+        'Google.Protobuf' = '3.36.2'
         'Substrait.Net.Antlr' = '0.104.0'
         'Substrait.Net.Extensions' = '0.104.0'
         'Substrait.Net.Protobuf' = '0.104.0'
-        'IndexRange' = '1.0.3'
+        'IndexRange' = '1.1.1'
         'Microsoft.Bcl.HashCode' = '6.0.0'
-        'System.Collections.Immutable' = '8.0.0'
-        'System.Memory' = '4.5.5'
-        'YamlDotNet' = '15.1.2'
+        'System.Collections.Immutable' = '10.0.12'
+        'System.Memory' = '4.6.3'
+        'YamlDotNet' = '18.1.0'
     }
 }
 $dependencyGroups = @($metadata.dependencies.group)

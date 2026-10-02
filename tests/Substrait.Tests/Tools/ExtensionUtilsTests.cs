@@ -5,6 +5,7 @@ using System.Text;
 using Substrait.Core.Extension;
 using Substrait.Core.Extension.Functions;
 using Substrait.Tools;
+using YamlDotNet.Core;
 
 namespace Substrait.Tests.Tools;
 
@@ -36,6 +37,69 @@ public sealed class ExtensionUtilsTests
         ExtensionsCollection extensions = ExtensionUtils.Load(string.Empty, stream);
 
         await Assert.That(extensions.ScalarFunctionImpls[0].Uri).IsEqualTo("extension:example:test");
+    }
+
+    [Test]
+    public async Task LoadPreservesNestedCollectionsPolymorphicArgumentsAndAliases()
+    {
+        const string yaml = """
+            urn: extension:example:test
+            scalar_functions:
+              - name: choose
+                impls:
+                  - args:
+                      - value: i64
+                        name: input
+                        constant: true
+                      - options: [FIRST, LAST]
+                        name: direction
+                    options:
+                      overflow: &overflow
+                        values: [ERROR, WRAP]
+                        description: Overflow behavior
+                      fallback: *overflow
+                    variadic:
+                      min: 1
+                      max: 3
+                    return: i64
+            """;
+        using MemoryStream stream = new(Encoding.UTF8.GetBytes(yaml));
+
+        ExtensionsCollection extensions = ExtensionUtils.Load(string.Empty, stream);
+
+        await Assert.That(extensions.ScalarFunctionImpls.Count).IsEqualTo(1);
+        ScalarFunctionImpl function = extensions.ScalarFunctionImpls[0];
+        await Assert.That(function.Key).IsEqualTo("choose:i64_req");
+        await Assert.That(function.Args.Count).IsEqualTo(2);
+        var value = (ValueArgument)function.Args[0];
+        await Assert.That(value.Name).IsEqualTo("input");
+        await Assert.That(value.Value).IsEqualTo("i64");
+        await Assert.That(value.Constant).IsTrue();
+        var direction = (EnumArgument)function.Args[1];
+        await Assert.That(direction.Name).IsEqualTo("direction");
+        await Assert.That(direction.Options).IsEquivalentTo(["FIRST", "LAST"], TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(function.Options.Count).IsEqualTo(2);
+        foreach (IOption option in function.Options.Values)
+        {
+            await Assert.That(option.Values).IsEquivalentTo(["ERROR", "WRAP"], TUnit.Assertions.Enums.CollectionOrdering.Matching);
+            await Assert.That(option.Description).IsEqualTo("Overflow behavior");
+        }
+
+        IVariadicBehavior variadic = await Assert.That(function.Variadic).IsNotNull();
+        await Assert.That(variadic.Min).IsEqualTo(1);
+        await Assert.That(variadic.Max).IsEqualTo(3);
+        await Assert.That(function.Return).IsEqualTo("i64");
+    }
+
+    [Test]
+    [Arguments("unknown_field: true")]
+    [Arguments("scalar_functions: invalid")]
+    [Arguments("scalar_functions: [")]
+    public async Task LoadRejectsInvalidYaml(string definition)
+    {
+        using MemoryStream stream = new(Encoding.UTF8.GetBytes("urn: extension:example:test\n" + definition));
+
+        await Assert.That(() => ExtensionUtils.Load(string.Empty, stream)).Throws<YamlException>();
     }
 
     [Test]

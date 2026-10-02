@@ -23,6 +23,11 @@ preview releases may contain breaking API changes.
   `YamlDotNet`. The `netstandard2.0` target also uses `IndexRange`,
   `Microsoft.Bcl.HashCode`, `System.Collections.Immutable`, and `System.Memory`
   compatibility packages.
+- Runtime dependency minimums include Google.Protobuf 3.36.2 and YamlDotNet
+  18.1.0. The YAML collection adapter forwards the root deserializer required
+  by YamlDotNet's updated interface while retaining nested read-only
+  collections, polymorphic arguments, and aliases. The Substrait specification
+  packages remain at 0.104.0.
 - Product-specific integrations, schemas, and test assets remain outside the
   public package.
 
