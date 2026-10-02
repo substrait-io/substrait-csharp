@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Immutable;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Core.Type;
 using static Substrait.Tools.TypeUtils;
 
@@ -11,7 +10,6 @@ namespace Substrait.Tests.Core;
 /// <summary>
 /// Type related tests.
 /// </summary>
-[TestClass]
 public class TypeTests
 {
     /// <summary>
@@ -27,8 +25,8 @@ public class TypeTests
     /// <summary>
     /// Tests equality of primitive types.
     /// </summary>
-    [TestMethod]
-    public void TestPrimitiveTypeEquals()
+    [Test]
+    public async Task TestPrimitiveTypeEquals()
     {
         var allPrimitiveTypes = GetAllPrimitiveTypes(TypeFactory.REQUIRED).Concat(GetAllPrimitiveTypes(TypeFactory.NULLABLE)).ToImmutableList();
 
@@ -36,8 +34,8 @@ public class TypeTests
         {
             for (var j = 0; j < allPrimitiveTypes.Count; ++j)
             {
-                Assert.AreEqual(allPrimitiveTypes[i].Equals(allPrimitiveTypes[j]), i == j, $"({allPrimitiveTypes[i]},{allPrimitiveTypes[j]})");
-                Assert.AreEqual(allPrimitiveTypes[i].GetHashCode() == allPrimitiveTypes[j].GetHashCode(), i == j, $"({allPrimitiveTypes[i]},{allPrimitiveTypes[j]}).GetHashCode()");
+                await Assert.That(i == j).IsEqualTo(allPrimitiveTypes[i].Equals(allPrimitiveTypes[j])).Because($"({allPrimitiveTypes[i]},{allPrimitiveTypes[j]})");
+                await Assert.That(i == j).IsEqualTo(allPrimitiveTypes[i].GetHashCode() == allPrimitiveTypes[j].GetHashCode()).Because($"({allPrimitiveTypes[i]},{allPrimitiveTypes[j]}).GetHashCode()");
             }
         }
     }
@@ -45,122 +43,122 @@ public class TypeTests
     /// <summary>
     /// Tests precision timestamp equals.
     /// </summary>
-    [TestMethod]
-    public void TestPrecisionTimestampEquals()
+    [Test]
+    public async Task TestPrecisionTimestampEquals()
     {
         var t1 = TypeFactory.REQUIRED.PrecisionTimestamp(1);
         var t2 = TypeFactory.REQUIRED.PrecisionTimestamp(1);
         var t3 = TypeFactory.REQUIRED.PrecisionTimestamp(2);
         var t4 = TypeFactory.NULLABLE.PrecisionTimestamp(1);
 
-        Assert.AreEqual(t1, t2);
-        Assert.AreNotEqual(t1, t3);
-        Assert.AreNotEqual(t1, t4);
+        await Assert.That(t2).IsEqualTo(t1);
+        await Assert.That(t3).IsNotEqualTo(t1);
+        await Assert.That(t4).IsNotEqualTo(t1);
 
-        Assert.AreEqual(t1.GetHashCode(), t2.GetHashCode());
-        Assert.AreNotEqual(t1.GetHashCode(), t3.GetHashCode());
-        Assert.AreNotEqual(t1.GetHashCode(), t4.GetHashCode());
+        await Assert.That(t2.GetHashCode()).IsEqualTo(t1.GetHashCode());
+        await Assert.That(t3.GetHashCode()).IsNotEqualTo(t1.GetHashCode());
+        await Assert.That(t4.GetHashCode()).IsNotEqualTo(t1.GetHashCode());
     }
 
     /// <summary>
     /// Tests that PrecisionTimestamp and PrecisionTimestampTZ, despite having an identical shape
     /// (a single Precision field), are never equal to each other.
     /// </summary>
-    [TestMethod]
-    public void TestPrecisionTimestampAndPrecisionTimestampTZAreNotEqual()
+    [Test]
+    public async Task TestPrecisionTimestampAndPrecisionTimestampTZAreNotEqual()
     {
         IType withoutTz = TypeFactory.REQUIRED.PrecisionTimestamp(6);
         IType withTz = TypeFactory.REQUIRED.PrecisionTimestampTZ(6);
 
-        Assert.AreNotEqual(withoutTz, withTz);
-        Assert.AreNotEqual(withoutTz.GetHashCode(), withTz.GetHashCode());
+        await Assert.That(withTz).IsNotEqualTo(withoutTz);
+        await Assert.That(withTz.GetHashCode()).IsNotEqualTo(withoutTz.GetHashCode());
     }
 
     /// <summary>
     /// Tests precision timestamp with timezone equals.
     /// </summary>
-    [TestMethod]
-    public void TestPrecisionTimestampTZEquals()
+    [Test]
+    public async Task TestPrecisionTimestampTZEquals()
     {
         var t1 = TypeFactory.REQUIRED.PrecisionTimestampTZ(1);
         var t2 = TypeFactory.REQUIRED.PrecisionTimestampTZ(1);
         var t3 = TypeFactory.REQUIRED.PrecisionTimestampTZ(2);
         var t4 = TypeFactory.NULLABLE.PrecisionTimestampTZ(1);
 
-        Assert.AreEqual(t1, t2);
-        Assert.AreNotEqual(t1, t3);
-        Assert.AreNotEqual(t1, t4);
+        await Assert.That(t2).IsEqualTo(t1);
+        await Assert.That(t3).IsNotEqualTo(t1);
+        await Assert.That(t4).IsNotEqualTo(t1);
 
-        Assert.AreEqual(t1.GetHashCode(), t2.GetHashCode());
-        Assert.AreNotEqual(t1.GetHashCode(), t3.GetHashCode());
-        Assert.AreNotEqual(t1.GetHashCode(), t4.GetHashCode());
+        await Assert.That(t2.GetHashCode()).IsEqualTo(t1.GetHashCode());
+        await Assert.That(t3.GetHashCode()).IsNotEqualTo(t1.GetHashCode());
+        await Assert.That(t4.GetHashCode()).IsNotEqualTo(t1.GetHashCode());
     }
 
     /// <summary>
     /// Tests fixed char equals.
     /// </summary>
-    [TestMethod]
-    public void TestFixedCharEquals()
+    [Test]
+    public async Task TestFixedCharEquals()
     {
         var t1 = TypeFactory.REQUIRED.FixedChar(1);
         var t2 = TypeFactory.REQUIRED.FixedChar(1);
         var t3 = TypeFactory.REQUIRED.FixedChar(2);
         var t4 = TypeFactory.NULLABLE.FixedChar(1);
 
-        Assert.AreEqual(t1, t2);
-        Assert.AreNotEqual(t1, t3);
-        Assert.AreNotEqual(t1, t4);
+        await Assert.That(t2).IsEqualTo(t1);
+        await Assert.That(t3).IsNotEqualTo(t1);
+        await Assert.That(t4).IsNotEqualTo(t1);
 
-        Assert.AreEqual(t1.GetHashCode(), t2.GetHashCode());
-        Assert.AreNotEqual(t1.GetHashCode(), t3.GetHashCode());
-        Assert.AreNotEqual(t1.GetHashCode(), t4.GetHashCode());
+        await Assert.That(t2.GetHashCode()).IsEqualTo(t1.GetHashCode());
+        await Assert.That(t3.GetHashCode()).IsNotEqualTo(t1.GetHashCode());
+        await Assert.That(t4.GetHashCode()).IsNotEqualTo(t1.GetHashCode());
     }
 
     /// <summary>
     /// Tests fixed char equals.
     /// </summary>
-    [TestMethod]
-    public void TestVarCharEquals()
+    [Test]
+    public async Task TestVarCharEquals()
     {
         var t1 = TypeFactory.REQUIRED.VarChar(1);
         var t2 = TypeFactory.REQUIRED.VarChar(1);
         var t3 = TypeFactory.REQUIRED.VarChar(2);
         var t4 = TypeFactory.NULLABLE.VarChar(1);
 
-        Assert.AreEqual(t1, t2);
-        Assert.AreNotEqual(t1, t3);
-        Assert.AreNotEqual(t1, t4);
+        await Assert.That(t2).IsEqualTo(t1);
+        await Assert.That(t3).IsNotEqualTo(t1);
+        await Assert.That(t4).IsNotEqualTo(t1);
 
-        Assert.AreEqual(t1.GetHashCode(), t2.GetHashCode());
-        Assert.AreNotEqual(t1.GetHashCode(), t3.GetHashCode());
-        Assert.AreNotEqual(t1.GetHashCode(), t4.GetHashCode());
+        await Assert.That(t2.GetHashCode()).IsEqualTo(t1.GetHashCode());
+        await Assert.That(t3.GetHashCode()).IsNotEqualTo(t1.GetHashCode());
+        await Assert.That(t4.GetHashCode()).IsNotEqualTo(t1.GetHashCode());
     }
 
     /// <summary>
     /// Tests fixed binary equals.
     /// </summary>
-    [TestMethod]
-    public void TestFixedBinaryEquals()
+    [Test]
+    public async Task TestFixedBinaryEquals()
     {
         var t1 = TypeFactory.REQUIRED.FixedBinary(1);
         var t2 = TypeFactory.REQUIRED.FixedBinary(1);
         var t3 = TypeFactory.REQUIRED.FixedBinary(2);
         var t4 = TypeFactory.NULLABLE.FixedBinary(1);
 
-        Assert.AreEqual(t1, t2);
-        Assert.AreNotEqual(t1, t3);
-        Assert.AreNotEqual(t1, t4);
+        await Assert.That(t2).IsEqualTo(t1);
+        await Assert.That(t3).IsNotEqualTo(t1);
+        await Assert.That(t4).IsNotEqualTo(t1);
 
-        Assert.AreEqual(t1.GetHashCode(), t2.GetHashCode());
-        Assert.AreNotEqual(t1.GetHashCode(), t3.GetHashCode());
-        Assert.AreNotEqual(t1.GetHashCode(), t4.GetHashCode());
+        await Assert.That(t2.GetHashCode()).IsEqualTo(t1.GetHashCode());
+        await Assert.That(t3.GetHashCode()).IsNotEqualTo(t1.GetHashCode());
+        await Assert.That(t4.GetHashCode()).IsNotEqualTo(t1.GetHashCode());
     }
 
     /// <summary>
     /// Tests decimal equals.
     /// </summary>
-    [TestMethod]
-    public void TestDecimalEquals()
+    [Test]
+    public async Task TestDecimalEquals()
     {
         var t1 = TypeFactory.REQUIRED.Decimal(2, 1);
         var t2 = TypeFactory.REQUIRED.Decimal(2, 1);
@@ -168,22 +166,22 @@ public class TypeTests
         var t4 = TypeFactory.REQUIRED.Decimal(3, 1);
         var t5 = TypeFactory.NULLABLE.Decimal(2, 1);
 
-        Assert.AreEqual(t1, t2);
-        Assert.AreNotEqual(t1, t3);
-        Assert.AreNotEqual(t1, t4);
-        Assert.AreNotEqual(t1, t5);
+        await Assert.That(t2).IsEqualTo(t1);
+        await Assert.That(t3).IsNotEqualTo(t1);
+        await Assert.That(t4).IsNotEqualTo(t1);
+        await Assert.That(t5).IsNotEqualTo(t1);
 
-        Assert.AreEqual(t1.GetHashCode(), t2.GetHashCode());
-        Assert.AreNotEqual(t1.GetHashCode(), t3.GetHashCode());
-        Assert.AreNotEqual(t1.GetHashCode(), t4.GetHashCode());
-        Assert.AreNotEqual(t1.GetHashCode(), t5.GetHashCode());
+        await Assert.That(t2.GetHashCode()).IsEqualTo(t1.GetHashCode());
+        await Assert.That(t3.GetHashCode()).IsNotEqualTo(t1.GetHashCode());
+        await Assert.That(t4.GetHashCode()).IsNotEqualTo(t1.GetHashCode());
+        await Assert.That(t5.GetHashCode()).IsNotEqualTo(t1.GetHashCode());
     }
 
     /// <summary>
     /// Tests struct equals.
     /// </summary>
-    [TestMethod]
-    public void TestStructEquals()
+    [Test]
+    public async Task TestStructEquals()
     {
         var fields1 = new List<IType> { TypeFactory.REQUIRED.I64, TypeFactory.NULLABLE.STR };
         var fields2 = new List<IType> { TypeFactory.NULLABLE.STR, TypeFactory.REQUIRED.I64 };
@@ -193,20 +191,20 @@ public class TypeTests
         var t3 = TypeFactory.REQUIRED.Struct(fields2);
         var t4 = TypeFactory.NULLABLE.Struct(fields1);
 
-        Assert.AreEqual(t1, t2);
-        Assert.AreNotEqual(t1, t3);
-        Assert.AreNotEqual(t1, t4);
+        await Assert.That(t2).IsEqualTo(t1);
+        await Assert.That(t3).IsNotEqualTo(t1);
+        await Assert.That(t4).IsNotEqualTo(t1);
 
-        Assert.AreEqual(t1.GetHashCode(), t2.GetHashCode());
-        Assert.AreNotEqual(t1.GetHashCode(), t3.GetHashCode());
-        Assert.AreNotEqual(t1.GetHashCode(), t4.GetHashCode());
+        await Assert.That(t2.GetHashCode()).IsEqualTo(t1.GetHashCode());
+        await Assert.That(t3.GetHashCode()).IsNotEqualTo(t1.GetHashCode());
+        await Assert.That(t4.GetHashCode()).IsNotEqualTo(t1.GetHashCode());
     }
 
     /// <summary>
     /// Tests nested struct equals.
     /// </summary>
-    [TestMethod]
-    public void TestNestedStructEquals()
+    [Test]
+    public async Task TestNestedStructEquals()
     {
         var fields1 = new List<IType> { TypeFactory.REQUIRED.I64, TypeFactory.NULLABLE.STR };
         var struct1 = TypeFactory.REQUIRED.Struct(fields1);
@@ -221,32 +219,32 @@ public class TypeTests
         var t2 = TypeFactory.REQUIRED.Struct(fields3);
         var t3 = TypeFactory.REQUIRED.Struct(fields4);
 
-        Assert.AreEqual(t1, t2);
-        Assert.AreNotEqual(t1, t3);
+        await Assert.That(t2).IsEqualTo(t1);
+        await Assert.That(t3).IsNotEqualTo(t1);
 
-        Assert.AreEqual(t1.GetHashCode(), t2.GetHashCode());
-        Assert.AreNotEqual(t1.GetHashCode(), t3.GetHashCode());
+        await Assert.That(t2.GetHashCode()).IsEqualTo(t1.GetHashCode());
+        await Assert.That(t3.GetHashCode()).IsNotEqualTo(t1.GetHashCode());
     }
 
     /// <summary>
     /// Tests whether inverse nullable throws with unspecified nullable type.
     /// </summary>
-    [TestMethod]
-    public void TestInverseNullableThrowsWithUnspecified()
+    [Test]
+    public async Task TestInverseNullableThrowsWithUnspecified()
     {
-        Assert.ThrowsException<NotImplementedException>(() => IType.NullableType.Unspecified.Inverse());
+        await Assert.That(() => IType.NullableType.Unspecified.Inverse()).ThrowsExactly<NotImplementedException>();
     }
 
     /// <summary>
     /// Tests that Decimal rejects out-of-range precision and scale.
     /// </summary>
-    [TestMethod]
-    public void TestDecimalRejectsOutOfRangePrecisionAndScale()
+    [Test]
+    public async Task TestDecimalRejectsOutOfRangePrecisionAndScale()
     {
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => TypeFactory.REQUIRED.Decimal(0, 0));
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => TypeFactory.REQUIRED.Decimal(39, 0));
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => TypeFactory.REQUIRED.Decimal(5, -1));
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => TypeFactory.REQUIRED.Decimal(5, 6));
+        await Assert.That(() => TypeFactory.REQUIRED.Decimal(0, 0)).ThrowsExactly<ArgumentOutOfRangeException>();
+        await Assert.That(() => TypeFactory.REQUIRED.Decimal(39, 0)).ThrowsExactly<ArgumentOutOfRangeException>();
+        await Assert.That(() => TypeFactory.REQUIRED.Decimal(5, -1)).ThrowsExactly<ArgumentOutOfRangeException>();
+        await Assert.That(() => TypeFactory.REQUIRED.Decimal(5, 6)).ThrowsExactly<ArgumentOutOfRangeException>();
 
         // Boundary values are accepted.
         TypeFactory.REQUIRED.Decimal(1, 0);
@@ -256,13 +254,13 @@ public class TypeTests
     /// <summary>
     /// Tests that FixedChar, VarChar, and FixedBinary reject a non-positive length.
     /// </summary>
-    [TestMethod]
-    public void TestFixedLengthTypesRejectNonPositiveLength()
+    [Test]
+    public async Task TestFixedLengthTypesRejectNonPositiveLength()
     {
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => TypeFactory.REQUIRED.FixedChar(0));
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => TypeFactory.REQUIRED.FixedChar(-1));
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => TypeFactory.REQUIRED.VarChar(0));
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => TypeFactory.REQUIRED.FixedBinary(0));
+        await Assert.That(() => TypeFactory.REQUIRED.FixedChar(0)).ThrowsExactly<ArgumentOutOfRangeException>();
+        await Assert.That(() => TypeFactory.REQUIRED.FixedChar(-1)).ThrowsExactly<ArgumentOutOfRangeException>();
+        await Assert.That(() => TypeFactory.REQUIRED.VarChar(0)).ThrowsExactly<ArgumentOutOfRangeException>();
+        await Assert.That(() => TypeFactory.REQUIRED.FixedBinary(0)).ThrowsExactly<ArgumentOutOfRangeException>();
 
         // A positive length is accepted.
         TypeFactory.REQUIRED.FixedChar(1);
@@ -273,13 +271,13 @@ public class TypeTests
     /// <summary>
     /// Tests that PrecisionTimestamp and PrecisionTimestampTZ reject a precision outside 0-12.
     /// </summary>
-    [TestMethod]
-    public void TestPrecisionTimestampRejectsOutOfRangePrecision()
+    [Test]
+    public async Task TestPrecisionTimestampRejectsOutOfRangePrecision()
     {
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => TypeFactory.REQUIRED.PrecisionTimestamp(-1));
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => TypeFactory.REQUIRED.PrecisionTimestamp(13));
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => TypeFactory.REQUIRED.PrecisionTimestampTZ(-1));
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => TypeFactory.REQUIRED.PrecisionTimestampTZ(13));
+        await Assert.That(() => TypeFactory.REQUIRED.PrecisionTimestamp(-1)).ThrowsExactly<ArgumentOutOfRangeException>();
+        await Assert.That(() => TypeFactory.REQUIRED.PrecisionTimestamp(13)).ThrowsExactly<ArgumentOutOfRangeException>();
+        await Assert.That(() => TypeFactory.REQUIRED.PrecisionTimestampTZ(-1)).ThrowsExactly<ArgumentOutOfRangeException>();
+        await Assert.That(() => TypeFactory.REQUIRED.PrecisionTimestampTZ(13)).ThrowsExactly<ArgumentOutOfRangeException>();
 
         // Boundary values (seconds through picoseconds) are accepted.
         TypeFactory.REQUIRED.PrecisionTimestamp(0);

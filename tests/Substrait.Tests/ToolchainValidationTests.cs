@@ -3,18 +3,16 @@
 
 using Antlr4.Runtime;
 using Google.Protobuf;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Antlr.SubstraitType;
 using Substrait.Extensions;
 using Substrait.Protobuf;
 
 namespace Substrait.Tests;
 
-[TestClass]
 public sealed class ToolchainValidationTests
 {
-    [TestMethod]
-    public void PlanRoundTripsThroughBinaryAndJson()
+    [Test]
+    public async Task PlanRoundTripsThroughBinaryAndJson()
     {
         Plan expected = new()
         {
@@ -30,12 +28,12 @@ public sealed class ToolchainValidationTests
         Plan binaryRoundTrip = Plan.Parser.ParseFrom(expected.ToByteArray());
         Plan jsonRoundTrip = JsonParser.Default.Parse<Plan>(JsonFormatter.Default.Format(expected));
 
-        Assert.AreEqual(expected, binaryRoundTrip);
-        Assert.AreEqual(expected, jsonRoundTrip);
+        await Assert.That(binaryRoundTrip).IsEqualTo(expected);
+        await Assert.That(jsonRoundTrip).IsEqualTo(expected);
     }
 
-    [TestMethod]
-    public void TypeGrammarParsesScalarType()
+    [Test]
+    public async Task TypeGrammarParsesScalarType()
     {
         AntlrInputStream input = new("i32");
         SubstraitTypeLexer lexer = new(input);
@@ -43,11 +41,11 @@ public sealed class ToolchainValidationTests
 
         parser.startRule();
 
-        Assert.AreEqual(0, parser.NumberOfSyntaxErrors);
+        await Assert.That(parser.NumberOfSyntaxErrors).IsEqualTo(0);
     }
 
-    [TestMethod]
-    public void StandardExtensionsComeFromPackage()
+    [Test]
+    public async Task StandardExtensionsComeFromPackage()
     {
         string[] expected =
         [
@@ -64,17 +62,17 @@ public sealed class ToolchainValidationTests
 
         foreach (string name in expected)
         {
-            Assert.IsTrue(SubstraitExtensions.ExtensionFiles.Contains(name));
-            Assert.IsFalse(string.IsNullOrWhiteSpace(SubstraitExtensions.ReadExtensionFile(name)));
+            await Assert.That(SubstraitExtensions.ExtensionFiles.Contains(name)).IsTrue();
+            await Assert.That(string.IsNullOrWhiteSpace(SubstraitExtensions.ReadExtensionFile(name))).IsFalse();
         }
 
-        Assert.AreEqual("Substrait.Net.Protobuf", typeof(Plan).Assembly.GetName().Name);
-        Assert.AreEqual("Substrait.Net.Antlr", typeof(SubstraitTypeParser).Assembly.GetName().Name);
-        Assert.AreEqual("Substrait.Net.Extensions", typeof(SubstraitExtensions).Assembly.GetName().Name);
+        await Assert.That(typeof(Plan).Assembly.GetName().Name).IsEqualTo("Substrait.Net.Protobuf");
+        await Assert.That(typeof(SubstraitTypeParser).Assembly.GetName().Name).IsEqualTo("Substrait.Net.Antlr");
+        await Assert.That(typeof(SubstraitExtensions).Assembly.GetName().Name).IsEqualTo("Substrait.Net.Extensions");
     }
 
-    [TestMethod]
-    public void SpecificationPackagesMatchCurrentPlanVersion()
+    [Test]
+    public async Task SpecificationPackagesMatchCurrentPlanVersion()
     {
         System.Version expected = new(
             (int)Substrait.Core.Plan.Version.Current.MajorNumber,
@@ -82,8 +80,8 @@ public sealed class ToolchainValidationTests
             (int)Substrait.Core.Plan.Version.Current.PatchNumber,
             0);
 
-        Assert.AreEqual(expected, typeof(Plan).Assembly.GetName().Version);
-        Assert.AreEqual(expected, typeof(SubstraitTypeParser).Assembly.GetName().Version);
-        Assert.AreEqual(expected, typeof(SubstraitExtensions).Assembly.GetName().Version);
+        await Assert.That(typeof(Plan).Assembly.GetName().Version).IsEqualTo(expected);
+        await Assert.That(typeof(SubstraitTypeParser).Assembly.GetName().Version).IsEqualTo(expected);
+        await Assert.That(typeof(SubstraitExtensions).Assembly.GetName().Version).IsEqualTo(expected);
     }
 }

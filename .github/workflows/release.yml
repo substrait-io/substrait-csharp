@@ -51,7 +51,7 @@ jobs:
         run: dotnet build Substrait.sln --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test Substrait.sln --configuration Release --no-build --logger trx
+        run: dotnet test --solution Substrait.sln --configuration Release --no-build --report-trx
 
       - name: Pack
         run: >-

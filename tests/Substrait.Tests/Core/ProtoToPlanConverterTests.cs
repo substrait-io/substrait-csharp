@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Google.Protobuf;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Core.Expression;
 using Substrait.Core.Extension;
 using Substrait.Core.Extension.Functions;
@@ -19,74 +18,69 @@ using ProtoVersion = Substrait.Protobuf.Version;
 
 namespace Substrait.Tests.Core;
 
-[TestClass]
 public sealed class ProtoToPlanConverterTests
 {
     private static readonly string[] ExpectedRootNames = ["output"];
     private readonly ProtoToPlanConverter converter = new(new ExtensionsCollection());
 
-    [TestMethod]
-    public void ConvertsRootNamesAndVersion()
+    [Test]
+    public async Task ConvertsRootNamesAndVersion()
     {
         ProtoPlan plan = CreatePlan();
 
         IPlan result = this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF);
 
-        Assert.AreEqual(1, result.Roots.Count);
-        Assert.IsInstanceOfType<NamedTableRead>(result.Roots[0].Input);
-        CollectionAssert.AreEqual(ExpectedRootNames, result.Roots[0].Names.ToArray());
-        Assert.AreEqual(1U, result.Version.MajorNumber);
-        Assert.AreEqual(2U, result.Version.MinorNumber);
-        Assert.AreEqual(3U, result.Version.PatchNumber);
-        Assert.AreEqual("abc", result.Version.GitHash);
-        Assert.AreEqual("tests", result.Version.Producer);
+        await Assert.That(result.Roots.Count).IsEqualTo(1);
+        await Assert.That(result.Roots[0].Input).IsAssignableTo<NamedTableRead>();
+        await Assert.That(result.Roots[0].Names.ToArray()).IsEquivalentTo(ExpectedRootNames, TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(result.Version.MajorNumber).IsEqualTo(1U);
+        await Assert.That(result.Version.MinorNumber).IsEqualTo(2U);
+        await Assert.That(result.Version.PatchNumber).IsEqualTo(3U);
+        await Assert.That(result.Version.GitHash).IsEqualTo("abc");
+        await Assert.That(result.Version.Producer).IsEqualTo("tests");
     }
 
-    [TestMethod]
-    public void ConvertsMultiplePlanRoots()
+    [Test]
+    public async Task ConvertsMultiplePlanRoots()
     {
         ProtoPlan plan = CreatePlan();
         plan.Relations.Add(CreatePlan().Relations[0]);
 
         IPlan result = this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF);
 
-        Assert.AreEqual(2, result.Relations.Count);
-        Assert.AreEqual(2, result.Roots.Count);
-        Assert.AreEqual(result.Roots[0], result.Roots[1]);
-        Assert.AreEqual(
-            result,
-            this.converter.From(new PlanToProtoConverter().From(result), ExtensionsDictionary.StrictMode.OFF));
+        await Assert.That(result.Relations.Count).IsEqualTo(2);
+        await Assert.That(result.Roots.Count).IsEqualTo(2);
+        await Assert.That(result.Roots[1]).IsEqualTo(result.Roots[0]);
+        await Assert.That(this.converter.From(new PlanToProtoConverter().From(result), ExtensionsDictionary.StrictMode.OFF)).IsEqualTo(result);
     }
 
-    [TestMethod]
-    public void ConvertsNonRootPlanRelation()
+    [Test]
+    public async Task ConvertsNonRootPlanRelation()
     {
         ProtoPlan plan = CreatePlan();
         plan.Relations[0] = new PlanRel { Rel = CreateRead() };
 
         IPlan result = this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF);
 
-        Assert.AreEqual(1, result.Relations.Count);
-        Assert.AreEqual(0, result.Roots.Count);
-        Assert.IsInstanceOfType<NamedTableRead>(result.Relations[0].Input);
-        Assert.AreEqual(
-            result,
-            this.converter.From(new PlanToProtoConverter().From(result), ExtensionsDictionary.StrictMode.OFF));
+        await Assert.That(result.Relations.Count).IsEqualTo(1);
+        await Assert.That(result.Roots.Count).IsEqualTo(0);
+        await Assert.That(result.Relations[0].Input).IsAssignableTo<NamedTableRead>();
+        await Assert.That(this.converter.From(new PlanToProtoConverter().From(result), ExtensionsDictionary.StrictMode.OFF)).IsEqualTo(result);
     }
 
-    [TestMethod]
-    public void RoundTripsPlanSemantics()
+    [Test]
+    public async Task RoundTripsPlanSemantics()
     {
         IPlan original = this.converter.From(CreatePlan(), ExtensionsDictionary.StrictMode.OFF);
 
         ProtoPlan serialized = new PlanToProtoConverter().From(original);
         IPlan roundTripped = this.converter.From(serialized, ExtensionsDictionary.StrictMode.OFF);
 
-        Assert.AreEqual(original, roundTripped);
+        await Assert.That(roundTripped).IsEqualTo(original);
     }
 
-    [TestMethod]
-    public void RoundTripsStandardFunctionUrns()
+    [Test]
+    public async Task RoundTripsStandardFunctionUrns()
     {
         const string urn = "extension:io.substrait:functions_arithmetic";
         var read = new NamedTableRead(
@@ -100,8 +94,8 @@ public sealed class ProtoToPlanConverterTests
             Substrait.Core.Plan.Version.Current);
 
         ProtoPlan serialized = new PlanToProtoConverter().From(plan);
-        Assert.AreEqual(urn, serialized.ExtensionUrns.Single().Urn);
-        Assert.AreEqual(serialized.ExtensionUrns[0].ExtensionUrnAnchor, serialized.Extensions[0].ExtensionFunction.ExtensionUrnReference);
+        await Assert.That(serialized.ExtensionUrns.Single().Urn).IsEqualTo(urn);
+        await Assert.That(serialized.Extensions[0].ExtensionFunction.ExtensionUrnReference).IsEqualTo(serialized.ExtensionUrns[0].ExtensionUrnAnchor);
 
         ProtoPlan[] roundTrips =
         [
@@ -112,14 +106,14 @@ public sealed class ProtoToPlanConverterTests
         {
             IPlan converted = new ProtoToPlanConverter().From(roundTrip);
             var invocation = (Substrait.Core.Expression.Expression.ScalarFunctionInvocation)((Project)converted.Roots[0].Input).Expressions[0];
-            Assert.IsNotNull(invocation.Declaration);
-            Assert.AreEqual(urn, invocation.Declaration.Uri);
-            Assert.AreEqual(serialized, new PlanToProtoConverter().From(converted));
+            await Assert.That(invocation.Declaration).IsNotNull();
+            await Assert.That(invocation.Declaration.Uri).IsEqualTo(urn);
+            await Assert.That(new PlanToProtoConverter().From(converted)).IsEqualTo(serialized);
         }
     }
 
-    [TestMethod]
-    public void NumbersFunctionAndTypeVariationAnchorsIndependently()
+    [Test]
+    public async Task NumbersFunctionAndTypeVariationAnchorsIndependently()
     {
         var variation = new TypeVariationImpl("extension:example:types", "i64", "custom", string.Empty, FunctionBehavior.INHERITS);
         var schema = new Substrait.Core.Type.NamedStruct(
@@ -139,14 +133,14 @@ public sealed class ProtoToPlanConverterTests
 
         ProtoPlan result = new PlanToProtoConverter().From(plan);
 
-        Assert.AreEqual(1U, result.Relations[0].Root.Input.Project.Input.Read.BaseSchema.Struct.Types_[0].I64.TypeVariationReference);
-        Assert.AreEqual(0U, result.Relations[0].Root.Input.Project.Expressions[0].ScalarFunction.FunctionReference);
-        Assert.AreEqual(1U, result.Extensions.Single(extension => extension.ExtensionTypeVariation is not null).ExtensionTypeVariation.TypeVariationAnchor);
-        Assert.AreEqual(0U, result.Extensions.Single(extension => extension.ExtensionFunction is not null).ExtensionFunction.FunctionAnchor);
+        await Assert.That(result.Relations[0].Root.Input.Project.Input.Read.BaseSchema.Struct.Types_[0].I64.TypeVariationReference).IsEqualTo(1U);
+        await Assert.That(result.Relations[0].Root.Input.Project.Expressions[0].ScalarFunction.FunctionReference).IsEqualTo(0U);
+        await Assert.That(result.Extensions.Single(extension => extension.ExtensionTypeVariation is not null).ExtensionTypeVariation.TypeVariationAnchor).IsEqualTo(1U);
+        await Assert.That(result.Extensions.Single(extension => extension.ExtensionFunction is not null).ExtensionFunction.FunctionAnchor).IsEqualTo(0U);
     }
 
-    [TestMethod]
-    public void ResolvesExtendedExpressionUrns()
+    [Test]
+    public async Task ResolvesExtendedExpressionUrns()
     {
         ExtendedExpression expression = new()
         {
@@ -162,12 +156,12 @@ public sealed class ProtoToPlanConverterTests
 
         FunctionImplAnchor anchor = new ExtensionsDictionary.Builder(expression).Build().GetFunctionAnchor(7);
 
-        Assert.AreEqual("extension:example:functions", anchor.Namespace);
-        Assert.AreEqual("identity:i64", anchor.Key);
+        await Assert.That(anchor.Namespace).IsEqualTo("extension:example:functions");
+        await Assert.That(anchor.Key).IsEqualTo("identity:i64");
     }
 
-    [TestMethod]
-    public void ConvertedPlanRoundTripsDeterministicallyThroughBinaryAndJson()
+    [Test]
+    public async Task ConvertedPlanRoundTripsDeterministicallyThroughBinaryAndJson()
     {
         IPlan original = this.converter.From(CreatePlan(), ExtensionsDictionary.StrictMode.OFF);
         PlanToProtoConverter serializer = new();
@@ -181,14 +175,10 @@ public sealed class ProtoToPlanConverterTests
             FileUtils.WritePlan(serialized, binaryPath, FileUtils.FileType.Protobuf);
             FileUtils.WritePlan(serialized, jsonPath, FileUtils.FileType.Json);
 
-            CollectionAssert.AreEqual(serialized.ToByteArray(), File.ReadAllBytes(binaryPath));
-            CollectionAssert.AreEqual(serialized.ToByteArray(), serializer.From(original).ToByteArray());
-            Assert.AreEqual(
-                original,
-                this.converter.From(FileUtils.FetchPlan(binaryPath, FileUtils.FileType.Protobuf), ExtensionsDictionary.StrictMode.OFF));
-            Assert.AreEqual(
-                original,
-                this.converter.From(FileUtils.FetchPlan(jsonPath, FileUtils.FileType.Json), ExtensionsDictionary.StrictMode.OFF));
+            await Assert.That(File.ReadAllBytes(binaryPath)).IsEquivalentTo(serialized.ToByteArray(), TUnit.Assertions.Enums.CollectionOrdering.Matching);
+            await Assert.That(serializer.From(original).ToByteArray()).IsEquivalentTo(serialized.ToByteArray(), TUnit.Assertions.Enums.CollectionOrdering.Matching);
+            await Assert.That(this.converter.From(FileUtils.FetchPlan(binaryPath, FileUtils.FileType.Protobuf), ExtensionsDictionary.StrictMode.OFF)).IsEqualTo(original);
+            await Assert.That(this.converter.From(FileUtils.FetchPlan(jsonPath, FileUtils.FileType.Json), ExtensionsDictionary.StrictMode.OFF)).IsEqualTo(original);
         }
         finally
         {
@@ -199,8 +189,8 @@ public sealed class ProtoToPlanConverterTests
         }
     }
 
-    [TestMethod]
-    public void FunctionResolutionHonorsStrictMode()
+    [Test]
+    public async Task FunctionResolutionHonorsStrictMode()
     {
         ProtoPlan plan = CreatePlanWithExtensions(
             new SimpleExtensionDeclaration
@@ -234,12 +224,12 @@ public sealed class ProtoToPlanConverterTests
 
         IPlan nonStrict = this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF);
 
-        Assert.IsNull(((Substrait.Core.Expression.Expression.ScalarFunctionInvocation)((Project)nonStrict.Roots[0].Input).Expressions[0]).Declaration);
-        Assert.ThrowsException<ArgumentException>(() => this.converter.From(plan, ExtensionsDictionary.StrictMode.FUNCTION));
+        await Assert.That(((Substrait.Core.Expression.Expression.ScalarFunctionInvocation)((Project)nonStrict.Roots[0].Input).Expressions[0]).Declaration).IsNull();
+        await Assert.That(() => this.converter.From(plan, ExtensionsDictionary.StrictMode.FUNCTION)).ThrowsExactly<ArgumentException>();
     }
 
-    [TestMethod]
-    public void TypeVariationResolutionHonorsStrictMode()
+    [Test]
+    public async Task TypeVariationResolutionHonorsStrictMode()
     {
         ProtoPlan plan = CreatePlanWithExtensions(
             new SimpleExtensionDeclaration
@@ -255,8 +245,8 @@ public sealed class ProtoToPlanConverterTests
 
         IPlan nonStrict = this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF);
 
-        Assert.IsNull(((NamedTableRead)nonStrict.Roots[0].Input).RecordType.Fields[0].TypeVariation);
-        Assert.ThrowsException<ArgumentException>(() => this.converter.From(plan, ExtensionsDictionary.StrictMode.TYPE_VARIATION));
+        await Assert.That(((NamedTableRead)nonStrict.Roots[0].Input).RecordType.Fields[0].TypeVariation).IsNull();
+        await Assert.That(() => this.converter.From(plan, ExtensionsDictionary.StrictMode.TYPE_VARIATION)).ThrowsExactly<ArgumentException>();
     }
 
     private static ProtoPlan CreatePlan()

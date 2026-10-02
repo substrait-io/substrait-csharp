@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using static Substrait.Core.Expression.AggregateFunctionInvocation;
 using static Substrait.Core.Relation.AbstractJoin;
 using static Substrait.Core.Relation.Set;
@@ -14,35 +13,34 @@ using RelationEnums = Substrait.Core.Relation.Converters.EnumExtensions;
 
 namespace Substrait.Tests.Core;
 
-[TestClass]
 public sealed class ConverterEnumExtensionsTests
 {
-    [TestMethod]
-    public void ExpressionEnumsRoundTripByValue()
+    [Test]
+    public async Task ExpressionEnumsRoundTripByValue()
     {
         ProtoAggregationPhase proto = ExpressionEnums.ToProto(AggregationPhase.IntermediateToResult);
 
-        Assert.AreEqual(ProtoAggregationPhase.IntermediateToResult, proto);
-        Assert.AreEqual(AggregationPhase.IntermediateToResult, ExpressionEnums.FromProto(proto));
+        await Assert.That(proto).IsEqualTo(ProtoAggregationPhase.IntermediateToResult);
+        await Assert.That(ExpressionEnums.FromProto(proto)).IsEqualTo(AggregationPhase.IntermediateToResult);
     }
 
-    [TestMethod]
-    public void RelationEnumsRoundTripByValueAndName()
+    [Test]
+    public async Task RelationEnumsRoundTripByValueAndName()
     {
         ProtoJoinType joinProto = RelationEnums.ToProto(JoinType.Left);
         ProtoHashJoinType hashJoinProto = RelationEnums.ToHashJoinProto(JoinType.Left);
         ProtoSetOp setProto = RelationEnums.ToProto(SetOp.UnionDistinct);
 
-        Assert.AreEqual(JoinType.Left, RelationEnums.FromProto(joinProto));
-        Assert.AreEqual(JoinType.Left, RelationEnums.FromProto(hashJoinProto));
-        Assert.AreEqual(SetOp.UnionDistinct, RelationEnums.FromProto(setProto));
+        await Assert.That(RelationEnums.FromProto(joinProto)).IsEqualTo(JoinType.Left);
+        await Assert.That(RelationEnums.FromProto(hashJoinProto)).IsEqualTo(JoinType.Left);
+        await Assert.That(RelationEnums.FromProto(setProto)).IsEqualTo(SetOp.UnionDistinct);
     }
 
-    [TestMethod]
-    public void RelationEnumsRejectUnspecifiedValues()
+    [Test]
+    public async Task RelationEnumsRejectUnspecifiedValues()
     {
-        Assert.ThrowsException<ArgumentException>(() => RelationEnums.FromProto(ProtoJoinType.Unspecified));
-        Assert.ThrowsException<ArgumentException>(() => RelationEnums.FromProto(ProtoHashJoinType.Unspecified));
-        Assert.ThrowsException<ArgumentException>(() => RelationEnums.FromProto(ProtoSetOp.Unspecified));
+        await Assert.That(() => RelationEnums.FromProto(ProtoJoinType.Unspecified)).ThrowsExactly<ArgumentException>();
+        await Assert.That(() => RelationEnums.FromProto(ProtoHashJoinType.Unspecified)).ThrowsExactly<ArgumentException>();
+        await Assert.That(() => RelationEnums.FromProto(ProtoSetOp.Unspecified)).ThrowsExactly<ArgumentException>();
     }
 }

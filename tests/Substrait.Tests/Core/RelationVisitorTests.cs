@@ -3,20 +3,19 @@
 
 using System.Reflection;
 using System.Text;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Core.Expression;
 using Substrait.Core.Relation;
 using Substrait.Core.Type;
 using Substrait.Tools.Visitor;
 using static Substrait.Core.Expression.Literal;
+using Assembly = System.Reflection.Assembly;
 
 namespace Substrait.Tests.Core;
 
-[TestClass]
 public sealed class RelationVisitorTests
 {
-    [TestMethod]
-    public void RelVisitorContainsAllSealedRelationTypes()
+    [Test]
+    public async Task RelVisitorContainsAllSealedRelationTypes()
     {
         List<System.Type> relationTypes = Assembly.GetAssembly(typeof(IRel))!
             .GetTypes()
@@ -34,14 +33,12 @@ public sealed class RelationVisitorTests
 
         foreach (System.Type relationType in relationTypes)
         {
-            Assert.IsTrue(
-                visitedTypes.Contains(relationType),
-                $"RelVisitor does not contain a Visit method for {relationType.Name}");
+            await Assert.That(visitedTypes.Contains(relationType)).IsTrue().Because($"RelVisitor does not contain a Visit method for {relationType.Name}");
         }
     }
 
-    [TestMethod]
-    public void DispatchersTraverseSyntheticRelationTree()
+    [Test]
+    public async Task DispatchersTraverseSyntheticRelationTree()
     {
         IRel root = CreateRelationTree(true);
         StringBuilderContext topDownContext = new();
@@ -52,12 +49,12 @@ public sealed class RelationVisitorTests
         new RelBottomUpDispatcher<StringBuilderContext, VoidOutput>(new RelationPrinter())
             .Dispatch(root, bottomUpContext);
 
-        Assert.AreEqual("Project|Cross|Filter|NamedTableRead|NamedTableRead|", topDownContext.ToString());
-        Assert.AreEqual("NamedTableRead|Filter|NamedTableRead|Cross|Project|", bottomUpContext.ToString());
+        await Assert.That(topDownContext.ToString()).IsEqualTo("Project|Cross|Filter|NamedTableRead|NamedTableRead|");
+        await Assert.That(bottomUpContext.ToString()).IsEqualTo("NamedTableRead|Filter|NamedTableRead|Cross|Project|");
     }
 
-    [TestMethod]
-    public void DispatchersTreatReferencesAsLeavesWithoutVisitingTheirTargets()
+    [Test]
+    public async Task DispatchersTreatReferencesAsLeavesWithoutVisitingTheirTargets()
     {
         Reference reference = new(0, CreateRelationTree(true));
         Cross relation = new(reference, reference);
@@ -69,33 +66,33 @@ public sealed class RelationVisitorTests
         new RelBottomUpDispatcher<StringBuilderContext, VoidOutput>(new RelationPrinter())
             .Dispatch(relation, bottomUpContext);
 
-        Assert.AreEqual("Cross|Reference|Reference|", topDownContext.ToString());
-        Assert.AreEqual("Reference|Reference|Cross|", bottomUpContext.ToString());
+        await Assert.That(topDownContext.ToString()).IsEqualTo("Cross|Reference|Reference|");
+        await Assert.That(bottomUpContext.ToString()).IsEqualTo("Reference|Reference|Cross|");
     }
 
-    [TestMethod]
-    public void RelationEqualityIncludesNestedInputs()
+    [Test]
+    public async Task RelationEqualityIncludesNestedInputs()
     {
         Project first = CreateRelationTree(true);
         Project equivalent = CreateRelationTree(true);
         Project different = CreateRelationTree(false);
 
-        Assert.AreEqual(first, equivalent);
-        Assert.AreEqual(first.GetHashCode(), equivalent.GetHashCode());
-        Assert.AreNotEqual(first, different);
+        await Assert.That(equivalent).IsEqualTo(first);
+        await Assert.That(equivalent.GetHashCode()).IsEqualTo(first.GetHashCode());
+        await Assert.That(different).IsNotEqualTo(first);
     }
 
-    [TestMethod]
-    public void DispatchersBailOutWhenInteriorFilterIsFound()
+    [Test]
+    public async Task DispatchersBailOutWhenInteriorFilterIsFound()
     {
         IRel root = CreateRelationTree(true);
         BoolStringBuilderContext topDownContext = new();
         BoolStringBuilderContext bottomUpContext = new();
 
-        Assert.IsTrue(new FilterFindingTopDownDispatcher().Dispatch(root, topDownContext));
-        Assert.IsTrue(new FilterFindingBottomUpDispatcher().Dispatch(root, bottomUpContext));
-        Assert.AreEqual("Project|Cross|Filter|", topDownContext.ToString());
-        Assert.AreEqual("NamedTableRead|Filter|", bottomUpContext.ToString());
+        await Assert.That(new FilterFindingTopDownDispatcher().Dispatch(root, topDownContext)).IsTrue();
+        await Assert.That(new FilterFindingBottomUpDispatcher().Dispatch(root, bottomUpContext)).IsTrue();
+        await Assert.That(topDownContext.ToString()).IsEqualTo("Project|Cross|Filter|");
+        await Assert.That(bottomUpContext.ToString()).IsEqualTo("NamedTableRead|Filter|");
     }
 
     private static Project CreateRelationTree(bool condition)

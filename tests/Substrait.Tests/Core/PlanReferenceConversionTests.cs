@@ -2,7 +2,6 @@
 
 using System.Runtime.Serialization;
 using Google.Protobuf;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Core.Expression;
 using Substrait.Core.Extension;
 using Substrait.Core.Extension.Functions;
@@ -22,11 +21,10 @@ using ProtoRel = Substrait.Protobuf.Rel;
 
 namespace Substrait.Tests.Core;
 
-[TestClass]
 public sealed class PlanReferenceConversionTests
 {
-    [TestMethod]
-    public void RoundTripsIndependentInterleavedEntriesIncludingEmptyRootNames()
+    [Test]
+    public async Task RoundTripsIndependentInterleavedEntriesIncludingEmptyRootNames()
     {
         CorePlan plan = CorePlan.FromRelations(
             [
@@ -36,35 +34,35 @@ public sealed class PlanReferenceConversionTests
             ],
             new PlanVersion(1, 2, 3, "hash", "tests"));
 
-        ProtoPlan wire = AssertRoundTrips(plan);
+        ProtoPlan wire = await AssertRoundTrips(plan);
         IPlan converted = Deserialize(wire);
 
-        Assert.AreEqual(3, converted.Relations.Count);
-        Assert.AreEqual(2, converted.Roots.Count);
-        Assert.AreEqual(PlanRel.RelTypeOneofCase.Root, wire.Relations[0].RelTypeCase);
-        Assert.AreEqual(PlanRel.RelTypeOneofCase.Rel, wire.Relations[1].RelTypeCase);
-        Assert.AreEqual(PlanRel.RelTypeOneofCase.Root, wire.Relations[2].RelTypeCase);
-        Assert.AreEqual(0, wire.Relations[2].Root.Names.Count);
+        await Assert.That(converted.Relations.Count).IsEqualTo(3);
+        await Assert.That(converted.Roots.Count).IsEqualTo(2);
+        await Assert.That(wire.Relations[0].RelTypeCase).IsEqualTo(PlanRel.RelTypeOneofCase.Root);
+        await Assert.That(wire.Relations[1].RelTypeCase).IsEqualTo(PlanRel.RelTypeOneofCase.Rel);
+        await Assert.That(wire.Relations[2].RelTypeCase).IsEqualTo(PlanRel.RelTypeOneofCase.Root);
+        await Assert.That(wire.Relations[2].Root.Names.Count).IsEqualTo(0);
     }
 
-    [TestMethod]
-    public void RoundTripsNonRootOnlyPlansAndDoesNotInventReferencesForInlineReuse()
+    [Test]
+    public async Task RoundTripsNonRootOnlyPlansAndDoesNotInventReferencesForInlineReuse()
     {
         NamedTableRead read = CreateRead();
         CorePlan plan = CorePlan.FromRelations(
             [new CorePlan.Relation(new Cross(read, read)), new CorePlan.Relation(read)], PlanVersion.Current);
 
-        ProtoPlan wire = AssertRoundTrips(plan);
+        ProtoPlan wire = await AssertRoundTrips(plan);
 
-        Assert.AreEqual(0, Deserialize(wire).Roots.Count);
-        Assert.AreEqual(ProtoRel.RelTypeOneofCase.Read, wire.Relations[0].Rel.Cross.Left.RelTypeCase);
-        Assert.AreEqual(ProtoRel.RelTypeOneofCase.Read, wire.Relations[0].Rel.Cross.Right.RelTypeCase);
-        Assert.AreEqual(ProtoRel.RelTypeOneofCase.Read, wire.Relations[1].Rel.RelTypeCase);
-        Assert.AreEqual(2, wire.Relations.Count);
+        await Assert.That(Deserialize(wire).Roots.Count).IsEqualTo(0);
+        await Assert.That(wire.Relations[0].Rel.Cross.Left.RelTypeCase).IsEqualTo(ProtoRel.RelTypeOneofCase.Read);
+        await Assert.That(wire.Relations[0].Rel.Cross.Right.RelTypeCase).IsEqualTo(ProtoRel.RelTypeOneofCase.Read);
+        await Assert.That(wire.Relations[1].Rel.RelTypeCase).IsEqualTo(ProtoRel.RelTypeOneofCase.Read);
+        await Assert.That(wire.Relations.Count).IsEqualTo(2);
     }
 
-    [TestMethod]
-    public void RepeatedSameAndEqualRegistrationsRemainIndependentWireEntries()
+    [Test]
+    public async Task RepeatedSameAndEqualRegistrationsRemainIndependentWireEntries()
     {
         NamedTableRead read = CreateRead();
         PlanBuilder builder = new();
@@ -74,25 +72,25 @@ public sealed class PlanReferenceConversionTests
         builder.AddRoot(read, ["output"]);
         builder.AddRoot(read, ["output"]);
 
-        ProtoPlan wire = AssertRoundTrips(builder.Build());
+        ProtoPlan wire = await AssertRoundTrips(builder.Build());
         IPlan converted = Deserialize(wire);
 
-        Assert.AreEqual(5, wire.Relations.Count);
+        await Assert.That(wire.Relations.Count).IsEqualTo(5);
         for (int ordinal = 0; ordinal < wire.Relations.Count; ++ordinal)
         {
             ProtoRel relation = ordinal < 3 ? wire.Relations[ordinal].Rel : wire.Relations[ordinal].Root.Input;
-            Assert.AreEqual(ProtoRel.RelTypeOneofCase.Read, relation.RelTypeCase);
-            Assert.IsInstanceOfType<NamedTableRead>(converted.Relations[ordinal].Input);
-            Assert.AreEqual(converted.Relations[0].Input, converted.Relations[ordinal].Input);
+            await Assert.That(relation.RelTypeCase).IsEqualTo(ProtoRel.RelTypeOneofCase.Read);
+            await Assert.That(converted.Relations[ordinal].Input).IsAssignableTo<NamedTableRead>();
+            await Assert.That(converted.Relations[ordinal].Input).IsEqualTo(converted.Relations[0].Input);
             for (int previous = 0; previous < ordinal; ++previous)
             {
-                Assert.AreNotSame(converted.Relations[previous].Input, converted.Relations[ordinal].Input);
+                await Assert.That(converted.Relations[ordinal].Input).IsNotSameReferenceAs(converted.Relations[previous].Input);
             }
         }
     }
 
-    [TestMethod]
-    public void ResolvesForwardBackwardAndRootReferencesWithSharedTargetIdentity()
+    [Test]
+    public async Task ResolvesForwardBackwardAndRootReferencesWithSharedTargetIdentity()
     {
         ProtoPlan wire = CreateWirePlan(
             new PlanRel { Root = new RelRoot { Input = WireCross(WireReference(2), WireReference(2)), Names = { "left", "right" } } },
@@ -107,72 +105,72 @@ public sealed class PlanReferenceConversionTests
         Reference second = (Reference)plan.Relations[1].Input;
         Reference last = (Reference)plan.Relations[3].Input;
 
-        Assert.AreEqual(2, left.SubtreeOrdinal);
-        Assert.AreSame(plan.Relations[2].Input, left.Target);
-        Assert.AreSame(left.Target, right.Target);
-        Assert.AreSame(first, second.Target);
-        Assert.AreSame(second, last.Target);
-        Assert.AreEqual(plan.Relations[2].Input.RecordType, left.RecordType);
-        Assert.AreEqual(2, last.RecordType.Fields.Count);
-        Assert.AreEqual("value", ((NamedTableRead)left.Target).InitialSchema.Names[0]);
-        AssertRoundTrips(plan);
+        await Assert.That(left.SubtreeOrdinal).IsEqualTo(2);
+        await Assert.That(left.Target).IsSameReferenceAs(plan.Relations[2].Input);
+        await Assert.That(right.Target).IsSameReferenceAs(left.Target);
+        await Assert.That(second.Target).IsSameReferenceAs(first);
+        await Assert.That(last.Target).IsSameReferenceAs(second);
+        await Assert.That(left.RecordType).IsEqualTo(plan.Relations[2].Input.RecordType);
+        await Assert.That(last.RecordType.Fields.Count).IsEqualTo(2);
+        await Assert.That(((NamedTableRead)left.Target).InitialSchema.Names[0]).IsEqualTo("value");
+        await AssertRoundTrips(plan);
     }
 
-    [TestMethod]
-    public void FactorySupportsAdvancedForwardReferenceComposition()
+    [Test]
+    public async Task FactorySupportsAdvancedForwardReferenceComposition()
     {
         NamedTableRead target = CreateRead();
         Reference forward = new(1, target);
         CorePlan plan = CorePlan.FromRelations(
             [new CorePlan.Root(forward, []), new CorePlan.Relation(target)], PlanVersion.Current);
 
-        ProtoPlan wire = AssertRoundTrips(plan);
+        ProtoPlan wire = await AssertRoundTrips(plan);
 
-        Assert.AreEqual(1, wire.Relations[0].Root.Input.Reference.SubtreeOrdinal);
-        Assert.AreSame(plan.Relations[1].Input, forward.Target);
+        await Assert.That(wire.Relations[0].Root.Input.Reference.SubtreeOrdinal).IsEqualTo(1);
+        await Assert.That(forward.Target).IsSameReferenceAs(plan.Relations[1].Input);
     }
 
-    [DataTestMethod]
-    [DataRow(-1)]
-    [DataRow(1)]
-    [DataRow(int.MaxValue)]
-    public void RejectsInvalidWireReferenceOrdinals(int ordinal)
+    [Test]
+    [Arguments(-1)]
+    [Arguments(1)]
+    [Arguments(int.MaxValue)]
+    public async Task RejectsInvalidWireReferenceOrdinals(int ordinal)
     {
         ProtoPlan wire = CreateWirePlan(new PlanRel { Rel = WireReference(ordinal) });
 
-        Assert.ThrowsException<SerializationException>(() => Deserialize(wire));
+        await Assert.That(() => Deserialize(wire)).ThrowsExactly<SerializationException>();
     }
 
-    [TestMethod]
-    public void RejectsUnsetPlanAndRelationVariants()
+    [Test]
+    public async Task RejectsUnsetPlanAndRelationVariants()
     {
-        Assert.ThrowsException<SerializationException>(() => Deserialize(CreateWirePlan(new PlanRel())));
-        Assert.ThrowsException<SerializationException>(() => Deserialize(CreateWirePlan(new PlanRel { Rel = new ProtoRel() })));
-        Assert.ThrowsException<SerializationException>(() => Deserialize(CreateWirePlan(new PlanRel { Root = new RelRoot() })));
-        Assert.ThrowsException<SerializationException>(() => Deserialize(CreateWirePlan(
-            new PlanRel { Root = new RelRoot { Input = new ProtoRel() } })));
+        await Assert.That(() => Deserialize(CreateWirePlan(new PlanRel()))).ThrowsExactly<SerializationException>();
+        await Assert.That(() => Deserialize(CreateWirePlan(new PlanRel { Rel = new ProtoRel() }))).ThrowsExactly<SerializationException>();
+        await Assert.That(() => Deserialize(CreateWirePlan(new PlanRel { Root = new RelRoot() }))).ThrowsExactly<SerializationException>();
+        await Assert.That(() => Deserialize(CreateWirePlan(
+            new PlanRel { Root = new RelRoot { Input = new ProtoRel() } }))).ThrowsExactly<SerializationException>();
     }
 
-    [TestMethod]
-    public void RejectsSelfCyclesAndMultiEntryCycles()
+    [Test]
+    public async Task RejectsSelfCyclesAndMultiEntryCycles()
     {
-        Assert.ThrowsException<SerializationException>(() => Deserialize(CreateWirePlan(
-            new PlanRel { Rel = WireReference(0) })));
-        Assert.ThrowsException<SerializationException>(() => Deserialize(CreateWirePlan(
+        await Assert.That(() => Deserialize(CreateWirePlan(
+            new PlanRel { Rel = WireReference(0) }))).ThrowsExactly<SerializationException>();
+        await Assert.That(() => Deserialize(CreateWirePlan(
             new PlanRel { Rel = WireReference(1) },
-            new PlanRel { Root = new RelRoot { Input = WireReference(0) } })));
-        Assert.ThrowsException<SerializationException>(() => Deserialize(CreateWirePlan(
+            new PlanRel { Root = new RelRoot { Input = WireReference(0) } }))).ThrowsExactly<SerializationException>();
+        await Assert.That(() => Deserialize(CreateWirePlan(
             new PlanRel { Rel = WireReference(1) },
             new PlanRel { Rel = WireReference(2) },
-            new PlanRel { Rel = WireReference(0) })));
+            new PlanRel { Rel = WireReference(0) }))).ThrowsExactly<SerializationException>();
     }
 
-    [DataTestMethod]
-    [DataRow(0)]
-    [DataRow(1)]
-    [DataRow(2)]
-    [DataRow(3)]
-    public void ResolvesDependenciesHiddenInsideEverySubqueryKind(int kind)
+    [Test]
+    [Arguments(0)]
+    [Arguments(1)]
+    [Arguments(2)]
+    [Arguments(3)]
+    public async Task ResolvesDependenciesHiddenInsideEverySubqueryKind(int kind)
     {
         ProtoPlan wire = CreateWirePlan(
             new PlanRel { Root = new RelRoot { Input = WireProject(WireSubquery(kind, WireReference(2))) } },
@@ -183,30 +181,30 @@ public sealed class PlanReferenceConversionTests
         Project project = (Project)plan.Relations[0].Input;
         Reference reference = (Reference)GetSubquery(project.Expressions[0]);
 
-        Assert.AreEqual(2, reference.SubtreeOrdinal);
-        Assert.AreSame(plan.Relations[2].Input, reference.Target);
-        Assert.AreSame(plan.Relations[1].Input, ((Reference)reference.Target).Target);
-        AssertRoundTrips(plan);
+        await Assert.That(reference.SubtreeOrdinal).IsEqualTo(2);
+        await Assert.That(reference.Target).IsSameReferenceAs(plan.Relations[2].Input);
+        await Assert.That(((Reference)reference.Target).Target).IsSameReferenceAs(plan.Relations[1].Input);
+        await AssertRoundTrips(plan);
     }
 
-    [DataTestMethod]
-    [DataRow(0)]
-    [DataRow(1)]
-    [DataRow(2)]
-    [DataRow(3)]
-    public void RejectsCyclesAndMissingDependenciesHiddenInsideEverySubqueryKind(int kind)
+    [Test]
+    [Arguments(0)]
+    [Arguments(1)]
+    [Arguments(2)]
+    [Arguments(3)]
+    public async Task RejectsCyclesAndMissingDependenciesHiddenInsideEverySubqueryKind(int kind)
     {
-        Assert.ThrowsException<SerializationException>(() => Deserialize(CreateWirePlan(
-            new PlanRel { Rel = WireProject(WireSubquery(kind, WireReference(0))) })));
-        Assert.ThrowsException<SerializationException>(() => Deserialize(CreateWirePlan(
+        await Assert.That(() => Deserialize(CreateWirePlan(
+            new PlanRel { Rel = WireProject(WireSubquery(kind, WireReference(0))) }))).ThrowsExactly<SerializationException>();
+        await Assert.That(() => Deserialize(CreateWirePlan(
             new PlanRel { Rel = WireProject(WireSubquery(kind, WireReference(1))) },
-            new PlanRel { Rel = WireReference(0) })));
-        Assert.ThrowsException<SerializationException>(() => Deserialize(CreateWirePlan(
-            new PlanRel { Rel = WireProject(WireSubquery(kind, WireReference(9))) })));
+            new PlanRel { Rel = WireReference(0) }))).ThrowsExactly<SerializationException>();
+        await Assert.That(() => Deserialize(CreateWirePlan(
+            new PlanRel { Rel = WireProject(WireSubquery(kind, WireReference(9))) }))).ThrowsExactly<SerializationException>();
     }
 
-    [TestMethod]
-    public void ResolvesDependenciesInSubqueryNeedlesAndComparisonOperands()
+    [Test]
+    public async Task ResolvesDependenciesInSubqueryNeedlesAndComparisonOperands()
     {
         ProtoExpression scalar = WireSubquery(0, WireReference(1));
         ProtoExpression predicate = WireSubquery(1, WireRead());
@@ -225,36 +223,36 @@ public sealed class PlanReferenceConversionTests
         Reference needle = (Reference)((CoreExpression.ScalarSubquery)convertedPredicate.Values[0]).Subquery;
         Reference operand = (Reference)((CoreExpression.ScalarSubquery)convertedComparison.Expression).Subquery;
 
-        Assert.AreSame(plan.Relations[1].Input, needle.Target);
-        Assert.AreSame(needle.Target, operand.Target);
-        AssertRoundTrips(plan);
+        await Assert.That(needle.Target).IsSameReferenceAs(plan.Relations[1].Input);
+        await Assert.That(operand.Target).IsSameReferenceAs(needle.Target);
+        await AssertRoundTrips(plan);
 
         wire.Relations[1].Rel = WireReference(0);
-        Assert.ThrowsException<SerializationException>(() => Deserialize(wire));
+        await Assert.That(() => Deserialize(wire)).ThrowsExactly<SerializationException>();
     }
 
-    [TestMethod]
-    public void EachEntryHasItsOwnCorrelationBoundaryEvenWhenUsedAsASubquery()
+    [Test]
+    public async Task EachEntryHasItsOwnCorrelationBoundaryEvenWhenUsedAsASubquery()
     {
         ProtoRel correlated = WireProject(WireOuterField(1));
         ProtoPlan invalid = CreateWirePlan(
             new PlanRel { Rel = correlated },
             new PlanRel { Root = new RelRoot { Input = WireProject(WireSubquery(0, WireReference(0))) } });
 
-        Assert.ThrowsException<SerializationException>(() => Deserialize(invalid));
+        await Assert.That(() => Deserialize(invalid)).ThrowsExactly<SerializationException>();
 
         ProtoPlan valid = CreateWirePlan(
             new PlanRel { Rel = WireProject(WireSubquery(0, correlated)) },
             new PlanRel { Root = new RelRoot { Input = WireReference(0) } });
 
-        AssertRoundTrips(Deserialize(valid));
+        await AssertRoundTrips(Deserialize(valid));
     }
 
-    [DataTestMethod]
-    [DataRow(0, 1)]
-    [DataRow(1, 2)]
-    [DataRow(2, 3)]
-    public void RejectsWireCorrelationEscapingEntryNesting(int depth, int levels)
+    [Test]
+    [Arguments(0, 1)]
+    [Arguments(1, 2)]
+    [Arguments(2, 3)]
+    public async Task RejectsWireCorrelationEscapingEntryNesting(int depth, int levels)
     {
         ProtoRel relation = WireProject(WireOuterField((uint)levels));
         for (int i = 0; i < depth; ++i)
@@ -262,30 +260,30 @@ public sealed class PlanReferenceConversionTests
             relation = WireProject(WireSubquery(0, relation));
         }
 
-        Assert.ThrowsException<SerializationException>(() => Deserialize(CreateWirePlan(
-            new PlanRel { Rel = relation })));
+        await Assert.That(() => Deserialize(CreateWirePlan(
+            new PlanRel { Rel = relation }))).ThrowsExactly<SerializationException>();
     }
 
-    [TestMethod]
-    public void StandaloneConvertersRejectReferencesWithoutPlanContext()
+    [Test]
+    public async Task StandaloneConvertersRejectReferencesWithoutPlanContext()
     {
         ProtoToRelConverter reader = new(
             new ExtensionsDictionary.Builder().Build(), new ExtensionsCollection(), ExtensionsDictionary.StrictMode.OFF);
         Reference reference = new(0, CreateRead());
 
-        Assert.ThrowsException<SerializationException>(() => reader.ToRel(WireReference(0)));
-        Assert.ThrowsException<InvalidOperationException>(() => new RelToProtoConverter().From(reference));
-        Assert.ThrowsException<SerializationException>(() => reader.ToRel(WireProject(WireSubquery(0, WireReference(0)))));
-        Assert.ThrowsException<InvalidOperationException>(() => new RelToProtoConverter().From(
-            new Project(CreateRead(), [new CoreExpression.ScalarSubquery(reference, TypeFactory.REQUIRED.I64)])));
+        await Assert.That(() => reader.ToRel(WireReference(0))).ThrowsExactly<SerializationException>();
+        await Assert.That(() => new RelToProtoConverter().From(reference)).ThrowsExactly<InvalidOperationException>();
+        await Assert.That(() => reader.ToRel(WireProject(WireSubquery(0, WireReference(0))))).ThrowsExactly<SerializationException>();
+        await Assert.That(() => new RelToProtoConverter().From(
+            new Project(CreateRead(), [new CoreExpression.ScalarSubquery(reference, TypeFactory.REQUIRED.I64)]))).ThrowsExactly<InvalidOperationException>();
     }
 
-    [DataTestMethod]
-    [DataRow(false, false)]
-    [DataRow(true, false)]
-    [DataRow(false, true)]
-    [DataRow(true, true)]
-    public void ResolvesLongReferenceChainsWithoutRecursion(bool forward, bool wrapReferences)
+    [Test]
+    [Arguments(false, false)]
+    [Arguments(true, false)]
+    [Arguments(false, true)]
+    [Arguments(true, true)]
+    public async Task ResolvesLongReferenceChainsWithoutRecursion(bool forward, bool wrapReferences)
     {
         const int count = 10001;
         ProtoPlan wire = CreateWirePlan();
@@ -312,25 +310,25 @@ public sealed class PlanReferenceConversionTests
         IPlan plan = Deserialize(wire);
         IRel head = plan.Relations[forward ? 0 : count - 1].Input;
 
-        Assert.AreEqual(count, plan.Relations.Count);
-        Assert.AreEqual(TypeFactory.REQUIRED.I64, head.RecordType.Fields[0]);
+        await Assert.That(plan.Relations.Count).IsEqualTo(count);
+        await Assert.That(head.RecordType.Fields[0]).IsEqualTo(TypeFactory.REQUIRED.I64);
         for (int i = 0; i < count - 1; ++i)
         {
             Reference reference = (Reference)(head is Filter filter ? filter.Input : head);
-            Assert.AreSame(plan.Relations[reference.SubtreeOrdinal].Input, reference.Target);
+            await Assert.That(reference.Target).IsSameReferenceAs(plan.Relations[reference.SubtreeOrdinal].Input);
             head = reference.Target;
         }
 
-        Assert.IsInstanceOfType<NamedTableRead>(head);
+        await Assert.That(head).IsAssignableTo<NamedTableRead>();
         ProtoPlan serialized = new PlanToProtoConverter().From(plan);
         IPlan roundTrip = Deserialize(ProtoPlan.Parser.ParseFrom(serialized.ToByteArray()));
-        Assert.AreEqual(plan, roundTrip);
-        Assert.AreEqual(plan.GetHashCode(), roundTrip.GetHashCode());
-        Assert.AreEqual(count, serialized.Relations.Count);
+        await Assert.That(roundTrip).IsEqualTo(plan);
+        await Assert.That(roundTrip.GetHashCode()).IsEqualTo(plan.GetHashCode());
+        await Assert.That(serialized.Relations.Count).IsEqualTo(count);
     }
 
-    [TestMethod]
-    public void CollectsSharedExtensionAnchorsAcrossAllEntriesDeterministically()
+    [Test]
+    public async Task CollectsSharedExtensionAnchorsAcrossAllEntriesDeterministically()
     {
         var variation = new TypeVariationImpl("extension:example:types", "i64", "custom", "", FunctionBehavior.INHERITS);
         NamedTableRead read = new(
@@ -357,52 +355,48 @@ public sealed class PlanReferenceConversionTests
         foreach (ProtoPlan roundTrip in roundTrips)
         {
             IPlan converted = new ProtoToPlanConverter(extensions).From(roundTrip, ExtensionsDictionary.StrictMode.OFF);
-            Assert.AreEqual(variation, converted.Relations[0].Input.RecordType.Fields[0].TypeVariation);
-            CollectionAssert.AreEqual(wire.ToByteArray(), new PlanToProtoConverter().From(converted).ToByteArray());
+            await Assert.That(converted.Relations[0].Input.RecordType.Fields[0].TypeVariation).IsEqualTo(variation);
+            await Assert.That(new PlanToProtoConverter().From(converted).ToByteArray()).IsEquivalentTo(wire.ToByteArray(), TUnit.Assertions.Enums.CollectionOrdering.Matching);
         }
 
         SimpleExtensionDeclaration[] functions = wire.Extensions.Where(extension => extension.ExtensionFunction is not null).ToArray();
         SimpleExtensionDeclaration[] variations = wire.Extensions.Where(extension => extension.ExtensionTypeVariation is not null).ToArray();
 
-        Assert.AreEqual(3, wire.ExtensionUrns.Count);
-        Assert.AreEqual(2, functions.Length);
-        Assert.AreEqual(1, variations.Length);
-        Assert.AreEqual(1U, variations[0].ExtensionTypeVariation.TypeVariationAnchor);
-        Assert.AreEqual(
-            wire.Relations[0].Rel.Project.Expressions[0].ScalarFunction.FunctionReference,
-            wire.Relations[1].Root.Input.Project.Expressions[0].ScalarFunction.FunctionReference);
-        Assert.AreEqual(
-            wire.Relations[1].Root.Input.Project.Expressions[1].ScalarFunction.FunctionReference,
-            wire.Relations[2].Rel.Project.Expressions[0].ScalarFunction.FunctionReference);
-        Assert.AreEqual(2, functions.Select(extension => extension.ExtensionFunction.FunctionAnchor).Distinct().Count());
+        await Assert.That(wire.ExtensionUrns.Count).IsEqualTo(3);
+        await Assert.That(functions.Length).IsEqualTo(2);
+        await Assert.That(variations.Length).IsEqualTo(1);
+        await Assert.That(variations[0].ExtensionTypeVariation.TypeVariationAnchor).IsEqualTo(1U);
+        await Assert.That(wire.Relations[1].Root.Input.Project.Expressions[0].ScalarFunction.FunctionReference).IsEqualTo(wire.Relations[0].Rel.Project.Expressions[0].ScalarFunction.FunctionReference);
+        await Assert.That(wire.Relations[2].Rel.Project.Expressions[0].ScalarFunction.FunctionReference).IsEqualTo(wire.Relations[1].Root.Input.Project.Expressions[1].ScalarFunction.FunctionReference);
+        await Assert.That(functions.Select(extension => extension.ExtensionFunction.FunctionAnchor).Distinct().Count()).IsEqualTo(2);
         foreach (SimpleExtensionDeclaration function in functions)
         {
-            Assert.IsTrue(wire.ExtensionUrns.Any(urn => urn.ExtensionUrnAnchor == function.ExtensionFunction.ExtensionUrnReference));
+            await Assert.That(wire.ExtensionUrns.Any(urn => urn.ExtensionUrnAnchor == function.ExtensionFunction.ExtensionUrnReference)).IsTrue();
         }
 
         var serializer = new PlanToProtoConverter();
         ProtoPlan unrelated = serializer.From(new CorePlan([new CorePlan.Root(CreateRead(), [])], PlanVersion.Current));
-        Assert.AreEqual(0, unrelated.Extensions.Count);
-        Assert.AreEqual(0, unrelated.ExtensionUrns.Count);
-        CollectionAssert.AreEqual(wire.ToByteArray(), serializer.From(plan).ToByteArray());
+        await Assert.That(unrelated.Extensions.Count).IsEqualTo(0);
+        await Assert.That(unrelated.ExtensionUrns.Count).IsEqualTo(0);
+        await Assert.That(serializer.From(plan).ToByteArray()).IsEquivalentTo(wire.ToByteArray(), TUnit.Assertions.Enums.CollectionOrdering.Matching);
     }
 
-    [TestMethod]
-    public void EmptyWirePlansRemainDeserializableButCannotBeSerialized()
+    [Test]
+    public async Task EmptyWirePlansRemainDeserializableButCannotBeSerialized()
     {
         IPlan plan = Deserialize(CreateWirePlan());
 
-        Assert.AreEqual(0, plan.Relations.Count);
-        Assert.AreEqual(0, plan.Roots.Count);
-        Assert.ThrowsException<ArgumentException>(() => new PlanToProtoConverter().From(plan));
+        await Assert.That(plan.Relations.Count).IsEqualTo(0);
+        await Assert.That(plan.Roots.Count).IsEqualTo(0);
+        await Assert.That(() => new PlanToProtoConverter().From(plan)).ThrowsExactly<ArgumentException>();
     }
 
-    private static ProtoPlan AssertRoundTrips(IPlan plan)
+    private static async Task<ProtoPlan> AssertRoundTrips(IPlan plan)
     {
         PlanToProtoConverter serializer = new();
         ProtoPlan wire = serializer.From(plan);
         byte[] bytes = wire.ToByteArray();
-        CollectionAssert.AreEqual(bytes, serializer.From(plan).ToByteArray());
+        await Assert.That(serializer.From(plan).ToByteArray()).IsEquivalentTo(bytes, TUnit.Assertions.Enums.CollectionOrdering.Matching);
         ProtoPlan[] roundTrips =
         [
             ProtoPlan.Parser.ParseFrom(bytes),
@@ -411,9 +405,9 @@ public sealed class PlanReferenceConversionTests
         foreach (ProtoPlan roundTrip in roundTrips)
         {
             IPlan converted = Deserialize(roundTrip);
-            Assert.AreEqual(plan, converted);
-            Assert.AreEqual(plan.GetHashCode(), converted.GetHashCode());
-            CollectionAssert.AreEqual(bytes, serializer.From(converted).ToByteArray());
+            await Assert.That(converted).IsEqualTo(plan);
+            await Assert.That(converted.GetHashCode()).IsEqualTo(plan.GetHashCode());
+            await Assert.That(serializer.From(converted).ToByteArray()).IsEquivalentTo(bytes, TUnit.Assertions.Enums.CollectionOrdering.Matching);
         }
 
         return wire;

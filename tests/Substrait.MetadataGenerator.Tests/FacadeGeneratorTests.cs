@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Google.Protobuf.WellKnownTypes;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.MetadataGenerator;
 using Substrait.Protobuf;
 
 namespace Substrait.MetadataGenerator.Tests;
 
-[TestClass]
 public sealed class FacadeGeneratorTests
 {
-    [TestMethod]
-    public void GenerationIsDeterministicAndRestrictedToMetadataClosure()
+    [Test]
+    public async Task GenerationIsDeterministicAndRestrictedToMetadataClosure()
     {
         var first = FacadeGenerator.Generate([RelCommon.Descriptor, AdvancedExtension.Descriptor]);
         var second = FacadeGenerator.Generate([AdvancedExtension.Descriptor, RelCommon.Descriptor, RelCommon.Descriptor]);
@@ -29,37 +27,36 @@ public sealed class FacadeGeneratorTests
             "ReadOnlyRelCommonHintStats.g.cs",
         ];
 
-        CollectionAssert.AreEquivalent(expected, first.Keys.ToArray());
-        CollectionAssert.AreEquivalent(first.Keys.ToArray(), second.Keys.ToArray());
+        await Assert.That(first.Keys.ToArray()).IsEquivalentTo(expected, TUnit.Assertions.Enums.CollectionOrdering.Any);
+        await Assert.That(second.Keys.ToArray()).IsEquivalentTo(first.Keys.ToArray(), TUnit.Assertions.Enums.CollectionOrdering.Any);
         foreach (var (name, source) in first)
         {
-            Assert.AreEqual(source, second[name]);
-            Assert.IsFalse(source.Contains('\r'));
-            StringAssert.EndsWith(source, "\n");
+            await Assert.That(second[name]).IsEqualTo(source);
+            await Assert.That(source.Contains('\r')).IsFalse();
+            await Assert.That(source).EndsWith("\n");
         }
     }
 
-    [TestMethod]
-    public void MapsAreRejectedRatherThanSilentlyOmitted()
+    [Test]
+    public async Task MapsAreRejectedRatherThanSilentlyOmitted()
     {
-        NotSupportedException error = Assert.ThrowsException<NotSupportedException>(
-            () => FacadeGenerator.Generate([Struct.Descriptor]));
-        StringAssert.Contains(error.Message, "google.protobuf.Struct.fields");
+        NotSupportedException error = await Assert.That(() => FacadeGenerator.Generate([Struct.Descriptor])).ThrowsExactly<NotSupportedException>().And.IsNotNull();
+        await Assert.That(error.Message).Contains("google.protobuf.Struct.fields");
     }
 
-    [TestMethod]
-    public void GeneratedMembersPreserveOptionalAndOneofPresence()
+    [Test]
+    public async Task GeneratedMembersPreserveOptionalAndOneofPresence()
     {
         var files = FacadeGenerator.Generate([RelCommon.Descriptor]);
         string common = files["ReadOnlyRelCommon.g.cs"];
-        StringAssert.Contains(common, "uint? RelAnchor => this.value.HasRelAnchor");
-        StringAssert.Contains(common, "ReadOnlyRelCommonDirect? Direct");
-        StringAssert.Contains(common, "EmitKindCase => this.value.EmitKindCase");
-        Assert.IsFalse(common.Contains("RelAnchorCase", StringComparison.Ordinal));
+        await Assert.That(common).Contains("uint? RelAnchor => this.value.HasRelAnchor");
+        await Assert.That(common).Contains("ReadOnlyRelCommonDirect? Direct");
+        await Assert.That(common).Contains("EmitKindCase => this.value.EmitKindCase");
+        await Assert.That(common.Contains("RelAnchorCase", StringComparison.Ordinal)).IsFalse();
     }
 
-    [TestMethod]
-    public void CheckDetectsMissingStaleAndUnexpectedFilesWithoutWriting()
+    [Test]
+    public async Task CheckDetectsMissingStaleAndUnexpectedFilesWithoutWriting()
     {
         string directory = Path.Combine(Path.GetTempPath(), nameof(FacadeGeneratorTests), Guid.NewGuid().ToString("N"));
         var files = FacadeGenerator.Generate([RelCommon.Descriptor, AdvancedExtension.Descriptor]);
@@ -67,39 +64,39 @@ public sealed class FacadeGeneratorTests
         using var errors = new StringWriter();
         try
         {
-            Assert.AreEqual(1, GeneratedFiles.Synchronize(files, directory, false, output, errors));
-            Assert.IsFalse(Directory.Exists(directory));
-            Assert.AreEqual(0, GeneratedFiles.Synchronize(files, directory, true, output, errors));
-            Assert.AreEqual(0, GeneratedFiles.Synchronize(files, directory, false, output, errors));
+            await Assert.That(GeneratedFiles.Synchronize(files, directory, false, output, errors)).IsEqualTo(1);
+            await Assert.That(Directory.Exists(directory)).IsFalse();
+            await Assert.That(GeneratedFiles.Synchronize(files, directory, true, output, errors)).IsEqualTo(0);
+            await Assert.That(GeneratedFiles.Synchronize(files, directory, false, output, errors)).IsEqualTo(0);
 
             string stalePath = Path.Combine(directory, "ReadOnlyRelCommon.g.cs");
             File.WriteAllText(stalePath, "stale");
-            Assert.AreEqual(1, GeneratedFiles.Synchronize(files, directory, false, output, errors));
-            Assert.AreEqual("stale", File.ReadAllText(stalePath));
-            Assert.AreEqual(0, GeneratedFiles.Synchronize(files, directory, true, output, errors));
+            await Assert.That(GeneratedFiles.Synchronize(files, directory, false, output, errors)).IsEqualTo(1);
+            await Assert.That(File.ReadAllText(stalePath)).IsEqualTo("stale");
+            await Assert.That(GeneratedFiles.Synchronize(files, directory, true, output, errors)).IsEqualTo(0);
 
             string unexpectedPath = Path.Combine(directory, "Unexpected.g.cs");
             File.WriteAllText(unexpectedPath, "keep");
-            Assert.AreEqual(1, GeneratedFiles.Synchronize(files, directory, false, output, errors));
-            Assert.AreEqual(1, GeneratedFiles.Synchronize(files, directory, true, output, errors));
-            Assert.AreEqual("keep", File.ReadAllText(unexpectedPath));
+            await Assert.That(GeneratedFiles.Synchronize(files, directory, false, output, errors)).IsEqualTo(1);
+            await Assert.That(GeneratedFiles.Synchronize(files, directory, true, output, errors)).IsEqualTo(1);
+            await Assert.That(File.ReadAllText(unexpectedPath)).IsEqualTo("keep");
             File.Delete(unexpectedPath);
 
             string nestedDirectory = Path.Combine(directory, "nested");
             Directory.CreateDirectory(nestedDirectory);
             string nestedPath = Path.Combine(nestedDirectory, "ReadOnlyRelCommon.g.cs");
             File.WriteAllText(nestedPath, "keep");
-            Assert.AreEqual(1, GeneratedFiles.Synchronize(files, directory, false, output, errors));
-            Assert.AreEqual(1, GeneratedFiles.Synchronize(files, directory, true, output, errors));
-            Assert.AreEqual("keep", File.ReadAllText(nestedPath));
+            await Assert.That(GeneratedFiles.Synchronize(files, directory, false, output, errors)).IsEqualTo(1);
+            await Assert.That(GeneratedFiles.Synchronize(files, directory, true, output, errors)).IsEqualTo(1);
+            await Assert.That(File.ReadAllText(nestedPath)).IsEqualTo("keep");
             File.Delete(nestedPath);
             Directory.Delete(nestedDirectory);
 
             File.Delete(stalePath);
-            Assert.AreEqual(1, GeneratedFiles.Synchronize(files, directory, false, output, errors));
-            Assert.IsFalse(File.Exists(stalePath));
-            Assert.AreEqual(0, GeneratedFiles.Synchronize(files, directory, true, output, errors));
-            Assert.AreEqual(0, GeneratedFiles.Synchronize(files, directory, false, output, errors));
+            await Assert.That(GeneratedFiles.Synchronize(files, directory, false, output, errors)).IsEqualTo(1);
+            await Assert.That(File.Exists(stalePath)).IsFalse();
+            await Assert.That(GeneratedFiles.Synchronize(files, directory, true, output, errors)).IsEqualTo(0);
+            await Assert.That(GeneratedFiles.Synchronize(files, directory, false, output, errors)).IsEqualTo(0);
         }
         finally
         {

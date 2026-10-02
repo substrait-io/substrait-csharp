@@ -5,7 +5,6 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using Google.Protobuf;
 using Google.Protobuf.Reflection;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Core.Plan.Converters;
 using Substrait.Protobuf;
 using ProtoExpression = Substrait.Protobuf.Expression;
@@ -18,7 +17,6 @@ using ProtoType = Substrait.Protobuf.Type;
 
 namespace Substrait.Tests.Core;
 
-[TestClass]
 public sealed class ProtoPlanDependenciesTests
 {
     private static readonly ProtoRel.RelTypeOneofCase[] SupportedRelations =
@@ -55,15 +53,14 @@ public sealed class ProtoPlanDependenciesTests
         typeof(ProtoToPlanConverter).Assembly.GetType("Substrait.Core.Plan.Converters.ProtoPlanDependencies")!
             .GetMethod("Children", BindingFlags.Static | BindingFlags.NonPublic)!
             .CreateDelegate<Func<IMessage, IEnumerable<IMessage?>>>();
-
-    public static IEnumerable<object[]> ChildPaths()
+    public static IEnumerable<Func<(string Name, bool ExpressionRoot, FieldDescriptor[] Path)>> ChildPaths()
     {
         foreach (var variant in SupportedRelations)
         {
             FieldDescriptor field = ProtoRel.Descriptor.FindFieldByNumber((int)variant);
             foreach (FieldDescriptor[] path in RelevantPaths(field.MessageType, []))
             {
-                yield return [field.FullName + "." + string.Join(".", path.Select(part => part.Name)), false, new[] { field }.Concat(path).ToArray()];
+                yield return () => (field.FullName + "." + string.Join(".", path.Select(part => part.Name)), false, new[] { field }.Concat(path).ToArray());
             }
         }
 
@@ -72,14 +69,14 @@ public sealed class ProtoPlanDependenciesTests
             FieldDescriptor field = ProtoExpression.Descriptor.FindFieldByNumber((int)variant);
             foreach (FieldDescriptor[] path in RelevantPaths(field.MessageType, []))
             {
-                yield return [field.FullName + "." + string.Join(".", path.Select(part => part.Name)), true, new[] { field }.Concat(path).ToArray()];
+                yield return () => (field.FullName + "." + string.Join(".", path.Select(part => part.Name)), true, new[] { field }.Concat(path).ToArray());
             }
         }
     }
 
-    [DataTestMethod]
-    [DynamicData(nameof(ChildPaths), DynamicDataSourceType.Method)]
-    public void VisitsEveryQueryAndRecursiveField(string name, bool expressionRoot, FieldDescriptor[] path)
+    [Test]
+    [MethodDataSource(nameof(ChildPaths))]
+    public async Task VisitsEveryQueryAndRecursiveField(string name, bool expressionRoot, FieldDescriptor[] path)
     {
         MessageDescriptor target = path[^1].MessageType;
         MessageDescriptor root = expressionRoot ? ProtoExpression.Descriptor : ProtoRel.Descriptor;
@@ -90,54 +87,54 @@ public sealed class ProtoPlanDependenciesTests
             ProtoRel reference = new() { Reference = new() { SubtreeOrdinal = 1 } };
             ProtoRel relation = Wrap(target == ProtoRel.Descriptor ? reference : Subquery(reference));
             IReadOnlyList<int> dependencies = Find(relation, 0, 2, []);
-            Assert.AreEqual(1, dependencies.Count, name);
-            Assert.AreEqual(1, dependencies[0], name);
-            Assert.ThrowsException<SerializationException>(() => Find(relation, 0, 1, []), name);
+            await Assert.That(dependencies.Count).IsEqualTo(1).Because(name);
+            await Assert.That(dependencies[0]).IsEqualTo(1).Because(name);
+            await Assert.That(() => Find(relation, 0, 1, [])).ThrowsExactly<SerializationException>().Because(name);
 
             ProtoRel anchored = new() { Read = new() { Common = new() { RelAnchor = 7 } } };
             relation = Wrap(target == ProtoRel.Descriptor ? anchored : Subquery(anchored));
             Dictionary<uint, string> anchors = [];
-            Assert.AreEqual(0, Find(relation, 0, 1, anchors).Count, name);
-            Assert.IsTrue(anchors.ContainsKey(7), name);
-            Assert.ThrowsException<SerializationException>(() => Find(relation, 1, 2, anchors), name);
+            await Assert.That(Find(relation, 0, 1, anchors).Count).IsEqualTo(0).Because(name);
+            await Assert.That(anchors.ContainsKey(7)).IsTrue().Because(name);
+            await Assert.That(() => Find(relation, 1, 2, anchors)).ThrowsExactly<SerializationException>().Because(name);
         }
         else if (target == RelCommon.Descriptor)
         {
-            Assert.ThrowsException<SerializationException>(() => Find(Wrap(new RelCommon { RelAnchor = 0 }), 0, 1, []), name);
-            Assert.ThrowsException<SerializationException>(() =>
-                Find(Wrap(new RelCommon { RelAnchor = 7 }), 0, 1, new() { [7] = "another occurrence" }), name);
+            await Assert.That(() => Find(Wrap(new RelCommon { RelAnchor = 0 }), 0, 1, [])).ThrowsExactly<SerializationException>().Because(name);
+            await Assert.That(() =>
+                Find(Wrap(new RelCommon { RelAnchor = 7 }), 0, 1, new() { [7] = "another occurrence" })).ThrowsExactly<SerializationException>().Because(name);
         }
         else if (target == ProtoOuterReference.Descriptor)
         {
-            Assert.ThrowsException<NotSupportedException>(() =>
-                Find(Wrap(new ProtoOuterReference { RelReference = 7 }), 0, 1, []), name);
-            Assert.ThrowsException<SerializationException>(() =>
-                Find(Wrap(new ProtoOuterReference()), 0, 1, []), name);
+            await Assert.That(() =>
+                Find(Wrap(new ProtoOuterReference { RelReference = 7 }), 0, 1, [])).ThrowsExactly<NotSupportedException>().Because(name);
+            await Assert.That(() =>
+                Find(Wrap(new ProtoOuterReference()), 0, 1, [])).ThrowsExactly<SerializationException>().Because(name);
         }
         else
         {
             var (cyclePath, ancestor) = CyclicPaths(target, [target]).First();
             IMessage cycle = CreateCycle(target, cyclePath, ancestor);
-            SerializationException error = Assert.ThrowsException<SerializationException>(() => Find(Wrap(cycle), 0, 1, []), name);
-            StringAssert.Contains(error.Message, "cycle");
+            SerializationException error = await Assert.That(() => Find(Wrap(cycle), 0, 1, [])).ThrowsExactly<SerializationException>().Because(name).And.IsNotNull();
+            await Assert.That(error.Message).Contains("cycle");
         }
     }
-
-    public static IEnumerable<object[]> RecursivePaths()
+    public static IEnumerable<Func<(string Name, int Kind, FieldDescriptor[] Path, int Ancestor)>> RecursivePaths()
     {
         MessageDescriptor[] roots = [ProtoType.Descriptor, ProtoLiteral.Descriptor, ProtoReferenceSegment.Descriptor, ProtoMask.Descriptor];
         for (int kind = 0; kind < roots.Length; ++kind)
         {
+            int currentKind = kind;
             foreach (var (path, ancestor) in CyclicPaths(roots[kind], [roots[kind]]))
             {
-                yield return [string.Join(".", path.Select(field => field.FullName)), kind, path, ancestor];
+                yield return () => (string.Join(".", path.Select(field => field.FullName)), currentKind, path.ToArray(), ancestor);
             }
         }
     }
 
-    [DataTestMethod]
-    [DynamicData(nameof(RecursivePaths), DynamicDataSourceType.Method)]
-    public void RetainsEveryRecursiveSchemaEdge(string name, int kind, FieldDescriptor[] path, int ancestor)
+    [Test]
+    [MethodDataSource(nameof(RecursivePaths))]
+    public async Task RetainsEveryRecursiveSchemaEdge(string name, int kind, FieldDescriptor[] path, int ancestor)
     {
         IMessage cycle = CreateCycle(path[0].ContainingType, path, ancestor);
         ProtoRel relation = kind switch
@@ -148,32 +145,32 @@ public sealed class ProtoPlanDependenciesTests
             3 => new() { Read = new() { Projection = (ProtoMask)cycle } },
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
-        SerializationException error = Assert.ThrowsException<SerializationException>(() => Find(relation, 0, 1, []), name);
-        StringAssert.Contains(error.Message, "cycle");
+        SerializationException error = await Assert.That(() => Find(relation, 0, 1, [])).ThrowsExactly<SerializationException>().Because(name).And.IsNotNull();
+        await Assert.That(error.Message).Contains("cycle");
     }
 
-    [TestMethod]
-    public void RejectsRelationAndExpressionObjectCyclesButAllowsInlineSharing()
+    [Test]
+    public async Task RejectsRelationAndExpressionObjectCyclesButAllowsInlineSharing()
     {
         ProtoRel relation = new() { Filter = new() };
         relation.Filter.Input = relation;
-        Assert.ThrowsException<SerializationException>(() => Find(relation, 0, 1, []));
+        await Assert.That(() => Find(relation, 0, 1, [])).ThrowsExactly<SerializationException>();
 
         ProtoExpression expression = new() { Cast = new() };
         expression.Cast.Input = expression;
-        Assert.ThrowsException<SerializationException>(() => Find(Project(expression), 0, 1, []));
+        await Assert.That(() => Find(Project(expression), 0, 1, [])).ThrowsExactly<SerializationException>();
 
         ProtoRel shared = new() { Read = new() { Common = new() } };
         ProtoRel cross = new() { Cross = new() { Left = shared, Right = shared } };
-        Assert.AreEqual(0, Find(cross, 0, 1, []).Count);
+        await Assert.That(Find(cross, 0, 1, []).Count).IsEqualTo(0);
         shared.Read.Common.RelAnchor = 7;
-        Assert.ThrowsException<SerializationException>(() => Find(cross, 0, 1, []));
+        await Assert.That(() => Find(cross, 0, 1, [])).ThrowsExactly<SerializationException>();
     }
 
-    [DataTestMethod]
-    [DataRow(1)]
-    [DataRow(3)]
-    public void SubqueryOperandsKeepTheirEnclosingCorrelationDepth(int kind)
+    [Test]
+    [Arguments(1)]
+    [Arguments(3)]
+    public async Task SubqueryOperandsKeepTheirEnclosingCorrelationDepth(int kind)
     {
 #pragma warning disable CS0612 // Exercise the supported legacy correlation representation.
         ProtoExpression outer = new() { Selection = new() { OuterReference = new() { StepsOut = 1 } } };
@@ -189,23 +186,23 @@ public sealed class ProtoPlanDependenciesTests
             subquery.Subquery.SetComparison.Left = outer;
         }
 
-        Assert.ThrowsException<SerializationException>(() => Find(Project(subquery), 0, 1, []));
-        Assert.AreEqual(0, Find(Project(Subquery(Project(subquery))), 0, 1, []).Count);
+        await Assert.That(() => Find(Project(subquery), 0, 1, [])).ThrowsExactly<SerializationException>();
+        await Assert.That(Find(Project(Subquery(Project(subquery))), 0, 1, []).Count).IsEqualTo(0);
 
         // The same expression must also be checked when encountered at a shallower depth.
-        Assert.ThrowsException<SerializationException>(() =>
-            Find(Project(subquery, Subquery(Project(subquery))), 0, 1, []));
+        await Assert.That(() =>
+            Find(Project(subquery, Subquery(Project(subquery))), 0, 1, [])).ThrowsExactly<SerializationException>();
     }
 
-    [TestMethod]
-    public void UnsupportedVariantsFailExplicitly()
+    [Test]
+    public async Task UnsupportedVariantsFailExplicitly()
     {
         foreach (FieldDescriptor field in MessageFields(ProtoRel.Descriptor))
         {
             if (!SupportedRelations.Contains((ProtoRel.RelTypeOneofCase)field.FieldNumber))
             {
                 ProtoRel relation = (ProtoRel)CreatePath(ProtoRel.Descriptor, [field], Empty(field.MessageType));
-                Assert.ThrowsException<NotImplementedException>(() => Find(relation, 0, 1, []), field.FullName);
+                await Assert.That(() => Find(relation, 0, 1, [])).ThrowsExactly<NotImplementedException>().Because(field.FullName);
             }
         }
 
@@ -214,34 +211,34 @@ public sealed class ProtoPlanDependenciesTests
             if (!SupportedExpressions.Contains((ProtoExpression.RexTypeOneofCase)field.FieldNumber))
             {
                 ProtoExpression expression = (ProtoExpression)CreatePath(ProtoExpression.Descriptor, [field], Empty(field.MessageType));
-                Assert.ThrowsException<NotImplementedException>(() => Find(Project(expression), 0, 1, []), field.FullName);
+                await Assert.That(() => Find(Project(expression), 0, 1, [])).ThrowsExactly<NotImplementedException>().Because(field.FullName);
             }
         }
 
-        Assert.ThrowsException<SerializationException>(() => Find(new ProtoRel(), 0, 1, []));
-        Assert.ThrowsException<NotImplementedException>(() => Find(Project(new ProtoExpression()), 0, 1, []));
-        Assert.ThrowsException<NotImplementedException>(() => Find(Project(new ProtoExpression { Subquery = new() }), 0, 1, []));
+        await Assert.That(() => Find(new ProtoRel(), 0, 1, [])).ThrowsExactly<SerializationException>();
+        await Assert.That(() => Find(Project(new ProtoExpression()), 0, 1, [])).ThrowsExactly<NotImplementedException>();
+        await Assert.That(() => Find(Project(new ProtoExpression { Subquery = new() }), 0, 1, [])).ThrowsExactly<NotImplementedException>();
     }
 
-    [TestMethod]
-    public void MetadataPayloadSizeDoesNotIncreaseTraversalWork()
+    [Test]
+    public async Task MetadataPayloadSizeDoesNotIncreaseTraversalWork()
     {
         ProtoRel relation = new() { Read = new() { Common = new() { RelAnchor = 7 } } };
-        Assert.AreEqual(2, CountVisits(relation));
+        await Assert.That(CountVisits(relation)).IsEqualTo(2);
         relation.Read.Common.Hint = MetadataFacadeTests.CreateCommon().Hint;
         for (int index = 0; index < 1000; ++index)
         {
             relation.Read.Common.Hint.SavedComputations.Add(new RelCommon.Types.Hint.Types.SavedComputation());
         }
 
-        Assert.AreEqual(2, CountVisits(relation));
+        await Assert.That(CountVisits(relation)).IsEqualTo(2);
         Dictionary<uint, string> anchors = [];
-        Assert.AreEqual(0, Find(relation, 0, 1, anchors).Count);
-        Assert.IsTrue(anchors.ContainsKey(7));
+        await Assert.That(Find(relation, 0, 1, anchors).Count).IsEqualTo(0);
+        await Assert.That(anchors.ContainsKey(7)).IsTrue();
 
         foreach (FieldDescriptor field in MessageFields(RelCommon.Descriptor))
         {
-            AssertOpaque(field.MessageType, []);
+            await AssertOpaque(field.MessageType, []);
         }
     }
 
@@ -365,13 +362,13 @@ public sealed class ProtoPlanDependenciesTests
         return count;
     }
 
-    private static void AssertOpaque(MessageDescriptor descriptor, HashSet<MessageDescriptor> active)
+    private static async Task AssertOpaque(MessageDescriptor descriptor, HashSet<MessageDescriptor> active)
     {
-        Assert.IsFalse(RelevantMessages.Contains(descriptor), descriptor.FullName);
-        Assert.IsTrue(active.Add(descriptor), descriptor.FullName);
+        await Assert.That(RelevantMessages.Contains(descriptor)).IsFalse().Because(descriptor.FullName);
+        await Assert.That(active.Add(descriptor)).IsTrue().Because(descriptor.FullName);
         foreach (FieldDescriptor field in MessageFields(descriptor))
         {
-            AssertOpaque(field.MessageType, active);
+            await AssertOpaque(field.MessageType, active);
         }
 
         active.Remove(descriptor);

@@ -18,7 +18,7 @@ Describe important invariants, design decisions, or non-obvious constraints.
 
 - [ ] `dotnet format Substrait.sln --verify-no-changes --no-restore`
 - [ ] `dotnet build Substrait.sln --configuration Release --no-restore`
-- [ ] `dotnet test Substrait.sln --configuration Release --no-build`
+- [ ] `dotnet test --solution Substrait.sln --configuration Release --no-build`
 
 ## Public API and compatibility [REQUIRED]
 

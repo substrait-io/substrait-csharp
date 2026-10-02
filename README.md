@@ -23,7 +23,7 @@ Restore, build, and test the solution from the repository root:
 ```shell
 dotnet restore Substrait.sln
 dotnet build Substrait.sln --configuration Release --no-restore
-dotnet test Substrait.sln --configuration Release --no-build
+dotnet test --solution Substrait.sln --configuration Release --no-build
 ```
 
 Create the NuGet package locally with:

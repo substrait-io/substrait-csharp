@@ -2,25 +2,23 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Immutable;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Core.Extension.Functions;
 using Substrait.Core.Type;
 
 namespace Substrait.Tests.Core;
 
-[TestClass]
 public sealed class ExtensionFunctionTests
 {
-    [TestMethod]
-    public void TypeExpressionParserCreatesScalarTypes()
+    [Test]
+    public async Task TypeExpressionParserCreatesScalarTypes()
     {
         ITypeExpression parsed = TypeExpressionParser.Parse("i64");
 
-        Assert.AreEqual(TypeFactory.REQUIRED.I64, parsed);
+        await Assert.That(parsed).IsEqualTo(TypeFactory.REQUIRED.I64);
     }
 
-    [TestMethod]
-    public void FunctionKeyUsesParsedArgumentSignatures()
+    [Test]
+    public async Task FunctionKeyUsesParsedArgumentSignatures()
     {
         IArgument[] arguments =
         [
@@ -39,13 +37,13 @@ public sealed class ExtensionFunctionTests
             variadic: null,
             returnType: "boolean");
 
-        Assert.AreEqual("compare:i64_str", function.Key);
-        Assert.AreEqual(function.Uri, function.Anchor.Namespace);
-        Assert.AreEqual(function.Key, function.Anchor.Key);
+        await Assert.That(function.Key).IsEqualTo("compare:i64_str");
+        await Assert.That(function.Anchor.Namespace).IsEqualTo(function.Uri);
+        await Assert.That(function.Anchor.Key).IsEqualTo(function.Key);
     }
 
-    [TestMethod]
-    public void FunctionRangeUsesDeclaredArgumentCountForNonVariadicFunction()
+    [Test]
+    public async Task FunctionRangeUsesDeclaredArgumentCountForNonVariadicFunction()
     {
         IArgument[] arguments =
         [
@@ -54,11 +52,11 @@ public sealed class ExtensionFunctionTests
         ];
         ScalarFunctionImpl function = CreateFunction(arguments, variadic: null);
 
-        Assert.AreEqual(new Tuple<int, int>(1, 2), function.GetRange());
+        await Assert.That(function.GetRange()).IsEqualTo(new Tuple<int, int>(1, 2));
     }
 
-    [TestMethod]
-    public void FunctionRangeUsesVariadicOccurrenceBounds()
+    [Test]
+    public async Task FunctionRangeUsesVariadicOccurrenceBounds()
     {
         IArgument[] arguments =
         [
@@ -69,8 +67,8 @@ public sealed class ExtensionFunctionTests
         ScalarFunctionImpl bounded = CreateFunction(arguments, new VariadicBehavior(min: 2, max: 4));
         ScalarFunctionImpl unbounded = CreateFunction(arguments, new VariadicBehavior(min: 0));
 
-        Assert.AreEqual(new Tuple<int, int>(3, 5), bounded.GetRange());
-        Assert.AreEqual(new Tuple<int, int>(1, int.MaxValue), unbounded.GetRange());
+        await Assert.That(bounded.GetRange()).IsEqualTo(new Tuple<int, int>(3, 5));
+        await Assert.That(unbounded.GetRange()).IsEqualTo(new Tuple<int, int>(1, int.MaxValue));
     }
 
     private static ScalarFunctionImpl CreateFunction(IEnumerable<IArgument> arguments, IVariadicBehavior? variadic)

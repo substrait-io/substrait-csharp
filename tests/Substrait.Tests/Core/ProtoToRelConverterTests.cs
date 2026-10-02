@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Core.Expression;
 using Substrait.Core.Extension;
 using Substrait.Core.Relation;
@@ -14,7 +13,6 @@ using ProtoType = Substrait.Protobuf.Type;
 
 namespace Substrait.Tests.Core;
 
-[TestClass]
 public sealed class ProtoToRelConverterTests
 {
     private readonly ProtoToRelConverter converter = new(
@@ -22,8 +20,8 @@ public sealed class ProtoToRelConverterTests
         new ExtensionsCollection(),
         ExtensionsDictionary.StrictMode.OFF);
 
-    [TestMethod]
-    public void ConvertsReadFilterProjectChain()
+    [Test]
+    public async Task ConvertsReadFilterProjectChain()
     {
         ProtoRel read = CreateNamedRead();
         ProtoRel filter = new()
@@ -47,14 +45,14 @@ public sealed class ProtoToRelConverterTests
 
         Project result = (Project)this.converter.ToRel(project);
 
-        Assert.IsInstanceOfType<Filter>(result.Input);
-        Assert.IsInstanceOfType<NamedTableRead>(((Filter)result.Input).Input);
-        Assert.AreEqual(2, result.RecordType.Fields.Count);
-        Assert.AreEqual(42L, ((Literal.I64Literal)result.Expressions[0]).Value);
+        await Assert.That(result.Input).IsAssignableTo<Filter>();
+        await Assert.That(((Filter)result.Input).Input).IsAssignableTo<NamedTableRead>();
+        await Assert.That(result.RecordType.Fields.Count).IsEqualTo(2);
+        await Assert.That(((Literal.I64Literal)result.Expressions[0]).Value).IsEqualTo(42L);
     }
 
-    [TestMethod]
-    public void ConvertsScalarSubqueryThroughRelationConverter()
+    [Test]
+    public async Task ConvertsScalarSubqueryThroughRelationConverter()
     {
         ProtoRel relation = new()
         {
@@ -77,11 +75,11 @@ public sealed class ProtoToRelConverterTests
 
         Project result = (Project)this.converter.ToRel(relation);
 
-        Assert.IsInstanceOfType<Substrait.Core.Expression.Expression.ScalarSubquery>(result.Expressions[0]);
+        await Assert.That(result.Expressions[0]).IsAssignableTo<Substrait.Core.Expression.Expression.ScalarSubquery>();
     }
 
-    [TestMethod]
-    public void ConvertsSetComparisonSubqueryThroughRelationConverter()
+    [Test]
+    public async Task ConvertsSetComparisonSubqueryThroughRelationConverter()
     {
         ProtoRel relation = new()
         {
@@ -114,17 +112,17 @@ public sealed class ProtoToRelConverterTests
         Project result = (Project)this.converter.ToRel(relation);
         var comparison = (Substrait.Core.Expression.Expression.SetComparisonSubquery)result.Expressions[0];
 
-        Assert.AreEqual(new Literal.I64Literal(2), comparison.Expression);
-        Assert.AreEqual(Substrait.Core.Expression.Expression.SetComparisonSubquery.ComparisonOp.LessThan, comparison.Comparison);
-        Assert.AreEqual(Substrait.Core.Expression.Expression.SetComparisonSubquery.ReductionOp.All, comparison.Reduction);
-        Assert.IsInstanceOfType<NamedTableRead>(comparison.Subquery);
+        await Assert.That(comparison.Expression).IsEqualTo(new Literal.I64Literal(2));
+        await Assert.That(comparison.Comparison).IsEqualTo(Substrait.Core.Expression.Expression.SetComparisonSubquery.ComparisonOp.LessThan);
+        await Assert.That(comparison.Reduction).IsEqualTo(Substrait.Core.Expression.Expression.SetComparisonSubquery.ReductionOp.All);
+        await Assert.That(comparison.Subquery).IsAssignableTo<NamedTableRead>();
     }
 
-    [DataTestMethod]
-    [DataRow(3L, 0L)]
-    [DataRow(-1L, 3L)]
-    [DataRow(100L, 8L)]
-    public void ConvertsFetch(long count, long offset)
+    [Test]
+    [Arguments(3L, 0L)]
+    [Arguments(-1L, 3L)]
+    [Arguments(100L, 8L)]
+    public async Task ConvertsFetch(long count, long offset)
     {
         ProtoRel relation = new()
         {
@@ -139,14 +137,14 @@ public sealed class ProtoToRelConverterTests
 
         Fetch result = (Fetch)this.converter.ToRel(relation);
 
-        Assert.AreEqual(new Literal.I64Literal(count), result.Count);
-        Assert.AreEqual(new Literal.I64Literal(offset), result.Offset);
-        Assert.AreEqual(1, result.RecordType.Fields.Count);
-        Assert.AreEqual(TypeFactory.REQUIRED.I64, result.RecordType.Fields[0]);
+        await Assert.That(result.Count).IsEqualTo(new Literal.I64Literal(count));
+        await Assert.That(result.Offset).IsEqualTo(new Literal.I64Literal(offset));
+        await Assert.That(result.RecordType.Fields.Count).IsEqualTo(1);
+        await Assert.That(result.RecordType.Fields[0]).IsEqualTo(TypeFactory.REQUIRED.I64);
     }
 
-    [TestMethod]
-    public void ConvertsVirtualTableReadRows()
+    [Test]
+    public async Task ConvertsVirtualTableReadRows()
     {
         var nullableI32 = new ProtoType.Types.I32 { Nullability = ProtoType.Types.Nullability.Nullable };
         ProtoRel relation = new()
@@ -192,19 +190,19 @@ public sealed class ProtoToRelConverterTests
 
         VirtualTableRead result = (VirtualTableRead)this.converter.ToRel(relation);
 
-        Assert.AreEqual("value", result.InitialSchema.Names[0]);
-        Assert.AreEqual(TypeFactory.NULLABLE.I32, result.RecordType.Fields[0]);
-        Assert.AreEqual(2, result.Rows.Count);
-        Assert.AreEqual(new Literal.I32Literal(10), result.Rows[0].Fields[0]);
-        Assert.IsInstanceOfType<Literal.NullLiteral>(result.Rows[1].Fields[0]);
-        Assert.AreEqual(TypeFactory.NULLABLE.I32, result.Rows[1].Fields[0].Type);
+        await Assert.That(result.InitialSchema.Names[0]).IsEqualTo("value");
+        await Assert.That(result.RecordType.Fields[0]).IsEqualTo(TypeFactory.NULLABLE.I32);
+        await Assert.That(result.Rows.Count).IsEqualTo(2);
+        await Assert.That(result.Rows[0].Fields[0]).IsEqualTo(new Literal.I32Literal(10));
+        await Assert.That(result.Rows[1].Fields[0]).IsAssignableTo<Literal.NullLiteral>();
+        await Assert.That(result.Rows[1].Fields[0].Type).IsEqualTo(TypeFactory.NULLABLE.I32);
     }
 
-    [DataTestMethod]
-    [DataRow(SetRel.Types.SetOp.MinusPrimary, Set.SetOp.MinusPrimary, ProtoType.Types.Nullability.Nullable, ProtoType.Types.Nullability.Required, IType.NullableType.Nullable)]
-    [DataRow(SetRel.Types.SetOp.IntersectionMultiset, Set.SetOp.IntersectionMultiset, ProtoType.Types.Nullability.Nullable, ProtoType.Types.Nullability.Required, IType.NullableType.Required)]
-    [DataRow(SetRel.Types.SetOp.UnionAll, Set.SetOp.UnionAll, ProtoType.Types.Nullability.Required, ProtoType.Types.Nullability.Nullable, IType.NullableType.Nullable)]
-    public void ConvertsSetOperations(
+    [Test]
+    [Arguments(SetRel.Types.SetOp.MinusPrimary, Set.SetOp.MinusPrimary, ProtoType.Types.Nullability.Nullable, ProtoType.Types.Nullability.Required, IType.NullableType.Nullable)]
+    [Arguments(SetRel.Types.SetOp.IntersectionMultiset, Set.SetOp.IntersectionMultiset, ProtoType.Types.Nullability.Nullable, ProtoType.Types.Nullability.Required, IType.NullableType.Required)]
+    [Arguments(SetRel.Types.SetOp.UnionAll, Set.SetOp.UnionAll, ProtoType.Types.Nullability.Required, ProtoType.Types.Nullability.Nullable, IType.NullableType.Nullable)]
+    public async Task ConvertsSetOperations(
         SetRel.Types.SetOp protoOperation,
         Set.SetOp expectedOperation,
         ProtoType.Types.Nullability leftNullability,
@@ -223,15 +221,15 @@ public sealed class ProtoToRelConverterTests
 
         Set result = (Set)this.converter.ToRel(relation);
 
-        Assert.AreEqual(expectedOperation, result.SetOperation);
-        Assert.AreEqual(2, result.Inputs.Count);
-        Assert.AreEqual(expectedNullability, result.RecordType.Fields[0].Nullable);
+        await Assert.That(result.SetOperation).IsEqualTo(expectedOperation);
+        await Assert.That(result.Inputs.Count).IsEqualTo(2);
+        await Assert.That(result.RecordType.Fields[0].Nullable).IsEqualTo(expectedNullability);
     }
 
-    [DataTestMethod]
-    [DataRow(false, 0)]
-    [DataRow(true, 1)]
-    public void ConvertsScalarAndEmptyVectorAggregates(bool includeEmptyGrouping, int expectedGroupingCount)
+    [Test]
+    [Arguments(false, 0)]
+    [Arguments(true, 1)]
+    public async Task ConvertsScalarAndEmptyVectorAggregates(bool includeEmptyGrouping, int expectedGroupingCount)
     {
         AggregateRel aggregate = new()
         {
@@ -246,27 +244,27 @@ public sealed class ProtoToRelConverterTests
 
         Aggregate result = (Aggregate)CreateAggregateConverter().ToRel(new ProtoRel { Aggregate = aggregate });
 
-        Assert.AreEqual(expectedGroupingCount, result.Groupings.Count);
-        Assert.IsTrue(result.Groupings.All(grouping => grouping.Expressions.Count == 0));
-        Assert.AreEqual(0, result.GroupingExpressions.Count);
-        Assert.AreEqual(1, result.Measures.Count);
-        Assert.AreEqual(TypeFactory.REQUIRED.BOOL, result.RecordType.Fields[0]);
+        await Assert.That(result.Groupings.Count).IsEqualTo(expectedGroupingCount);
+        await Assert.That(result.Groupings.All(grouping => grouping.Expressions.Count == 0)).IsTrue();
+        await Assert.That(result.GroupingExpressions.Count).IsEqualTo(0);
+        await Assert.That(result.Measures.Count).IsEqualTo(1);
+        await Assert.That(result.RecordType.Fields[0]).IsEqualTo(TypeFactory.REQUIRED.BOOL);
     }
 
-    [DataTestMethod]
-    [DataRow(JoinRel.Types.JoinType.Inner, AbstractJoin.JoinType.Inner, "RR")]
-    [DataRow(JoinRel.Types.JoinType.Outer, AbstractJoin.JoinType.Outer, "NN")]
-    [DataRow(JoinRel.Types.JoinType.Left, AbstractJoin.JoinType.Left, "RN")]
-    [DataRow(JoinRel.Types.JoinType.Right, AbstractJoin.JoinType.Right, "NR")]
-    [DataRow(JoinRel.Types.JoinType.LeftSemi, AbstractJoin.JoinType.LeftSemi, "R")]
-    [DataRow(JoinRel.Types.JoinType.LeftAnti, AbstractJoin.JoinType.LeftAnti, "R")]
-    [DataRow(JoinRel.Types.JoinType.LeftSingle, AbstractJoin.JoinType.LeftSingle, "RN")]
-    [DataRow(JoinRel.Types.JoinType.LeftMark, AbstractJoin.JoinType.LeftMark, "RN")]
-    [DataRow(JoinRel.Types.JoinType.RightSemi, AbstractJoin.JoinType.RightSemi, "R")]
-    [DataRow(JoinRel.Types.JoinType.RightAnti, AbstractJoin.JoinType.RightAnti, "R")]
-    [DataRow(JoinRel.Types.JoinType.RightSingle, AbstractJoin.JoinType.RightSingle, "NR")]
-    [DataRow(JoinRel.Types.JoinType.RightMark, AbstractJoin.JoinType.RightMark, "RN")]
-    public void ConvertsLogicalJoinOutputShape(
+    [Test]
+    [Arguments(JoinRel.Types.JoinType.Inner, AbstractJoin.JoinType.Inner, "RR")]
+    [Arguments(JoinRel.Types.JoinType.Outer, AbstractJoin.JoinType.Outer, "NN")]
+    [Arguments(JoinRel.Types.JoinType.Left, AbstractJoin.JoinType.Left, "RN")]
+    [Arguments(JoinRel.Types.JoinType.Right, AbstractJoin.JoinType.Right, "NR")]
+    [Arguments(JoinRel.Types.JoinType.LeftSemi, AbstractJoin.JoinType.LeftSemi, "R")]
+    [Arguments(JoinRel.Types.JoinType.LeftAnti, AbstractJoin.JoinType.LeftAnti, "R")]
+    [Arguments(JoinRel.Types.JoinType.LeftSingle, AbstractJoin.JoinType.LeftSingle, "RN")]
+    [Arguments(JoinRel.Types.JoinType.LeftMark, AbstractJoin.JoinType.LeftMark, "RN")]
+    [Arguments(JoinRel.Types.JoinType.RightSemi, AbstractJoin.JoinType.RightSemi, "R")]
+    [Arguments(JoinRel.Types.JoinType.RightAnti, AbstractJoin.JoinType.RightAnti, "R")]
+    [Arguments(JoinRel.Types.JoinType.RightSingle, AbstractJoin.JoinType.RightSingle, "NR")]
+    [Arguments(JoinRel.Types.JoinType.RightMark, AbstractJoin.JoinType.RightMark, "RN")]
+    public async Task ConvertsLogicalJoinOutputShape(
         JoinRel.Types.JoinType protoType,
         AbstractJoin.JoinType expectedType,
         string expectedNullability)
@@ -284,19 +282,19 @@ public sealed class ProtoToRelConverterTests
 
         Join result = (Join)this.converter.ToRel(relation);
 
-        Assert.AreEqual(expectedType, result.Type);
-        Assert.AreEqual(expectedNullability.Length, result.RecordType.Fields.Count);
+        await Assert.That(result.Type).IsEqualTo(expectedType);
+        await Assert.That(result.RecordType.Fields.Count).IsEqualTo(expectedNullability.Length);
         for (int index = 0; index < expectedNullability.Length; index++)
         {
             IType.NullableType expected = expectedNullability[index] == 'N'
                 ? IType.NullableType.Nullable
                 : IType.NullableType.Required;
-            Assert.AreEqual(expected, result.RecordType.Fields[index].Nullable);
+            await Assert.That(result.RecordType.Fields[index].Nullable).IsEqualTo(expected);
         }
     }
 
-    [TestMethod]
-    public void RejectsUnspecifiedLogicalJoin()
+    [Test]
+    public async Task RejectsUnspecifiedLogicalJoin()
     {
         ProtoRel relation = new()
         {
@@ -309,70 +307,70 @@ public sealed class ProtoToRelConverterTests
             },
         };
 
-        Assert.ThrowsException<ArgumentException>(() => this.converter.ToRel(relation));
+        await Assert.That(() => this.converter.ToRel(relation)).ThrowsExactly<ArgumentException>();
     }
 
-    [DataTestMethod]
-    [DataRow(HashJoinRel.Types.JoinType.Inner, AbstractJoin.JoinType.Inner)]
-    [DataRow(HashJoinRel.Types.JoinType.Outer, AbstractJoin.JoinType.Outer)]
-    [DataRow(HashJoinRel.Types.JoinType.Left, AbstractJoin.JoinType.Left)]
-    [DataRow(HashJoinRel.Types.JoinType.Right, AbstractJoin.JoinType.Right)]
-    [DataRow(HashJoinRel.Types.JoinType.LeftSemi, AbstractJoin.JoinType.LeftSemi)]
-    [DataRow(HashJoinRel.Types.JoinType.RightSemi, AbstractJoin.JoinType.RightSemi)]
-    [DataRow(HashJoinRel.Types.JoinType.LeftAnti, AbstractJoin.JoinType.LeftAnti)]
-    [DataRow(HashJoinRel.Types.JoinType.RightAnti, AbstractJoin.JoinType.RightAnti)]
-    [DataRow(HashJoinRel.Types.JoinType.LeftSingle, AbstractJoin.JoinType.LeftSingle)]
-    [DataRow(HashJoinRel.Types.JoinType.RightSingle, AbstractJoin.JoinType.RightSingle)]
-    [DataRow(HashJoinRel.Types.JoinType.LeftMark, AbstractJoin.JoinType.LeftMark)]
-    [DataRow(HashJoinRel.Types.JoinType.RightMark, AbstractJoin.JoinType.RightMark)]
-    public void ConvertsHashJoinTypes(HashJoinRel.Types.JoinType protoType, AbstractJoin.JoinType expectedType)
+    [Test]
+    [Arguments(HashJoinRel.Types.JoinType.Inner, AbstractJoin.JoinType.Inner)]
+    [Arguments(HashJoinRel.Types.JoinType.Outer, AbstractJoin.JoinType.Outer)]
+    [Arguments(HashJoinRel.Types.JoinType.Left, AbstractJoin.JoinType.Left)]
+    [Arguments(HashJoinRel.Types.JoinType.Right, AbstractJoin.JoinType.Right)]
+    [Arguments(HashJoinRel.Types.JoinType.LeftSemi, AbstractJoin.JoinType.LeftSemi)]
+    [Arguments(HashJoinRel.Types.JoinType.RightSemi, AbstractJoin.JoinType.RightSemi)]
+    [Arguments(HashJoinRel.Types.JoinType.LeftAnti, AbstractJoin.JoinType.LeftAnti)]
+    [Arguments(HashJoinRel.Types.JoinType.RightAnti, AbstractJoin.JoinType.RightAnti)]
+    [Arguments(HashJoinRel.Types.JoinType.LeftSingle, AbstractJoin.JoinType.LeftSingle)]
+    [Arguments(HashJoinRel.Types.JoinType.RightSingle, AbstractJoin.JoinType.RightSingle)]
+    [Arguments(HashJoinRel.Types.JoinType.LeftMark, AbstractJoin.JoinType.LeftMark)]
+    [Arguments(HashJoinRel.Types.JoinType.RightMark, AbstractJoin.JoinType.RightMark)]
+    public async Task ConvertsHashJoinTypes(HashJoinRel.Types.JoinType protoType, AbstractJoin.JoinType expectedType)
     {
         HashJoin result = (HashJoin)this.converter.ToRel(CreateHashJoin(protoType));
 
-        Assert.AreEqual(expectedType, result.Type);
+        await Assert.That(result.Type).IsEqualTo(expectedType);
     }
 
-    [TestMethod]
-    public void RejectsUnspecifiedHashJoinType()
+    [Test]
+    public async Task RejectsUnspecifiedHashJoinType()
     {
-        Assert.ThrowsException<ArgumentException>(() => this.converter.ToRel(CreateHashJoin(HashJoinRel.Types.JoinType.Unspecified)));
+        await Assert.That(() => this.converter.ToRel(CreateHashJoin(HashJoinRel.Types.JoinType.Unspecified))).ThrowsExactly<ArgumentException>();
     }
 
-    [DataTestMethod]
-    [DataRow(HashJoinRel.Types.BuildInput.Unspecified, false)]
-    [DataRow(HashJoinRel.Types.BuildInput.Left, true)]
-    [DataRow(HashJoinRel.Types.BuildInput.Right, false)]
-    public void ConvertsHashJoinBuildInput(HashJoinRel.Types.BuildInput buildInput, bool expectedBuildLeft)
+    [Test]
+    [Arguments(HashJoinRel.Types.BuildInput.Unspecified, false)]
+    [Arguments(HashJoinRel.Types.BuildInput.Left, true)]
+    [Arguments(HashJoinRel.Types.BuildInput.Right, false)]
+    public async Task ConvertsHashJoinBuildInput(HashJoinRel.Types.BuildInput buildInput, bool expectedBuildLeft)
     {
         HashJoin result = (HashJoin)this.converter.ToRel(CreateHashJoin(buildInput: buildInput));
 
-        Assert.AreEqual(expectedBuildLeft, result.BuildLeft);
-        Assert.AreSame(expectedBuildLeft ? result.Left : result.Right, result.Build);
-        Assert.AreSame(expectedBuildLeft ? result.Right : result.Left, result.Probe);
+        await Assert.That(result.BuildLeft).IsEqualTo(expectedBuildLeft);
+        await Assert.That(result.Build).IsSameReferenceAs(expectedBuildLeft ? result.Left : result.Right);
+        await Assert.That(result.Probe).IsSameReferenceAs(expectedBuildLeft ? result.Right : result.Left);
     }
 
-    [DataTestMethod]
-    [DataRow(ComparisonJoinKey.Types.SimpleComparisonType.Eq, PhysicalJoin.ComparisonJoinKey.SimpleComparisonType.Eq)]
-    [DataRow(ComparisonJoinKey.Types.SimpleComparisonType.IsNotDistinctFrom, PhysicalJoin.ComparisonJoinKey.SimpleComparisonType.IsNotDistinctFrom)]
-    [DataRow(ComparisonJoinKey.Types.SimpleComparisonType.MightEqual, PhysicalJoin.ComparisonJoinKey.SimpleComparisonType.MightEqual)]
-    public void ConvertsHashJoinSimpleComparisons(
+    [Test]
+    [Arguments(ComparisonJoinKey.Types.SimpleComparisonType.Eq, PhysicalJoin.ComparisonJoinKey.SimpleComparisonType.Eq)]
+    [Arguments(ComparisonJoinKey.Types.SimpleComparisonType.IsNotDistinctFrom, PhysicalJoin.ComparisonJoinKey.SimpleComparisonType.IsNotDistinctFrom)]
+    [Arguments(ComparisonJoinKey.Types.SimpleComparisonType.MightEqual, PhysicalJoin.ComparisonJoinKey.SimpleComparisonType.MightEqual)]
+    public async Task ConvertsHashJoinSimpleComparisons(
         ComparisonJoinKey.Types.SimpleComparisonType protoComparison,
         PhysicalJoin.ComparisonJoinKey.SimpleComparisonType expectedComparison)
     {
         HashJoin result = (HashJoin)this.converter.ToRel(CreateHashJoin(comparison: protoComparison));
 
-        Assert.AreEqual(expectedComparison, result.Keys[0].Comparison.Simple);
+        await Assert.That(result.Keys[0].Comparison.Simple).IsEqualTo(expectedComparison);
     }
 
-    [TestMethod]
-    public void RejectsUnspecifiedHashJoinSimpleComparison()
+    [Test]
+    public async Task RejectsUnspecifiedHashJoinSimpleComparison()
     {
-        Assert.ThrowsException<ArgumentException>(() => this.converter.ToRel(
-            CreateHashJoin(comparison: ComparisonJoinKey.Types.SimpleComparisonType.Unspecified)));
+        await Assert.That(() => this.converter.ToRel(
+            CreateHashJoin(comparison: ComparisonJoinKey.Types.SimpleComparisonType.Unspecified))).ThrowsExactly<ArgumentException>();
     }
 
-    [TestMethod]
-    public void ConvertsAggregateJoinHashJoinAndExchange()
+    [Test]
+    public async Task ConvertsAggregateJoinHashJoinAndExchange()
     {
         ProtoRel aggregate = new()
         {
@@ -434,23 +432,23 @@ public sealed class ProtoToRelConverterTests
 
         SingleBucketExchange result = (SingleBucketExchange)this.converter.ToRel(exchange);
 
-        Assert.AreEqual(4, result.PartitionCount);
+        await Assert.That(result.PartitionCount).IsEqualTo(4);
         HashJoin convertedHashJoin = (HashJoin)result.Input;
-        Assert.IsTrue(convertedHashJoin.BuildLeft);
-        Assert.AreEqual(1, convertedHashJoin.Keys.Count);
+        await Assert.That(convertedHashJoin.BuildLeft).IsTrue();
+        await Assert.That(convertedHashJoin.Keys.Count).IsEqualTo(1);
         Join convertedJoin = (Join)convertedHashJoin.Left;
-        Assert.IsInstanceOfType<Aggregate>(convertedJoin.Left);
+        await Assert.That(convertedJoin.Left).IsAssignableTo<Aggregate>();
 
         ProtoRel serialized = new RelToProtoConverter().From(result);
         SingleBucketExchange roundTripped = (SingleBucketExchange)this.converter.ToRel(serialized);
         HashJoin roundTrippedHashJoin = (HashJoin)roundTripped.Input;
 
-        Assert.AreEqual(result, roundTripped);
-        Assert.IsTrue(roundTrippedHashJoin.BuildLeft);
+        await Assert.That(roundTripped).IsEqualTo(result);
+        await Assert.That(roundTrippedHashJoin.BuildLeft).IsTrue();
     }
 
-    [TestMethod]
-    public void RejectsAggregateWithUnusedGroupingExpression()
+    [Test]
+    public async Task RejectsAggregateWithUnusedGroupingExpression()
     {
         ProtoRel relation = new()
         {
@@ -467,11 +465,11 @@ public sealed class ProtoToRelConverterTests
             },
         };
 
-        Assert.ThrowsException<System.Runtime.Serialization.SerializationException>(() => this.converter.ToRel(relation));
+        await Assert.That(() => this.converter.ToRel(relation)).ThrowsExactly<System.Runtime.Serialization.SerializationException>();
     }
 
-    [TestMethod]
-    public void RoundTripsFoundationalRelationChain()
+    [Test]
+    public async Task RoundTripsFoundationalRelationChain()
     {
         ProtoRel relation = new()
         {
@@ -495,11 +493,11 @@ public sealed class ProtoToRelConverterTests
         ProtoRel serialized = new RelToProtoConverter().From(original);
         IRel roundTripped = this.converter.ToRel(serialized);
 
-        Assert.AreEqual(original, roundTripped);
+        await Assert.That(roundTripped).IsEqualTo(original);
     }
 
-    [TestMethod]
-    public void RoundTripsScalarSubquery()
+    [Test]
+    public async Task RoundTripsScalarSubquery()
     {
         ProtoRel relation = new()
         {
@@ -524,7 +522,7 @@ public sealed class ProtoToRelConverterTests
         ProtoRel serialized = new RelToProtoConverter().From(original);
         IRel roundTripped = this.converter.ToRel(serialized);
 
-        Assert.AreEqual(original, roundTripped);
+        await Assert.That(roundTripped).IsEqualTo(original);
     }
 
     private static ProtoExpression.Types.FieldReference CreateFieldReference(int field)

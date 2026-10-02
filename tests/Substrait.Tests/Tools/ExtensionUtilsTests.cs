@@ -2,70 +2,68 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Text;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Core.Extension;
 using Substrait.Core.Extension.Functions;
 using Substrait.Tools;
 
 namespace Substrait.Tests.Tools;
 
-[TestClass]
 public sealed class ExtensionUtilsTests
 {
-    [TestMethod]
-    public void LoadDefaultsLoadsPackagedExtensionsWithDeclaredUrns()
+    [Test]
+    public async Task LoadDefaultsLoadsPackagedExtensionsWithDeclaredUrns()
     {
         ExtensionsCollection extensions = ExtensionUtils.LoadDefaults();
 
-        Assert.IsTrue(extensions.ScalarFunctionImpls.Count > 0);
-        Assert.IsTrue(extensions.AggregateFunctionImpls.Count > 0);
-        Assert.IsTrue(extensions.WindowFunctionImpls.Count > 0);
-        Assert.AreEqual(0, extensions.TypeVariationImpls.Count);
-        Assert.IsTrue(extensions.TryGetScalarFunction(
+        await Assert.That(extensions.ScalarFunctionImpls.Count > 0).IsTrue();
+        await Assert.That(extensions.AggregateFunctionImpls.Count > 0).IsTrue();
+        await Assert.That(extensions.WindowFunctionImpls.Count > 0).IsTrue();
+        await Assert.That(extensions.TypeVariationImpls.Count).IsEqualTo(0);
+        await Assert.That(extensions.TryGetScalarFunction(
             new FunctionImplAnchor("extension:io.substrait:functions_arithmetic", "add:i64_i64"),
             ExtensionsDictionary.StrictMode.STRICT,
-            out ScalarFunctionImpl? function));
-        Assert.IsNotNull(function);
-        Assert.AreSame(extensions, ExtensionUtils.LoadDefaults());
+            out ScalarFunctionImpl? function)).IsTrue();
+        await Assert.That(function).IsNotNull();
+        await Assert.That(ExtensionUtils.LoadDefaults()).IsSameReferenceAs(extensions);
     }
 
-    [TestMethod]
-    public void LoadUsesDeclaredUrnWhenNamespaceIsEmpty()
+    [Test]
+    public async Task LoadUsesDeclaredUrnWhenNamespaceIsEmpty()
     {
         using MemoryStream stream = new(Encoding.UTF8.GetBytes(
             "urn: extension:example:test\nscalar_functions:\n  - name: identity\n    impls:\n      - args:\n          - value: i64\n        return: i64\n"));
 
         ExtensionsCollection extensions = ExtensionUtils.Load(string.Empty, stream);
 
-        Assert.AreEqual("extension:example:test", extensions.ScalarFunctionImpls[0].Uri);
+        await Assert.That(extensions.ScalarFunctionImpls[0].Uri).IsEqualTo("extension:example:test");
     }
 
-    [TestMethod]
-    public void LoadRejectsMissingNamespaceAndUrn()
+    [Test]
+    public async Task LoadRejectsMissingNamespaceAndUrn()
     {
         using MemoryStream stream = new(Encoding.UTF8.GetBytes("scalar_functions: []\n"));
 
-        Assert.ThrowsException<ArgumentException>(() => ExtensionUtils.Load(string.Empty, stream));
+        await Assert.That(() => ExtensionUtils.Load(string.Empty, stream)).ThrowsExactly<ArgumentException>();
     }
 
-    [TestMethod]
-    public void LoadPreservesImplementationDeprecation()
+    [Test]
+    public async Task LoadPreservesImplementationDeprecation()
     {
         ExtensionsCollection extensions = ExtensionUtils.LoadDefaults();
         AggregateFunctionImpl aggregate = extensions.AggregateFunctionImpls.First(function => function.Deprecated is not null);
-        Assert.AreEqual("0.88.0", aggregate.Deprecated!.Since);
-        Assert.IsFalse(string.IsNullOrEmpty(aggregate.Deprecated.Reason));
+        await Assert.That(aggregate.Deprecated!.Since).IsEqualTo("0.88.0");
+        await Assert.That(string.IsNullOrEmpty(aggregate.Deprecated.Reason)).IsFalse();
         WindowFunctionImpl window = extensions.WindowFunctionImpls
             .Where(function => function.Name == aggregate.Name && function.Uri == aggregate.Uri)
             .Single(function => function.Anchor.Equals(aggregate.Anchor));
-        Assert.AreEqual(aggregate.Deprecated, window.Deprecated);
+        await Assert.That(window.Deprecated).IsEqualTo(aggregate.Deprecated);
 
         ScalarFunctionImpl scalar = extensions.ScalarFunctionImpls.First(function => function.Deprecated is not null);
-        Assert.AreEqual("0.100.0", scalar.Deprecated!.Since);
+        await Assert.That(scalar.Deprecated!.Since).IsEqualTo("0.100.0");
     }
 
-    [TestMethod]
-    public void FileSystemResolverLoadsExtensionFile()
+    [Test]
+    public async Task FileSystemResolverLoadsExtensionFile()
     {
         const string yaml = "scalar_functions:\n  - name: identity\n    impls:\n      - args:\n          - value: i64\n            name: value\n        return: i64\n";
         string path = Path.GetTempFileName();
@@ -77,8 +75,8 @@ public sealed class ExtensionUtilsTests
                 [new ExtensionUtils.ExtensionFile("/test.yaml", path)],
                 new ExtensionUtils.FileSystemResolver());
 
-            Assert.AreEqual(1, extensions.ScalarFunctionImpls.Count);
-            Assert.AreEqual("identity:i64", extensions.ScalarFunctionImpls[0].Key);
+            await Assert.That(extensions.ScalarFunctionImpls.Count).IsEqualTo(1);
+            await Assert.That(extensions.ScalarFunctionImpls[0].Key).IsEqualTo("identity:i64");
         }
         finally
         {

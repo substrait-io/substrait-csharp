@@ -3,7 +3,6 @@
 using System.Reflection;
 using System.Runtime.Serialization;
 using Google.Protobuf;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Core.Expression;
 using Substrait.Core.Extension;
 using Substrait.Core.Metadata;
@@ -18,7 +17,6 @@ using ProtoRel = Substrait.Protobuf.Rel;
 
 namespace Substrait.Tests.Core;
 
-[TestClass]
 public sealed class RelationAnchorTests
 {
     private static readonly Action<uint?, Dictionary<uint, string>, string, Func<string, Exception>> RegisterAnchor =
@@ -26,114 +24,114 @@ public sealed class RelationAnchorTests
             .GetMethod("RegisterAnchor", BindingFlags.Static | BindingFlags.NonPublic)!
             .CreateDelegate<Action<uint?, Dictionary<uint, string>, string, Func<string, Exception>>>();
 
-    [TestMethod]
-    public void SuccessfulAnchorRegistrationUsesOneLookupAndPreservesDuplicateDiagnostics()
+    [Test]
+    public async Task SuccessfulAnchorRegistrationUsesOneLookupAndPreservesDuplicateDiagnostics()
     {
         CountingAnchorComparer comparer = new();
         Dictionary<uint, string> anchors = new(4, comparer);
         RegisterAnchor(7, anchors, "first occurrence", message => new SerializationException(message));
-        Assert.AreEqual(1, comparer.HashCalls);
+        await Assert.That(comparer.HashCalls).IsEqualTo(1);
         RegisterAnchor(8, anchors, "second occurrence", message => new SerializationException(message));
-        Assert.AreEqual(2, comparer.HashCalls);
+        await Assert.That(comparer.HashCalls).IsEqualTo(2);
 
-        SerializationException error = Assert.ThrowsException<SerializationException>(() =>
-            RegisterAnchor(7, anchors, "duplicate occurrence", message => new SerializationException(message)));
-        StringAssert.Contains(error.Message, "duplicate relation anchor 7");
-        StringAssert.Contains(error.Message, "first occurrence");
-        StringAssert.Contains(error.Message, "duplicate occurrence");
-        Assert.AreEqual(2, anchors.Count);
-        Assert.AreEqual("first occurrence", anchors[7]);
+        SerializationException error = await Assert.That(() =>
+            RegisterAnchor(7, anchors, "duplicate occurrence", message => new SerializationException(message))).ThrowsExactly<SerializationException>().And.IsNotNull();
+        await Assert.That(error.Message).Contains("duplicate relation anchor 7");
+        await Assert.That(error.Message).Contains("first occurrence");
+        await Assert.That(error.Message).Contains("duplicate occurrence");
+        await Assert.That(anchors.Count).IsEqualTo(2);
+        await Assert.That(anchors[7]).IsEqualTo("first occurrence");
     }
 
-    [TestMethod]
-    public void AbsentAndZeroAnchorsDoNotProbeOrModifyTheDictionary()
+    [Test]
+    public async Task AbsentAndZeroAnchorsDoNotProbeOrModifyTheDictionary()
     {
         CountingAnchorComparer comparer = new();
         Dictionary<uint, string> anchors = new(4, comparer);
         RegisterAnchor(null, anchors, "absent", message => new SerializationException(message));
-        Assert.ThrowsException<SerializationException>(() =>
-            RegisterAnchor(0, anchors, "zero", message => new SerializationException(message)));
-        Assert.AreEqual(0, comparer.HashCalls);
-        Assert.AreEqual(0, anchors.Count);
+        await Assert.That(() =>
+            RegisterAnchor(0, anchors, "zero", message => new SerializationException(message))).ThrowsExactly<SerializationException>();
+        await Assert.That(comparer.HashCalls).IsEqualTo(0);
+        await Assert.That(anchors.Count).IsEqualTo(0);
     }
 
-    [TestMethod]
-    public void AnchorsArePositiveUniqueAndUseTheFullUintRange()
+    [Test]
+    public async Task AnchorsArePositiveUniqueAndUseTheFullUintRange()
     {
         NamedTableRead first = Anchored(1);
         NamedTableRead last = Anchored(uint.MaxValue);
         CorePlan plan = CorePlan.FromRelations(
             [new CorePlan.Root(first, []), new CorePlan.Relation(last)], Substrait.Core.Plan.Version.Current);
-        Assert.AreEqual(plan, Decoder().FromBytes(new PlanToProtoConverter().From(plan).ToByteArray(), ExtensionsDictionary.StrictMode.OFF));
-        Assert.ThrowsException<ArgumentException>(() => Plan(Anchored(0)));
-        Assert.ThrowsException<ArgumentException>(() => Plan(new Cross(first, Anchored(1))));
-        Assert.ThrowsException<ArgumentException>(() => CorePlan.FromRelations(
-            [new CorePlan.Root(first, []), new CorePlan.Relation(first)], Substrait.Core.Plan.Version.Current));
+        await Assert.That(Decoder().FromBytes(new PlanToProtoConverter().From(plan).ToByteArray(), ExtensionsDictionary.StrictMode.OFF)).IsEqualTo(plan);
+        await Assert.That(() => Plan(Anchored(0))).ThrowsExactly<ArgumentException>();
+        await Assert.That(() => Plan(new Cross(first, Anchored(1)))).ThrowsExactly<ArgumentException>();
+        await Assert.That(() => CorePlan.FromRelations(
+            [new CorePlan.Root(first, []), new CorePlan.Relation(first)], Substrait.Core.Plan.Version.Current)).ThrowsExactly<ArgumentException>();
 
         ProtoRel wire = WireRead(0);
-        Assert.ThrowsException<SerializationException>(() => Decoder().From(WirePlan(wire), ExtensionsDictionary.StrictMode.OFF));
+        await Assert.That(() => Decoder().From(WirePlan(wire), ExtensionsDictionary.StrictMode.OFF)).ThrowsExactly<SerializationException>();
         wire = WireRead(1);
-        Assert.ThrowsException<SerializationException>(() => Decoder().From(WirePlan(wire, wire.Clone()), ExtensionsDictionary.StrictMode.OFF));
+        await Assert.That(() => Decoder().From(WirePlan(wire, wire.Clone()), ExtensionsDictionary.StrictMode.OFF)).ThrowsExactly<SerializationException>();
     }
 
-    [TestMethod]
-    public void RepeatedInlineObjectsAndAnchoredDescendantsCountAsSeparateOccurrences()
+    [Test]
+    public async Task RepeatedInlineObjectsAndAnchoredDescendantsCountAsSeparateOccurrences()
     {
         NamedTableRead anchored = Anchored(7);
         Filter shared = new(anchored, new Literal.BoolLiteral(true));
-        ArgumentException error = Assert.ThrowsException<ArgumentException>(() => Plan(new Cross(shared, shared)));
-        StringAssert.Contains(error.Message, "duplicate relation anchor 7");
-        StringAssert.Contains(error.Message, "relation occurrence");
+        ArgumentException error = await Assert.That(() => Plan(new Cross(shared, shared))).ThrowsExactly<ArgumentException>().And.IsNotNull();
+        await Assert.That(error.Message).Contains("duplicate relation anchor 7");
+        await Assert.That(error.Message).Contains("relation occurrence");
 
         ProtoRel protoShared = new()
         {
             Filter = new() { Input = WireRead(7), Condition = new() { Literal = new() { Boolean = true } } },
         };
         ProtoRel cross = new() { Cross = new() { Left = protoShared, Right = protoShared } };
-        Assert.ThrowsException<SerializationException>(() => Decoder().From(WirePlan(cross), ExtensionsDictionary.StrictMode.OFF));
+        await Assert.That(() => Decoder().From(WirePlan(cross), ExtensionsDictionary.StrictMode.OFF)).ThrowsExactly<SerializationException>();
 
         // Sharing only the common message must also count each defining relation.
         ProtoRel first = WireRead(7);
         ProtoRel second = WireRead(8);
         second.Read.Common = first.Read.Common;
-        Assert.ThrowsException<SerializationException>(() => Decoder().From(WirePlan(first, second), ExtensionsDictionary.StrictMode.OFF));
-        Assert.AreEqual(1, Plan(new Cross(Read(), Read())).Roots.Count);
+        await Assert.That(() => Decoder().From(WirePlan(first, second), ExtensionsDictionary.StrictMode.OFF)).ThrowsExactly<SerializationException>();
+        await Assert.That(Plan(new Cross(Read(), Read())).Roots.Count).IsEqualTo(1);
     }
 
-    [TestMethod]
-    public void ExplicitReferencesDoNotRecountTheirTargetsOrCollideWithOrdinals()
+    [Test]
+    public async Task ExplicitReferencesDoNotRecountTheirTargetsOrCollideWithOrdinals()
     {
         PlanBuilder builder = new();
         Reference shared = builder.RegisterSubplan(Anchored(1));
         builder.AddRoot(new Cross(shared, shared), []);
         builder.AddRoot(shared, []);
         CorePlan plan = builder.Build();
-        Assert.AreEqual(0, shared.SubtreeOrdinal);
-        Assert.AreEqual(1U, shared.Target.Metadata.Common!.RelAnchor);
-        Assert.AreEqual(plan, Decoder().FromBytes(new PlanToProtoConverter().From(plan).ToByteArray(), ExtensionsDictionary.StrictMode.OFF));
+        await Assert.That(shared.SubtreeOrdinal).IsEqualTo(0);
+        await Assert.That(shared.Target.Metadata.Common!.RelAnchor).IsEqualTo(1U);
+        await Assert.That(Decoder().FromBytes(new PlanToProtoConverter().From(plan).ToByteArray(), ExtensionsDictionary.StrictMode.OFF)).IsEqualTo(plan);
 
         ProtoRel forward = new() { Reference = new() { SubtreeOrdinal = 1 } };
         var wire = WirePlan(forward, WireRead(1), forward.Clone());
         IPlan converted = Decoder().From(wire, ExtensionsDictionary.StrictMode.OFF);
-        Assert.AreSame(converted.Relations[1].Input, ((Reference)converted.Relations[0].Input).Target);
-        Assert.AreEqual(wire, new PlanToProtoConverter().From(converted));
+        await Assert.That(((Reference)converted.Relations[0].Input).Target).IsSameReferenceAs(converted.Relations[1].Input);
+        await Assert.That(new PlanToProtoConverter().From(converted)).IsEqualTo(wire);
     }
 
-    [TestMethod]
-    public void RejectedBuilderRegistrationsDoNotConsumeOrdinalsOrReserveAnchors()
+    [Test]
+    public async Task RejectedBuilderRegistrationsDoNotConsumeOrdinalsOrReserveAnchors()
     {
         PlanBuilder builder = new();
         builder.RegisterSubplan(Anchored(7));
-        Assert.ThrowsException<ArgumentException>(() => builder.AddRoot(new Cross(Anchored(8), Anchored(7)), []));
+        await Assert.That(() => builder.AddRoot(new Cross(Anchored(8), Anchored(7)), [])).ThrowsExactly<ArgumentException>();
         Reference next = builder.RegisterSubplan(Anchored(8));
-        Assert.AreEqual(1, next.SubtreeOrdinal);
-        Assert.AreEqual(2, builder.Build().Relations.Count);
-        Assert.ThrowsException<ArgumentException>(() => builder.RegisterSubplan(next.Target));
-        Assert.AreEqual(2, builder.Build().Relations.Count);
+        await Assert.That(next.SubtreeOrdinal).IsEqualTo(1);
+        await Assert.That(builder.Build().Relations.Count).IsEqualTo(2);
+        await Assert.That(() => builder.RegisterSubplan(next.Target)).ThrowsExactly<ArgumentException>();
+        await Assert.That(builder.Build().Relations.Count).IsEqualTo(2);
     }
 
-    [TestMethod]
-    public void FailedAnchorBatchRollsBackNewKeysWithoutRemovingExistingKeys()
+    [Test]
+    public async Task FailedAnchorBatchRollsBackNewKeysWithoutRemovingExistingKeys()
     {
         PlanBuilder builder = new();
         builder.RegisterSubplan(Anchored(7));
@@ -142,25 +140,25 @@ public sealed class RelationAnchorTests
 
         // The right-hand inputs are visited first, inserting 9 and 8 before colliding with 11.
         Cross candidate = new(new Cross(Anchored(7), Anchored(11)), new Cross(Anchored(8), Anchored(9)));
-        ArgumentException error = Assert.ThrowsException<ArgumentException>(() => builder.AddRoot(candidate, []));
-        StringAssert.Contains(error.Message, "duplicate relation anchor 11");
-        StringAssert.Contains(error.Message, "ordinal 1");
-        StringAssert.Contains(error.Message, "ordinal 2");
-        Assert.AreEqual(before, builder.Build());
+        ArgumentException error = await Assert.That(() => builder.AddRoot(candidate, [])).ThrowsExactly<ArgumentException>().And.IsNotNull();
+        await Assert.That(error.Message).Contains("duplicate relation anchor 11");
+        await Assert.That(error.Message).Contains("ordinal 1");
+        await Assert.That(error.Message).Contains("ordinal 2");
+        await Assert.That<IPlan>(builder.Build()).IsEqualTo(before);
 
-        Assert.AreEqual(2, builder.RegisterSubplan(Anchored(8)).SubtreeOrdinal);
-        Assert.AreEqual(3, builder.RegisterSubplan(Anchored(9)).SubtreeOrdinal);
-        Assert.ThrowsException<ArgumentException>(() => builder.RegisterSubplan(Anchored(7)));
-        Assert.ThrowsException<ArgumentException>(() => builder.RegisterSubplan(Anchored(11)));
-        Assert.AreEqual(4, builder.Build().Relations.Count);
+        await Assert.That(builder.RegisterSubplan(Anchored(8)).SubtreeOrdinal).IsEqualTo(2);
+        await Assert.That(builder.RegisterSubplan(Anchored(9)).SubtreeOrdinal).IsEqualTo(3);
+        await Assert.That(() => builder.RegisterSubplan(Anchored(7))).ThrowsExactly<ArgumentException>();
+        await Assert.That(() => builder.RegisterSubplan(Anchored(11))).ThrowsExactly<ArgumentException>();
+        await Assert.That(builder.Build().Relations.Count).IsEqualTo(4);
     }
 
-    [DataTestMethod]
-    [DataRow(0)]
-    [DataRow(1)]
-    [DataRow(2)]
-    [DataRow(3)]
-    public void AnchorsInEverySubqueryKindParticipateInPlanWideValidation(int kind)
+    [Test]
+    [Arguments(0)]
+    [Arguments(1)]
+    [Arguments(2)]
+    [Arguments(3)]
+    public async Task AnchorsInEverySubqueryKindParticipateInPlanWideValidation(int kind)
     {
         ProtoRel root = new()
         {
@@ -172,30 +170,30 @@ public sealed class RelationAnchorTests
         };
         IPlan valid = Decoder().From(WirePlan(root), ExtensionsDictionary.StrictMode.OFF);
         IRel nested = PlanReferenceConversionTests.GetSubquery(((Project)valid.Relations[0].Input).Expressions[0]);
-        Assert.ThrowsException<ArgumentException>(() => CorePlan.FromRelations(
-            [new CorePlan.Relation(valid.Relations[0].Input), new CorePlan.Root(nested, [])], Substrait.Core.Plan.Version.Current));
-        Assert.ThrowsException<SerializationException>(() => Decoder().From(WirePlan(root, WireRead(1)), ExtensionsDictionary.StrictMode.OFF));
+        await Assert.That(() => CorePlan.FromRelations(
+            [new CorePlan.Relation(valid.Relations[0].Input), new CorePlan.Root(nested, [])], Substrait.Core.Plan.Version.Current)).ThrowsExactly<ArgumentException>();
+        await Assert.That(() => Decoder().From(WirePlan(root, WireRead(1)), ExtensionsDictionary.StrictMode.OFF)).ThrowsExactly<SerializationException>();
         root.Project.Expressions.Add(root.Project.Expressions[0]);
-        Assert.ThrowsException<SerializationException>(() => Decoder().From(WirePlan(root), ExtensionsDictionary.StrictMode.OFF));
+        await Assert.That(() => Decoder().From(WirePlan(root), ExtensionsDictionary.StrictMode.OFF)).ThrowsExactly<SerializationException>();
     }
 
-    [TestMethod]
-    public void SerializationRevalidatesCustomPlansAndErrorsIdentifyBothEntries()
+    [Test]
+    public async Task SerializationRevalidatesCustomPlansAndErrorsIdentifyBothEntries()
     {
         var entries = new IPlan.IRelation[] { new CorePlan.Relation(Anchored(42)), new CorePlan.Root(Anchored(42), []) };
-        ArgumentException error = Assert.ThrowsException<ArgumentException>(() => new PlanToProtoConverter().From(new UnvalidatedPlan(entries)));
-        StringAssert.Contains(error.Message, "42");
-        StringAssert.Contains(error.Message, "ordinal 0");
-        StringAssert.Contains(error.Message, "ordinal 1");
+        ArgumentException error = await Assert.That(() => new PlanToProtoConverter().From(new UnvalidatedPlan(entries))).ThrowsExactly<ArgumentException>().And.IsNotNull();
+        await Assert.That(error.Message).Contains("42");
+        await Assert.That(error.Message).Contains("ordinal 0");
+        await Assert.That(error.Message).Contains("ordinal 1");
 
-        SerializationException wireError = Assert.ThrowsException<SerializationException>(() =>
-            Decoder().From(WirePlan(WireRead(42), WireRead(42)), ExtensionsDictionary.StrictMode.OFF));
-        StringAssert.Contains(wireError.Message, "ordinal 0");
-        StringAssert.Contains(wireError.Message, "ordinal 1");
+        SerializationException wireError = await Assert.That(() =>
+            Decoder().From(WirePlan(WireRead(42), WireRead(42)), ExtensionsDictionary.StrictMode.OFF)).ThrowsExactly<SerializationException>().And.IsNotNull();
+        await Assert.That(wireError.Message).Contains("ordinal 0");
+        await Assert.That(wireError.Message).Contains("ordinal 1");
     }
 
-    [TestMethod]
-    public void DeepInlineValidationAndSerializationRemainIterative()
+    [Test]
+    public async Task DeepInlineValidationAndSerializationRemainIterative()
     {
         IRel input = Anchored(1);
         for (int index = 0; index < 10000; ++index)
@@ -206,7 +204,7 @@ public sealed class RelationAnchorTests
         CorePlan plan = Plan(input);
         var wire = new PlanToProtoConverter().From(plan);
         IPlan converted = Decoder().From(wire, ExtensionsDictionary.StrictMode.OFF);
-        Assert.AreEqual(plan, converted);
+        await Assert.That(converted).IsEqualTo(plan);
     }
 
     private static NamedTableRead Anchored(uint anchor) =>

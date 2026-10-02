@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Google.Protobuf;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Substrait.Core.Expression;
 using Substrait.Core.Plan;
 using Substrait.Core.Plan.Converters;
@@ -12,25 +11,24 @@ using PlanVersion = Substrait.Core.Plan.Version;
 
 namespace Substrait.Tests.Core;
 
-[TestClass]
 public sealed class PlanBuilderTests
 {
     private static readonly string[] ExpectedRootNames = ["output"];
     private static readonly int[] ExpectedRegistrationOrdinals = [0, 1, 2, 3, 4];
 
-    [TestMethod]
-    public void LegacyConstructorPreservesRootsInRelations()
+    [Test]
+    public async Task LegacyConstructorPreservesRootsInRelations()
     {
         Plan.Root first = new(CreateRead("first"), ["first"]);
         Plan.Root second = new(CreateRead("second"), []);
         Plan plan = new([first, second], PlanVersion.Current);
 
-        CollectionAssert.AreEqual(new IPlan.IRelation[] { first, second }, plan.Relations.ToArray());
-        CollectionAssert.AreEqual(new IPlan.IRoot[] { first, second }, plan.Roots.ToArray());
+        await Assert.That(plan.Relations.ToArray()).IsEquivalentTo(new IPlan.IRelation[] { first, second }, TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(plan.Roots.ToArray()).IsEquivalentTo(new IPlan.IRoot[] { first, second }, TUnit.Assertions.Enums.CollectionOrdering.Matching);
     }
 
-    [TestMethod]
-    public void FactoryPreservesMixedEntryOrderAndSnapshotsCollections()
+    [Test]
+    public async Task FactoryPreservesMixedEntryOrderAndSnapshotsCollections()
     {
         List<string> names = ["output"];
         Plan.Root first = new(CreateRead("first"), names);
@@ -42,14 +40,14 @@ public sealed class PlanBuilderTests
         entries.Clear();
         names[0] = "changed";
 
-        CollectionAssert.AreEqual(new IPlan.IRelation[] { first, shared, last }, plan.Relations.ToArray());
-        CollectionAssert.AreEqual(new IPlan.IRoot[] { first, last }, plan.Roots.ToArray());
-        CollectionAssert.AreEqual(ExpectedRootNames, plan.Roots[0].Names.ToArray());
-        Assert.AreEqual(0, plan.Roots[1].Names.Count);
+        await Assert.That(plan.Relations.ToArray()).IsEquivalentTo(new IPlan.IRelation[] { first, shared, last }, TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(plan.Roots.ToArray()).IsEquivalentTo(new IPlan.IRoot[] { first, last }, TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(plan.Roots[0].Names.ToArray()).IsEquivalentTo(ExpectedRootNames, TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(plan.Roots[1].Names.Count).IsEqualTo(0);
     }
 
-    [TestMethod]
-    public void BuilderAssignsOrdinalsAcrossRootsAndSubplans()
+    [Test]
+    public async Task BuilderAssignsOrdinalsAcrossRootsAndSubplans()
     {
         PlanVersion version = new(1, 2, 3, "hash", "builder-tests");
         PlanBuilder builder = new(version);
@@ -59,22 +57,22 @@ public sealed class PlanBuilderTests
 
         Plan plan = builder.Build();
 
-        Assert.AreEqual(0, firstRoot.SubtreeOrdinal);
-        Assert.AreEqual(1, shared.SubtreeOrdinal);
-        Assert.AreEqual(2, lastRoot.SubtreeOrdinal);
-        Assert.AreSame(version, plan.Version);
-        Assert.AreEqual(3, plan.Relations.Count);
-        Assert.AreEqual(2, plan.Roots.Count);
-        Assert.AreSame(firstRoot.Target, plan.Relations[0].Input);
-        Assert.AreSame(shared.Target, plan.Relations[1].Input);
-        Assert.AreSame(lastRoot.Target, plan.Relations[2].Input);
-        Assert.IsInstanceOfType<IPlan.IRoot>(plan.Relations[0]);
-        Assert.IsInstanceOfType<Plan.Relation>(plan.Relations[1]);
-        Assert.IsInstanceOfType<IPlan.IRoot>(plan.Relations[2]);
+        await Assert.That(firstRoot.SubtreeOrdinal).IsEqualTo(0);
+        await Assert.That(shared.SubtreeOrdinal).IsEqualTo(1);
+        await Assert.That(lastRoot.SubtreeOrdinal).IsEqualTo(2);
+        await Assert.That(plan.Version).IsSameReferenceAs(version);
+        await Assert.That(plan.Relations.Count).IsEqualTo(3);
+        await Assert.That(plan.Roots.Count).IsEqualTo(2);
+        await Assert.That(plan.Relations[0].Input).IsSameReferenceAs(firstRoot.Target);
+        await Assert.That(plan.Relations[1].Input).IsSameReferenceAs(shared.Target);
+        await Assert.That(plan.Relations[2].Input).IsSameReferenceAs(lastRoot.Target);
+        await Assert.That(plan.Relations[0]).IsAssignableTo<IPlan.IRoot>();
+        await Assert.That(plan.Relations[1]).IsAssignableTo<Plan.Relation>();
+        await Assert.That(plan.Relations[2]).IsAssignableTo<IPlan.IRoot>();
     }
 
-    [TestMethod]
-    public void RegistrationNeverDeduplicatesSameOrEqualSubtrees()
+    [Test]
+    public async Task RegistrationNeverDeduplicatesSameOrEqualSubtrees()
     {
         PlanBuilder builder = new();
         NamedTableRead read = CreateRead();
@@ -85,17 +83,15 @@ public sealed class PlanBuilderTests
         Reference repeatedRoot = builder.AddRoot(read, ["output"]);
         Plan plan = builder.Build();
 
-        CollectionAssert.AreEqual(
-            ExpectedRegistrationOrdinals,
-            new[] { first.SubtreeOrdinal, sameInstance.SubtreeOrdinal, equalInstance.SubtreeOrdinal, root.SubtreeOrdinal, repeatedRoot.SubtreeOrdinal });
-        Assert.AreEqual(5, plan.Relations.Count);
-        Assert.AreSame(plan.Relations[0].Input, plan.Relations[1].Input);
-        Assert.AreEqual(plan.Relations[0].Input, plan.Relations[2].Input);
-        Assert.AreNotSame(plan.Relations[0].Input, plan.Relations[2].Input);
+        await Assert.That(new[] { first.SubtreeOrdinal, sameInstance.SubtreeOrdinal, equalInstance.SubtreeOrdinal, root.SubtreeOrdinal, repeatedRoot.SubtreeOrdinal }).IsEquivalentTo(ExpectedRegistrationOrdinals, TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(plan.Relations.Count).IsEqualTo(5);
+        await Assert.That(plan.Relations[1].Input).IsSameReferenceAs(plan.Relations[0].Input);
+        await Assert.That(plan.Relations[2].Input).IsEqualTo(plan.Relations[0].Input);
+        await Assert.That(plan.Relations[2].Input).IsNotSameReferenceAs(plan.Relations[0].Input);
     }
 
-    [TestMethod]
-    public void BuildReturnsImmutableSnapshotsAndDefaultsToCurrentVersion()
+    [Test]
+    public async Task BuildReturnsImmutableSnapshotsAndDefaultsToCurrentVersion()
     {
         PlanBuilder builder = new();
         Reference shared = builder.RegisterSubplan(CreateRead());
@@ -110,17 +106,17 @@ public sealed class PlanBuilderTests
         builder.AddRoot(shared, ["later"]);
         Plan second = builder.Build();
 
-        Assert.AreEqual(PlanVersion.Current, first.Version);
-        Assert.AreEqual(2, first.Relations.Count);
-        Assert.AreEqual(4, second.Relations.Count);
-        Assert.AreEqual("before", first.Roots[0].Names[0]);
-        Assert.AreSame(first.Relations[0].Input, second.Relations[0].Input);
-        Assert.AreEqual(hashCode, first.GetHashCode());
-        CollectionAssert.AreEqual(bytes, new PlanToProtoConverter().From(first).ToByteArray());
+        await Assert.That(first.Version).IsEqualTo(PlanVersion.Current);
+        await Assert.That(first.Relations.Count).IsEqualTo(2);
+        await Assert.That(second.Relations.Count).IsEqualTo(4);
+        await Assert.That(first.Roots[0].Names[0]).IsEqualTo("before");
+        await Assert.That(second.Relations[0].Input).IsSameReferenceAs(first.Relations[0].Input);
+        await Assert.That(first.GetHashCode()).IsEqualTo(hashCode);
+        await Assert.That(new PlanToProtoConverter().From(first).ToByteArray()).IsEquivalentTo(bytes, TUnit.Assertions.Enums.CollectionOrdering.Matching);
     }
 
-    [TestMethod]
-    public void BuilderRejectsForeignAndUnownedReferencesWithoutConsumingOrdinals()
+    [Test]
+    public async Task BuilderRejectsForeignAndUnownedReferencesWithoutConsumingOrdinals()
     {
         NamedTableRead read = CreateRead();
         PlanBuilder owner = new();
@@ -129,39 +125,39 @@ public sealed class PlanBuilderTests
         other.RegisterSubplan(read);
         Reference unowned = new(0, read);
 
-        Assert.ThrowsException<ArgumentException>(() => other.RegisterSubplan(owned));
-        Assert.ThrowsException<ArgumentException>(() => other.AddRoot(new Filter(owned, new Literal.BoolLiteral(true)), []));
-        Assert.ThrowsException<ArgumentException>(() => owner.RegisterSubplan(unowned));
-        Assert.ThrowsException<ArgumentException>(() => owner.AddRoot(unowned, []));
+        await Assert.That(() => other.RegisterSubplan(owned)).ThrowsExactly<ArgumentException>();
+        await Assert.That(() => other.AddRoot(new Filter(owned, new Literal.BoolLiteral(true)), [])).ThrowsExactly<ArgumentException>();
+        await Assert.That(() => owner.RegisterSubplan(unowned)).ThrowsExactly<ArgumentException>();
+        await Assert.That(() => owner.AddRoot(unowned, [])).ThrowsExactly<ArgumentException>();
 
         Reference next = owner.AddRoot(owned, []);
-        Assert.AreEqual(1, next.SubtreeOrdinal);
-        Assert.AreEqual(2, owner.Build().Relations.Count);
-        Assert.AreEqual(1, other.Build().Relations.Count);
+        await Assert.That(next.SubtreeOrdinal).IsEqualTo(1);
+        await Assert.That(owner.Build().Relations.Count).IsEqualTo(2);
+        await Assert.That(other.Build().Relations.Count).IsEqualTo(1);
     }
 
-    [DataTestMethod]
-    [DataRow(0)]
-    [DataRow(1)]
-    [DataRow(2)]
-    [DataRow(3)]
-    public void BuilderFindsForeignReferencesInsideEverySubqueryKind(int kind)
+    [Test]
+    [Arguments(0)]
+    [Arguments(1)]
+    [Arguments(2)]
+    [Arguments(3)]
+    public async Task BuilderFindsForeignReferencesInsideEverySubqueryKind(int kind)
     {
         PlanBuilder owner = new();
         Reference reference = owner.RegisterSubplan(CreateRead());
         Project project = new(CreateRead(), [CreateSubquery(kind, reference)]);
         PlanBuilder other = new();
 
-        Assert.ThrowsException<ArgumentException>(() => other.RegisterSubplan(project));
-        Assert.ThrowsException<ArgumentException>(() => other.AddRoot(project, []));
-        Assert.AreEqual(0, other.Build().Relations.Count);
+        await Assert.That(() => other.RegisterSubplan(project)).ThrowsExactly<ArgumentException>();
+        await Assert.That(() => other.AddRoot(project, [])).ThrowsExactly<ArgumentException>();
+        await Assert.That(other.Build().Relations.Count).IsEqualTo(0);
 
         owner.AddRoot(project, []);
-        Assert.AreEqual(2, owner.Build().Relations.Count);
+        await Assert.That(owner.Build().Relations.Count).IsEqualTo(2);
     }
 
-    [TestMethod]
-    public void BuilderFindsDependenciesInNestedSubqueryExpressionOperands()
+    [Test]
+    public async Task BuilderFindsDependenciesInNestedSubqueryExpressionOperands()
     {
         PlanBuilder owner = new();
         Reference reference = owner.RegisterSubplan(CreateRead());
@@ -171,14 +167,14 @@ public sealed class PlanBuilderTests
         InPredicateSubquery predicate = new(CreateRead(), [hidden]);
         PlanBuilder other = new();
 
-        Assert.ThrowsException<ArgumentException>(() =>
-            other.RegisterSubplan(new Project(CreateRead(), [comparison])));
-        Assert.ThrowsException<ArgumentException>(() =>
-            other.RegisterSubplan(new Project(CreateRead(), [predicate])));
+        await Assert.That(() =>
+            other.RegisterSubplan(new Project(CreateRead(), [comparison]))).ThrowsExactly<ArgumentException>();
+        await Assert.That(() =>
+            other.RegisterSubplan(new Project(CreateRead(), [predicate]))).ThrowsExactly<ArgumentException>();
     }
 
-    [TestMethod]
-    public void BuildRevalidatesDependenciesAndCorrelationAfterRegistration()
+    [Test]
+    public async Task BuildRevalidatesDependenciesAndCorrelationAfterRegistration()
     {
         PlanBuilder builder = new();
         MutableInput input = new(CreateRead());
@@ -187,68 +183,68 @@ public sealed class PlanBuilderTests
         Reference foreign = other.RegisterSubplan(CreateRead());
 
         input.Child = foreign;
-        Assert.ThrowsException<ArgumentException>(() => builder.Build());
+        await Assert.That(() => builder.Build()).ThrowsExactly<ArgumentException>();
 
         input.Child = CreateCorrelatedRelation(0, 1);
-        Assert.ThrowsException<ArgumentException>(() => builder.Build());
+        await Assert.That(() => builder.Build()).ThrowsExactly<ArgumentException>();
 
         input.Child = owned;
-        Assert.ThrowsException<ArgumentException>(() => builder.Build());
+        await Assert.That(() => builder.Build()).ThrowsExactly<ArgumentException>();
 
         input.Child = CreateRead();
-        Assert.AreEqual(1, builder.Build().Relations.Count);
+        await Assert.That(builder.Build().Relations.Count).IsEqualTo(1);
     }
 
-    [TestMethod]
-    public void FullPlanRejectsCyclesThroughCorrectlyBoundReferencesAndSubqueries()
+    [Test]
+    public async Task FullPlanRejectsCyclesThroughCorrectlyBoundReferencesAndSubqueries()
     {
         MutableInput input = new(CreateRead());
         Reference self = new(0, input);
         input.Child = self;
-        Assert.ThrowsException<ArgumentException>(() =>
-            Plan.FromRelations([new Plan.Relation(input)], PlanVersion.Current));
+        await Assert.That(() =>
+            Plan.FromRelations([new Plan.Relation(input)], PlanVersion.Current)).ThrowsExactly<ArgumentException>();
 
         input.Child = new Project(CreateRead(), [new ScalarSubquery(self, TypeFactory.REQUIRED.I64)]);
-        Assert.ThrowsException<ArgumentException>(() =>
-            Plan.FromRelations([new Plan.Relation(input)], PlanVersion.Current));
+        await Assert.That(() =>
+            Plan.FromRelations([new Plan.Relation(input)], PlanVersion.Current)).ThrowsExactly<ArgumentException>();
 
         input.Child = input;
-        Assert.ThrowsException<ArgumentException>(() =>
-            new PlanBuilder().RegisterSubplan(input));
+        await Assert.That(() =>
+            new PlanBuilder().RegisterSubplan(input)).ThrowsExactly<ArgumentException>();
     }
 
-    [TestMethod]
-    public void SharedInlineObjectsAreValidatedAtEachCorrelationDepth()
+    [Test]
+    public async Task SharedInlineObjectsAreValidatedAtEachCorrelationDepth()
     {
         IRel correlated = CreateCorrelatedRelation(0, 1);
         Project nested = new(CreateRead(), [new ScalarSubquery(correlated, TypeFactory.REQUIRED.I64)]);
         PlanBuilder builder = new();
 
-        Assert.ThrowsException<ArgumentException>(() => builder.RegisterSubplan(new Cross(correlated, nested)));
-        Assert.ThrowsException<ArgumentException>(() => builder.RegisterSubplan(new Cross(nested, correlated)));
+        await Assert.That(() => builder.RegisterSubplan(new Cross(correlated, nested))).ThrowsExactly<ArgumentException>();
+        await Assert.That(() => builder.RegisterSubplan(new Cross(nested, correlated))).ThrowsExactly<ArgumentException>();
     }
 
-    [DataTestMethod]
-    [DataRow(0, 1)]
-    [DataRow(1, 2)]
-    [DataRow(2, 3)]
-    public void RegistrationRejectsCorrelationEscapingTheEntry(int nestingDepth, int subqueryLevels)
+    [Test]
+    [Arguments(0, 1)]
+    [Arguments(1, 2)]
+    [Arguments(2, 3)]
+    public async Task RegistrationRejectsCorrelationEscapingTheEntry(int nestingDepth, int subqueryLevels)
     {
         IRel relation = CreateCorrelatedRelation(nestingDepth, subqueryLevels);
         PlanBuilder builder = new();
 
-        Assert.ThrowsException<ArgumentException>(() => builder.RegisterSubplan(relation));
-        Assert.ThrowsException<ArgumentException>(() => builder.AddRoot(relation, []));
-        Assert.ThrowsException<ArgumentException>(() =>
-            Plan.FromRelations([new Plan.Relation(relation)], PlanVersion.Current));
-        Assert.AreEqual(0, builder.Build().Relations.Count);
+        await Assert.That(() => builder.RegisterSubplan(relation)).ThrowsExactly<ArgumentException>();
+        await Assert.That(() => builder.AddRoot(relation, [])).ThrowsExactly<ArgumentException>();
+        await Assert.That(() =>
+            Plan.FromRelations([new Plan.Relation(relation)], PlanVersion.Current)).ThrowsExactly<ArgumentException>();
+        await Assert.That(builder.Build().Relations.Count).IsEqualTo(0);
     }
 
-    [DataTestMethod]
-    [DataRow(1, 1)]
-    [DataRow(2, 1)]
-    [DataRow(2, 2)]
-    public void RegistrationAllowsCorrelationContainedWithinTheEntry(int nestingDepth, int subqueryLevels)
+    [Test]
+    [Arguments(1, 1)]
+    [Arguments(2, 1)]
+    [Arguments(2, 2)]
+    public async Task RegistrationAllowsCorrelationContainedWithinTheEntry(int nestingDepth, int subqueryLevels)
     {
         PlanBuilder builder = new();
         Reference reference = builder.RegisterSubplan(CreateCorrelatedRelation(nestingDepth, subqueryLevels));
@@ -257,11 +253,11 @@ public sealed class PlanBuilderTests
         Plan plan = builder.Build();
         IPlan converted = new ProtoToPlanConverter().From(new PlanToProtoConverter().From(plan));
 
-        Assert.AreEqual(plan, converted);
+        await Assert.That(converted).IsEqualTo(plan);
     }
 
-    [TestMethod]
-    public void ReferenceIsAZeroInputOrdinalEdgeWithTargetSchema()
+    [Test]
+    public async Task ReferenceIsAZeroInputOrdinalEdgeWithTargetSchema()
     {
         NamedTableRead read = new(
             new NamedStruct(["first", "second"], TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64, TypeFactory.REQUIRED.STR])),
@@ -271,38 +267,38 @@ public sealed class PlanBuilderTests
         Reference reference = new(7, read);
         Reference equalOrdinalDifferentTarget = new(7, CreateRead("different"));
 
-        Assert.IsInstanceOfType<ZeroInput>(reference);
-        Assert.AreEqual(0, reference.Inputs.Count);
-        Assert.IsFalse(reference.InputNodes.Any());
-        Assert.AreSame(read, reference.Target);
-        Assert.AreEqual(read.RecordType, reference.RecordType);
-        Assert.AreEqual(TypeFactory.REQUIRED.STR, reference.RecordType.Fields[0]);
-        Assert.AreEqual(reference, equalOrdinalDifferentTarget);
-        Assert.AreEqual(reference.GetHashCode(), equalOrdinalDifferentTarget.GetHashCode());
-        Assert.AreNotEqual(reference, new Reference(8, read));
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => new Reference(-1, read));
+        await Assert.That(reference).IsAssignableTo<ZeroInput>();
+        await Assert.That(reference.Inputs.Count).IsEqualTo(0);
+        await Assert.That(reference.InputNodes.Any()).IsFalse();
+        await Assert.That(reference.Target).IsSameReferenceAs(read);
+        await Assert.That(reference.RecordType).IsEqualTo(read.RecordType);
+        await Assert.That(reference.RecordType.Fields[0]).IsEqualTo(TypeFactory.REQUIRED.STR);
+        await Assert.That(equalOrdinalDifferentTarget).IsEqualTo(reference);
+        await Assert.That(equalOrdinalDifferentTarget.GetHashCode()).IsEqualTo(reference.GetHashCode());
+        await Assert.That(new Reference(8, read)).IsNotEqualTo(reference);
+        await Assert.That(() => new Reference(-1, read)).ThrowsExactly<ArgumentOutOfRangeException>();
     }
 
-    [TestMethod]
-    public void FullPlanValidatesBoundsAndTargetIdentityInsteadOfStructuralEquality()
+    [Test]
+    public async Task FullPlanValidatesBoundsAndTargetIdentityInsteadOfStructuralEquality()
     {
         NamedTableRead read = CreateRead();
         NamedTableRead equalRead = CreateRead();
-        Assert.AreEqual(read, equalRead);
+        await Assert.That(equalRead).IsEqualTo(read);
 
-        Assert.ThrowsException<ArgumentException>(() => Plan.FromRelations(
-            [new Plan.Relation(read), new Plan.Root(new Reference(2, read), [])], PlanVersion.Current));
-        Assert.ThrowsException<ArgumentException>(() => Plan.FromRelations(
-            [new Plan.Relation(read), new Plan.Root(new Reference(int.MaxValue, read), [])], PlanVersion.Current));
-        Assert.ThrowsException<ArgumentException>(() => Plan.FromRelations(
-            [new Plan.Relation(read), new Plan.Root(new Reference(0, equalRead), [])], PlanVersion.Current));
-        Assert.ThrowsException<ArgumentException>(() => Plan.FromRelations(
+        await Assert.That(() => Plan.FromRelations(
+            [new Plan.Relation(read), new Plan.Root(new Reference(2, read), [])], PlanVersion.Current)).ThrowsExactly<ArgumentException>();
+        await Assert.That(() => Plan.FromRelations(
+            [new Plan.Relation(read), new Plan.Root(new Reference(int.MaxValue, read), [])], PlanVersion.Current)).ThrowsExactly<ArgumentException>();
+        await Assert.That(() => Plan.FromRelations(
+            [new Plan.Relation(read), new Plan.Root(new Reference(0, equalRead), [])], PlanVersion.Current)).ThrowsExactly<ArgumentException>();
+        await Assert.That(() => Plan.FromRelations(
             [new Plan.Relation(new Project(read, [new ScalarSubquery(new Reference(1, read), TypeFactory.REQUIRED.I64)]))],
-            PlanVersion.Current));
+            PlanVersion.Current)).ThrowsExactly<ArgumentException>();
     }
 
-    [TestMethod]
-    public void SerializerUsesCustomPlanRelationsAsAuthoritativeInsteadOfRoots()
+    [Test]
+    public async Task SerializerUsesCustomPlanRelationsAsAuthoritativeInsteadOfRoots()
     {
         NamedTableRead read = CreateRead();
         IPlan.IRelation[] entries =
@@ -316,19 +312,19 @@ public sealed class PlanBuilderTests
         Substrait.Protobuf.Plan wire = new PlanToProtoConverter().From(custom);
         IPlan converted = new ProtoToPlanConverter().From(wire);
 
-        Assert.AreEqual(2, wire.Relations.Count);
-        Assert.AreEqual(Substrait.Protobuf.PlanRel.RelTypeOneofCase.Rel, wire.Relations[0].RelTypeCase);
-        Assert.AreEqual("orders", wire.Relations[0].Rel.Read.NamedTable.Names[0]);
-        Assert.AreEqual(Substrait.Protobuf.PlanRel.RelTypeOneofCase.Root, wire.Relations[1].RelTypeCase);
-        Assert.AreEqual(0, wire.Relations[1].Root.Names.Count);
-        Assert.AreEqual(0, wire.Relations[1].Root.Input.Reference.SubtreeOrdinal);
-        Assert.AreSame(converted.Relations[0].Input, ((Reference)converted.Relations[1].Input).Target);
-        Assert.ThrowsException<ArgumentException>(() =>
-            new PlanToProtoConverter().From(new CustomPlan([], unrelatedRoots)));
+        await Assert.That(wire.Relations.Count).IsEqualTo(2);
+        await Assert.That(wire.Relations[0].RelTypeCase).IsEqualTo(Substrait.Protobuf.PlanRel.RelTypeOneofCase.Rel);
+        await Assert.That(wire.Relations[0].Rel.Read.NamedTable.Names[0]).IsEqualTo("orders");
+        await Assert.That(wire.Relations[1].RelTypeCase).IsEqualTo(Substrait.Protobuf.PlanRel.RelTypeOneofCase.Root);
+        await Assert.That(wire.Relations[1].Root.Names.Count).IsEqualTo(0);
+        await Assert.That(wire.Relations[1].Root.Input.Reference.SubtreeOrdinal).IsEqualTo(0);
+        await Assert.That(((Reference)converted.Relations[1].Input).Target).IsSameReferenceAs(converted.Relations[0].Input);
+        await Assert.That(() =>
+            new PlanToProtoConverter().From(new CustomPlan([], unrelatedRoots))).ThrowsExactly<ArgumentException>();
     }
 
-    [TestMethod]
-    public void SerializerDefensivelyValidatesCustomPlanReferenceBoundsAndIdentity()
+    [Test]
+    public async Task SerializerDefensivelyValidatesCustomPlanReferenceBoundsAndIdentity()
     {
         NamedTableRead read = CreateRead();
         NamedTableRead equalRead = CreateRead();
@@ -342,59 +338,55 @@ public sealed class PlanBuilderTests
 
         foreach (CustomPlan plan in invalidPlans)
         {
-            Assert.ThrowsException<ArgumentException>(() => new PlanToProtoConverter().From(plan));
+            await Assert.That(() => new PlanToProtoConverter().From(plan)).ThrowsExactly<ArgumentException>();
         }
     }
 
-    [TestMethod]
-    public void SerializerDefensivelyRejectsCustomPlanCyclesIncludingSubqueries()
+    [Test]
+    public async Task SerializerDefensivelyRejectsCustomPlanCyclesIncludingSubqueries()
     {
         MutableInput input = new(CreateRead());
         Reference reference = new(0, input);
         CustomPlan custom = new([new Plan.Relation(input)]);
 
         input.Child = reference;
-        Assert.ThrowsException<ArgumentException>(() => new PlanToProtoConverter().From(custom));
+        await Assert.That(() => new PlanToProtoConverter().From(custom)).ThrowsExactly<ArgumentException>();
 
         input.Child = new Project(CreateRead(), [new ScalarSubquery(reference, TypeFactory.REQUIRED.I64)]);
-        Assert.ThrowsException<ArgumentException>(() => new PlanToProtoConverter().From(custom));
+        await Assert.That(() => new PlanToProtoConverter().From(custom)).ThrowsExactly<ArgumentException>();
 
         input.Child = input;
-        Assert.ThrowsException<ArgumentException>(() => new PlanToProtoConverter().From(custom));
+        await Assert.That(() => new PlanToProtoConverter().From(custom)).ThrowsExactly<ArgumentException>();
     }
 
-    [DataTestMethod]
-    [DataRow(0, 1)]
-    [DataRow(1, 2)]
-    [DataRow(2, 3)]
-    public void SerializerDefensivelyRejectsCustomPlanEscapingCorrelation(int nestingDepth, int subqueryLevels)
+    [Test]
+    [Arguments(0, 1)]
+    [Arguments(1, 2)]
+    [Arguments(2, 3)]
+    public async Task SerializerDefensivelyRejectsCustomPlanEscapingCorrelation(int nestingDepth, int subqueryLevels)
     {
         CustomPlan custom = new([new Plan.Relation(CreateCorrelatedRelation(nestingDepth, subqueryLevels))]);
 
-        Assert.ThrowsException<ArgumentException>(() => new PlanToProtoConverter().From(custom));
+        await Assert.That(() => new PlanToProtoConverter().From(custom)).ThrowsExactly<ArgumentException>();
     }
 
-    [TestMethod]
-    public void PlanEqualityIncludesEntryKindOrderTargetsNamesAndVersion()
+    [Test]
+    public async Task PlanEqualityIncludesEntryKindOrderTargetsNamesAndVersion()
     {
         Plan baseline = CreateReferencedPlan("orders", "output", PlanVersion.Current);
         Plan equivalent = CreateReferencedPlan("orders", "output", PlanVersion.Current);
 
-        Assert.AreEqual(baseline, equivalent);
-        Assert.AreEqual(baseline.GetHashCode(), equivalent.GetHashCode());
-        Assert.AreNotEqual(baseline, CreateReferencedPlan("customers", "output", PlanVersion.Current));
-        Assert.AreNotEqual(baseline, CreateReferencedPlan("orders", "renamed", PlanVersion.Current));
-        Assert.AreNotEqual(baseline, CreateReferencedPlan("orders", "output", new PlanVersion(1, 0, 0, "", "")));
-        Assert.AreNotEqual(
-            Plan.FromRelations([new Plan.Relation(CreateRead())], PlanVersion.Current),
-            Plan.FromRelations([new Plan.Root(CreateRead(), [])], PlanVersion.Current));
-        Assert.AreNotEqual(
-            Plan.FromRelations([new Plan.Relation(CreateRead("first")), new Plan.Relation(CreateRead("second"))], PlanVersion.Current),
-            Plan.FromRelations([new Plan.Relation(CreateRead("second")), new Plan.Relation(CreateRead("first"))], PlanVersion.Current));
+        await Assert.That(equivalent).IsEqualTo(baseline);
+        await Assert.That(equivalent.GetHashCode()).IsEqualTo(baseline.GetHashCode());
+        await Assert.That(CreateReferencedPlan("customers", "output", PlanVersion.Current)).IsNotEqualTo(baseline);
+        await Assert.That(CreateReferencedPlan("orders", "renamed", PlanVersion.Current)).IsNotEqualTo(baseline);
+        await Assert.That(CreateReferencedPlan("orders", "output", new PlanVersion(1, 0, 0, "", ""))).IsNotEqualTo(baseline);
+        await Assert.That(Plan.FromRelations([new Plan.Root(CreateRead(), [])], PlanVersion.Current)).IsNotEqualTo(Plan.FromRelations([new Plan.Relation(CreateRead())], PlanVersion.Current));
+        await Assert.That(Plan.FromRelations([new Plan.Relation(CreateRead("second")), new Plan.Relation(CreateRead("first"))], PlanVersion.Current)).IsNotEqualTo(Plan.FromRelations([new Plan.Relation(CreateRead("first")), new Plan.Relation(CreateRead("second"))], PlanVersion.Current));
     }
 
-    [TestMethod]
-    public void EmptyPlansRemainConstructibleButNotSerializable()
+    [Test]
+    public async Task EmptyPlansRemainConstructibleButNotSerializable()
     {
         Plan[] plans =
         [
@@ -405,16 +397,16 @@ public sealed class PlanBuilderTests
 
         foreach (Plan plan in plans)
         {
-            Assert.AreEqual(0, plan.Relations.Count);
-            Assert.AreEqual(0, plan.Roots.Count);
-            Assert.ThrowsException<ArgumentException>(() => new PlanToProtoConverter().From(plan));
+            await Assert.That(plan.Relations.Count).IsEqualTo(0);
+            await Assert.That(plan.Roots.Count).IsEqualTo(0);
+            await Assert.That(() => new PlanToProtoConverter().From(plan)).ThrowsExactly<ArgumentException>();
         }
     }
 
-    [DataTestMethod]
-    [DataRow(false)]
-    [DataRow(true)]
-    public void BuilderSupportsLongReferenceChainsWithoutRecursiveSchemaDerivation(bool wrapReferences)
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task BuilderSupportsLongReferenceChainsWithoutRecursiveSchemaDerivation(bool wrapReferences)
     {
         const int count = 10001;
         PlanBuilder builder = new();
@@ -428,12 +420,12 @@ public sealed class PlanBuilderTests
         builder.AddRoot(reference, ["value"]);
         Plan plan = builder.Build();
 
-        Assert.AreEqual(count + 1, plan.Relations.Count);
-        Assert.AreEqual(count - 1, reference.SubtreeOrdinal);
-        Assert.AreEqual(TypeFactory.REQUIRED.I64, reference.RecordType.Fields[0]);
-        Assert.AreEqual(count + 1, new PlanToProtoConverter().From(plan).Relations.Count);
-        Assert.AreEqual(plan, builder.Build());
-        Assert.AreEqual(plan.GetHashCode(), builder.Build().GetHashCode());
+        await Assert.That(plan.Relations.Count).IsEqualTo(count + 1);
+        await Assert.That(reference.SubtreeOrdinal).IsEqualTo(count - 1);
+        await Assert.That(reference.RecordType.Fields[0]).IsEqualTo(TypeFactory.REQUIRED.I64);
+        await Assert.That(new PlanToProtoConverter().From(plan).Relations.Count).IsEqualTo(count + 1);
+        await Assert.That(builder.Build()).IsEqualTo(plan);
+        await Assert.That(builder.Build().GetHashCode()).IsEqualTo(plan.GetHashCode());
     }
 
     private static NamedTableRead CreateRead(string name = "orders") =>
