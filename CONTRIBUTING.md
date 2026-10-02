@@ -102,6 +102,11 @@ expression-bearing fields, subquery operands, and recursive schema/literal/
 selection structures: the latter retain cycle detection for caller-created
 protobuf objects. Acyclic hints and opaque extension payloads are not traversed.
 
+Anchor registration uses `Dictionary.Add` for a single successful-path lookup
+on every target, including `netstandard2.0`. Duplicate-key exceptions are
+translated into location-aware validation errors. Builder registration tracks
+inserted anchors and rolls them back if a later anchor conflicts.
+
 ## Public API changes
 
 The Public API analyzer tracks the package surface in

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Reflection;
 using System.Runtime.Serialization;
 using Google.Protobuf;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -20,6 +21,42 @@ namespace Substrait.Tests.Core;
 [TestClass]
 public sealed class RelationAnchorTests
 {
+    private static readonly Action<uint?, Dictionary<uint, string>, string, Func<string, Exception>> RegisterAnchor =
+        typeof(ProtoToPlanConverter).Assembly.GetType("Substrait.Core.Plan.PlanValidation")!
+            .GetMethod("RegisterAnchor", BindingFlags.Static | BindingFlags.NonPublic)!
+            .CreateDelegate<Action<uint?, Dictionary<uint, string>, string, Func<string, Exception>>>();
+
+    [TestMethod]
+    public void SuccessfulAnchorRegistrationUsesOneLookupAndPreservesDuplicateDiagnostics()
+    {
+        CountingAnchorComparer comparer = new();
+        Dictionary<uint, string> anchors = new(4, comparer);
+        RegisterAnchor(7, anchors, "first occurrence", message => new SerializationException(message));
+        Assert.AreEqual(1, comparer.HashCalls);
+        RegisterAnchor(8, anchors, "second occurrence", message => new SerializationException(message));
+        Assert.AreEqual(2, comparer.HashCalls);
+
+        SerializationException error = Assert.ThrowsException<SerializationException>(() =>
+            RegisterAnchor(7, anchors, "duplicate occurrence", message => new SerializationException(message)));
+        StringAssert.Contains(error.Message, "duplicate relation anchor 7");
+        StringAssert.Contains(error.Message, "first occurrence");
+        StringAssert.Contains(error.Message, "duplicate occurrence");
+        Assert.AreEqual(2, anchors.Count);
+        Assert.AreEqual("first occurrence", anchors[7]);
+    }
+
+    [TestMethod]
+    public void AbsentAndZeroAnchorsDoNotProbeOrModifyTheDictionary()
+    {
+        CountingAnchorComparer comparer = new();
+        Dictionary<uint, string> anchors = new(4, comparer);
+        RegisterAnchor(null, anchors, "absent", message => new SerializationException(message));
+        Assert.ThrowsException<SerializationException>(() =>
+            RegisterAnchor(0, anchors, "zero", message => new SerializationException(message)));
+        Assert.AreEqual(0, comparer.HashCalls);
+        Assert.AreEqual(0, anchors.Count);
+    }
+
     [TestMethod]
     public void AnchorsArePositiveUniqueAndUseTheFullUintRange()
     {
@@ -95,6 +132,29 @@ public sealed class RelationAnchorTests
         Assert.AreEqual(2, builder.Build().Relations.Count);
     }
 
+    [TestMethod]
+    public void FailedAnchorBatchRollsBackNewKeysWithoutRemovingExistingKeys()
+    {
+        PlanBuilder builder = new();
+        builder.RegisterSubplan(Anchored(7));
+        builder.RegisterSubplan(Anchored(11));
+        IPlan before = builder.Build();
+
+        // The right-hand inputs are visited first, inserting 9 and 8 before colliding with 11.
+        Cross candidate = new(new Cross(Anchored(7), Anchored(11)), new Cross(Anchored(8), Anchored(9)));
+        ArgumentException error = Assert.ThrowsException<ArgumentException>(() => builder.AddRoot(candidate, []));
+        StringAssert.Contains(error.Message, "duplicate relation anchor 11");
+        StringAssert.Contains(error.Message, "ordinal 1");
+        StringAssert.Contains(error.Message, "ordinal 2");
+        Assert.AreEqual(before, builder.Build());
+
+        Assert.AreEqual(2, builder.RegisterSubplan(Anchored(8)).SubtreeOrdinal);
+        Assert.AreEqual(3, builder.RegisterSubplan(Anchored(9)).SubtreeOrdinal);
+        Assert.ThrowsException<ArgumentException>(() => builder.RegisterSubplan(Anchored(7)));
+        Assert.ThrowsException<ArgumentException>(() => builder.RegisterSubplan(Anchored(11)));
+        Assert.AreEqual(4, builder.Build().Relations.Count);
+    }
+
     [DataTestMethod]
     [DataRow(0)]
     [DataRow(1)]
@@ -157,6 +217,19 @@ public sealed class RelationAnchorTests
         ProtoRel wire = new RelToProtoConverter().From(Read());
         wire.Read.Common.RelAnchor = anchor;
         return wire;
+    }
+
+    private sealed class CountingAnchorComparer : IEqualityComparer<uint>
+    {
+        internal int HashCalls { get; private set; }
+
+        public bool Equals(uint left, uint right) => left == right;
+
+        public int GetHashCode(uint value)
+        {
+            ++this.HashCalls;
+            return value.GetHashCode();
+        }
     }
 
     private sealed class UnvalidatedPlan(IReadOnlyList<IPlan.IRelation> relations) : IPlan

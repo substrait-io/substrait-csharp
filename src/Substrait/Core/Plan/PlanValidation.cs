@@ -48,12 +48,11 @@ internal static class PlanValidation
                 continue;
             }
 
-            if (active.Contains(node))
+            if (!active.Add(node))
             {
                 throw new ArgumentException($"Plan relation ordinal {ordinal} contains a cycle in its relation or expression tree.");
             }
 
-            active.Add(node);
             stack.Push((node, depth, true));
             if (node is IRel metadataRelation)
             {
@@ -122,7 +121,7 @@ internal static class PlanValidation
         return dependencies.ToArray();
     }
 
-    internal static void RegisterAnchor(uint? anchor, IDictionary<uint, string> anchors, string location, Func<string, Exception> error)
+    internal static void RegisterAnchor(uint? anchor, Dictionary<uint, string> anchors, string location, Func<string, Exception> error)
     {
         if (anchor is not uint value)
         {
@@ -134,12 +133,15 @@ internal static class PlanValidation
             throw error($"{location}: relation anchor 0 is invalid; an explicitly set anchor must be positive.");
         }
 
-        if (anchors.TryGetValue(value, out string? previous))
+        // Add performs one lookup on the valid path, including on netstandard2.0.
+        try
+        {
+            anchors.Add(value, location);
+        }
+        catch (ArgumentException) when (anchors.TryGetValue(value, out string? previous))
         {
             throw error($"{location}: duplicate relation anchor {value}, already defined at {previous}.");
         }
-
-        anchors.Add(value, location);
     }
 
     internal static void ValidateBinding(Reference reference, IReadOnlyList<IPlan.IRelation> relations, int? sourceOrdinal = null)

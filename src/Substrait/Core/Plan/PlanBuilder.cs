@@ -52,20 +52,26 @@ public sealed class PlanBuilder
         int ordinal = this.relations.Count;
         var entryAnchors = new Dictionary<uint, string>();
         _ = PlanValidation.ValidateEntry(entry.Input, ordinal, this.relations, this.owner, entryAnchors);
-        foreach (KeyValuePair<uint, string> anchor in entryAnchors)
+        var addedAnchors = new List<uint>(entryAnchors.Count);
+        try
         {
-            if (this.anchors.TryGetValue(anchor.Key, out string? previous))
+            foreach (KeyValuePair<uint, string> anchor in entryAnchors)
             {
-                throw new ArgumentException($"{anchor.Value}: duplicate relation anchor {anchor.Key}, already defined at {previous}.");
+                PlanValidation.RegisterAnchor(anchor.Key, this.anchors, anchor.Value, message => new ArgumentException(message));
+                addedAnchors.Add(anchor.Key);
             }
+        }
+        catch (ArgumentException)
+        {
+            foreach (uint anchor in addedAnchors)
+            {
+                this.anchors.Remove(anchor);
+            }
+
+            throw;
         }
 
         this.relations.Add(entry);
-        foreach (KeyValuePair<uint, string> anchor in entryAnchors)
-        {
-            this.anchors.Add(anchor.Key, anchor.Value);
-        }
-
         return new Reference(ordinal, entry.Input, this.owner);
     }
 }
