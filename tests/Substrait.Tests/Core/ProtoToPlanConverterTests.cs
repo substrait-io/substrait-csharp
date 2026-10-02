@@ -43,23 +43,35 @@ public sealed class ProtoToPlanConverterTests
     }
 
     [TestMethod]
-    public void RejectsMultiplePlanRelations()
+    public void ConvertsMultiplePlanRoots()
     {
         ProtoPlan plan = CreatePlan();
         plan.Relations.Add(CreatePlan().Relations[0]);
 
-        Assert.ThrowsException<NotImplementedException>(() =>
-            this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF));
+        IPlan result = this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF);
+
+        Assert.AreEqual(2, result.Relations.Count);
+        Assert.AreEqual(2, result.Roots.Count);
+        Assert.AreEqual(result.Roots[0], result.Roots[1]);
+        Assert.AreEqual(
+            result,
+            this.converter.From(new PlanToProtoConverter().From(result), ExtensionsDictionary.StrictMode.OFF));
     }
 
     [TestMethod]
-    public void RejectsNonRootPlanRelation()
+    public void ConvertsNonRootPlanRelation()
     {
         ProtoPlan plan = CreatePlan();
         plan.Relations[0] = new PlanRel { Rel = CreateRead() };
 
-        Assert.ThrowsException<System.Runtime.Serialization.SerializationException>(() =>
-            this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF));
+        IPlan result = this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF);
+
+        Assert.AreEqual(1, result.Relations.Count);
+        Assert.AreEqual(0, result.Roots.Count);
+        Assert.IsInstanceOfType<NamedTableRead>(result.Relations[0].Input);
+        Assert.AreEqual(
+            result,
+            this.converter.From(new PlanToProtoConverter().From(result), ExtensionsDictionary.StrictMode.OFF));
     }
 
     [TestMethod]

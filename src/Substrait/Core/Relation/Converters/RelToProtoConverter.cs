@@ -46,6 +46,12 @@ public class RelToProtoConverter
             this.typeConverter = typeConverter;
         }
 
+        public override ProtoRel Visit(Reference relation, PlanToProtoConverter.ConverterContext context)
+        {
+            context.ValidateReference(relation);
+            return new ProtoRel { Reference = new() { SubtreeOrdinal = relation.SubtreeOrdinal } };
+        }
+
         public override ProtoRel Visit(Filter relation, PlanToProtoConverter.ConverterContext context) =>
             new() { Filter = new() { Input = context.GetOutput(relation.Input), Condition = this.expressionConverter.From(relation.Condition, context), Common = Common(relation.Transmute) } };
 

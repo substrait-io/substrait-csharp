@@ -40,6 +40,91 @@ corpus is still required before package adoption. Existing non-public fixture
 collections cannot be copied into this repository without the provenance review
 described in `tests/README.md`.
 
+## Multi-relation plans and references
+
+Plan conversion supports any ordered mixture of root and non-root entries,
+including multiple independent outputs, shared subplans, and empty root name
+lists. Binary and protobuf JSON round trips preserve entry order, root names,
+version, and reference ordinals. References can point forward or backward,
+including to a root's input, and form acyclic chains or shared DAGs.
+
+### API migration and ordering
+
+- `IPlan.Relations : IReadOnlyList<IPlan.IRelation>` is the authoritative list
+  of **all** entries. `IPlan.IRelation.Input` is the entry's relation tree.
+  `IPlan.IRoot` extends `IRelation` and adds `Names`.
+- Custom `IPlan` implementations must implement the new `Relations` property
+  and recompile. `IRoot.Input` is now inherited from `IRelation` rather than
+  declared directly on `IRoot`; this is an approved preview API change.
+- Existing `new Plan(IEnumerable<IPlan.IRoot>, IVersion)` and `Plan.Root`
+  construction remain available. `IPlan.Roots` remains an ordered root-only
+  projection; its indexes are **not** subtree ordinals.
+- Use `Plan.Relation(IRel input)` for non-root entries and
+  `Plan.FromRelations(IEnumerable<IPlan.IRelation>, IVersion)` for mixed
+  advanced composition. The factory snapshots the supplied entry list.
+- `new PlanBuilder(IVersion? version = null)` defaults to `Version.Current`.
+  `RegisterSubplan(IRel)` appends a non-root entry and returns a `Reference`;
+  `AddRoot(IRel, IEnumerable<string>)` appends a root and also returns a
+  `Reference`, allowing later entries to reference that root's input.
+  Both operations consume an ordinal in the same zero-based sequence.
+- Each registration adds an entry, even for the same or an equal relation
+  instance. Merely reusing an inline relation object does not introduce a
+  reference or a top-level entry. Register once and reuse the returned reference
+  when sharing is intended.
+- `Build()` produces an immutable `Plan` snapshot. Appending registrations
+  afterward neither changes earlier plans nor renumbers existing entries.
+
+`Reference : ZeroInput` exposes `SubtreeOrdinal` and `Target`. Its target is
+the referenced entry's **input instance**, not a copy or a root wrapper.
+The reference's schema comes from that input, including its remapping; root
+output names never alter the schema. Relation visitors treat references as
+leaves: `Target` is not an `Inputs` child. Traverse `Relations` explicitly when
+processing the complete plan.
+
+Reference equality and hashing use the ordinal rather than recursively following
+the target. An ordinal identifies an edge within a particular plan, not a globally
+unique relation. Plan equality and hashing include every entry's kind, position,
+input, root names, and the plan version, so different target entry contents remain
+significant.
+
+### Validation and advanced composition
+
+The builder validates dependencies and correlation during registration, and
+`Build()` validates the complete snapshot. A builder accepts only references
+issued by itself, including those nested in expression subqueries; references
+from another builder or the public constructor are rejected.
+
+Advanced callers may construct `new Reference(int subtreeOrdinal, IRel target)`
+and use `Plan.FromRelations` to assemble forward references. A negative ordinal
+is rejected by the constructor. Full plan validation rejects out-of-range
+ordinals, targets that are not the exact input instance bound to their ordinal,
+and cyclic dependencies, including dependencies inside expression subqueries.
+Structural equality of two target trees is not enough to satisfy the identity
+binding. Invalid composed plans report `ArgumentException`; malformed wire
+references, cycles, and unset relation variants report `SerializationException`.
+Standalone relation converters reject references when no plan context is
+available; use the plan converters for reference-bearing graphs.
+
+Wire conversion resolves dependencies iteratively without reordering entries,
+and references to an entry share its single converted input instance. Extension
+anchors are collected across all entries in one plan. Conversion adds no
+nondeterministic metadata. Empty plans remain allowed at construction and
+deserialization, but serialization still requires at least one entry.
+
+### Correlation boundaries
+
+Each top-level entry is converted independently, with no enclosing schemas
+borrowed from its callers. Registering a subtree does not capture the outer
+schema of a later reference site. A `FieldReference.SubqueryLevels` value larger
+than the subquery nesting depth within the entry is unsupported caller-dependent
+correlation and is rejected, even if the entry is only referenced from a subquery.
+
+Nested subqueries can still correlate to enclosing queries **within the same
+entry**. For example, a field one subquery level outward inside an entry's scalar
+subquery is supported; a one-level outer field at the entry's top level is not.
+When extracting a shared subplan, keep its correlated enclosing query inside the
+same entry or remove the caller-dependent correlation before registration.
+
 ## Migration to specification packages
 
 Replacing the v0.73.0 submodule with the 0.104.0 packages changes the preview API

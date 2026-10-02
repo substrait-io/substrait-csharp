@@ -48,6 +48,8 @@ public abstract class Rel : IRel, IEquatable<Rel>, INodeEquatable<IRel>
     /// <inheritdoc/>
     public bool HasHashCode => this.hashCode.IsValueCreated;
 
+    internal bool HasRecordType => this.recordType.IsValueCreated;
+
     /// <inheritdoc/>
     public abstract TOutput Accept<TContext, TOutput>(RelVisitor<TContext, TOutput> visitor, TContext context);
 

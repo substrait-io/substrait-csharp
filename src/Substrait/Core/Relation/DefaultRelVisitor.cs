@@ -12,6 +12,9 @@ namespace Substrait.Core.Relation;
 public abstract class DefaultRelVisitor<TContext, TOutput> : RelVisitor<TContext, TOutput>
 {
     /// <inheritdoc/>
+    public override TOutput Visit(Reference op, TContext context) => this.DefaultVisit(op, context);
+
+    /// <inheritdoc/>
     public override TOutput Visit(Aggregate op, TContext context)
     {
         return this.DefaultVisit(op, context);

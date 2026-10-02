@@ -28,6 +28,8 @@ public class ProtoToRelConverter
     private readonly ExtensionsDictionary.StrictMode strictMode;
     private readonly ProtoToTypeConverter typeConverter;
 
+    internal Func<int, IRel>? ReferenceResolver { get; set; }
+
     /// <summary>
     /// Initializes a converter using standard extensions.
     /// </summary>
@@ -83,6 +85,15 @@ public class ProtoToRelConverter
             var (current, inputs, destination, inputCount) = stack.Pop();
             switch (current.RelTypeCase)
             {
+                case ProtoRel.RelTypeOneofCase.Reference:
+                    int ordinal = current.Reference.SubtreeOrdinal;
+                    if (this.ReferenceResolver is null)
+                    {
+                        throw new SerializationException($"Reference ordinal {ordinal} requires a plan reference context. Convert the containing plan instead.");
+                    }
+
+                    destination.Add(new Reference(ordinal, this.ReferenceResolver(ordinal)));
+                    break;
                 case ProtoRel.RelTypeOneofCase.Aggregate:
                     ProcessSingleInput(current, current.Aggregate.Input, inputs, destination, inputCount,
                         input => this.CreateAggregate(current.Aggregate, input, enclosingSchemas), stack);
