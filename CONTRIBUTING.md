@@ -68,6 +68,25 @@ Do not remove or change shipped APIs without explicitly documenting and
 reviewing the breaking change. Include tests and documentation for public API
 changes.
 
+## License headers and attribution
+
+Use an SPDX-only header for independently written new C# files:
+
+```csharp
+// SPDX-License-Identifier: Apache-2.0
+```
+
+Preserve existing copyright notices in donated code and in files copied,
+extracted, moved, or adapted from it. A new filename or a later commit does not
+establish independent authorship. Check the source and PR history before
+changing attribution; do not add Microsoft attribution solely to match nearby
+files.
+
+The formatter intentionally does not enforce a single file-header template:
+both SPDX-only headers and headers retaining inherited copyright notices are
+valid. Review header changes for provenance rather than normalizing all files
+to one form.
+
 ## Pull requests
 
 Use the pull request template and keep each change focused. Explain its
