@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Substrait.Core.Expression;
+using Substrait.Core.Metadata;
 using Substrait.Protobuf;
 
 namespace Substrait.Core.Relation;
@@ -9,14 +10,30 @@ namespace Substrait.Core.Relation;
 /// <summary>
 /// An abstract physical binary JOIN relational operator, <see cref="JoinRel"/>.
 /// </summary>
-/// <param name="left">Left input relation.</param>
-/// <param name="right">Right input relation.</param>
-/// <param name="type">Type of join.</param>
-/// <param name="postJoinFilter">Post-join filter.</param>
-/// <param name="transmute">Remap to apply on the output.</param>
-public abstract class PhysicalJoin(IRel left, IRel right, AbstractJoin.JoinType type, IExpression? postJoinFilter, Remap? transmute)
-    : AbstractJoin(left, right, type, postJoinFilter, transmute)
+public abstract class PhysicalJoin : AbstractJoin
 {
+    /// <summary>Initializes a physical join.</summary>
+    /// <param name="left">Left input.</param>
+    /// <param name="right">Right input.</param>
+    /// <param name="type">Join type.</param>
+    /// <param name="postJoinFilter">Optional post-join filter.</param>
+    /// <param name="transmute">Output mapping.</param>
+    public PhysicalJoin(IRel left, IRel right, JoinType type, IExpression? postJoinFilter, Remap? transmute)
+        : base(left, right, type, postJoinFilter, transmute)
+    {
+    }
+
+    /// <summary>Initializes a physical join with explicit metadata.</summary>
+    /// <param name="metadata">Immutable metadata, including the output mapping.</param>
+    /// <param name="left">Left input.</param>
+    /// <param name="right">Right input.</param>
+    /// <param name="type">Join type.</param>
+    /// <param name="postJoinFilter">Optional post-join filter.</param>
+    protected PhysicalJoin(RelationMetadata metadata, IRel left, IRel right, JoinType type, IExpression? postJoinFilter)
+        : base(metadata, left, right, type, postJoinFilter)
+    {
+    }
+
     /// <summary>
     /// Join key comparison.
     /// </summary>

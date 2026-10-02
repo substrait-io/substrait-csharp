@@ -3,6 +3,7 @@
 
 using System.Collections.Immutable;
 using Substrait.Core.Expression;
+using Substrait.Core.Metadata;
 using Substrait.Core.Type;
 using Substrait.Tools;
 
@@ -33,7 +34,17 @@ public sealed class Project : SingleInput
     public Project(IRel input, IEnumerable<IExpression> expressions, Remap? transmute)
       : this(input, expressions)
     {
-        this.Transmute = transmute;
+        this.Metadata = RelationMetadata.FromRemap(transmute);
+    }
+
+    /// <summary>Initializes a project with explicit metadata.</summary>
+    /// <param name="metadata">Immutable metadata, including the output mapping.</param>
+    /// <param name="input">Input relation.</param>
+    /// <param name="expressions">Computed expressions.</param>
+    public Project(RelationMetadata metadata, IRel input, IEnumerable<IExpression> expressions)
+        : this(input, expressions)
+    {
+        this.Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
     }
 
     /// <inheritdoc/>
@@ -45,7 +56,7 @@ public sealed class Project : SingleInput
     public IReadOnlyList<IExpression> Expressions { get; }
 
     /// <inheritdoc/>
-    public override Remap? Transmute { get; }
+    public override RelationMetadata Metadata { get; } = RelationMetadata.Direct;
 
     /// <inheritdoc/>
     public override TOutput Accept<TContext, TOutput>(RelVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);

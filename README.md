@@ -73,7 +73,9 @@ for changes from the previously bundled v0.73.0 specification.
 
 Generated [read-only metadata facades](docs/metadata-facades.md) provide immutable
 snapshots of protobuf relation metadata, including opaque advanced extensions.
-They are currently standalone APIs; relation conversion integration is separate.
+Supported relations preserve common fields, operator extensions, and named-table
+extensions through conversion. Relation anchors are validated across all plan
+entries and subqueries.
 
 Use `ProtoToPlanConverter` and `PlanToProtoConverter` to convert between
 generated protobuf plans and the immutable internal representation. Extension
@@ -84,6 +86,14 @@ function references but cannot attach their declarations.
 `FileUtils` reads and writes protobuf binary and protobuf JSON plan files.
 Converting a plan does not add nondeterministic metadata, so repeated protobuf
 serialization of the same internal plan produces the same bytes.
+
+`ProtoToPlanConverter.FromBytes`, `FromStream`, and `FromFile` parse binary
+protobuf privately, avoiding redundant metadata copies; `FromJson` explicitly
+parses protobuf JSON and accepts a parser with registered `Any` payload types.
+Caller-provided streams remain open. The existing `From(Protobuf.Plan)` and
+standalone relation converters copy retained metadata, and protobuf exports
+remain detached. See [metadata ownership and API migration](docs/metadata-facades.md)
+for constructor, equality, anchor, and format details.
 
 Plans can contain ordered mixtures of roots and reusable non-root relations.
 Use `PlanBuilder` to assign reference ordinals and safely share a registered

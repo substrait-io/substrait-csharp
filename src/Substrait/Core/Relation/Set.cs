@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Immutable;
+using Substrait.Core.Metadata;
 using Substrait.Core.Type;
 using Substrait.Protobuf;
 using Substrait.Tools;
@@ -35,7 +36,17 @@ public sealed class Set : NInput
     public Set(SetOp setOp, IEnumerable<IRel> inputs, Remap? transmute)
       : this(setOp, inputs)
     {
-        this.Transmute = transmute;
+        this.Metadata = RelationMetadata.FromRemap(transmute);
+    }
+
+    /// <summary>Initializes a set operation with explicit metadata.</summary>
+    /// <param name="metadata">Immutable metadata, including the output mapping.</param>
+    /// <param name="setOp">Set operation.</param>
+    /// <param name="inputs">Input relations.</param>
+    public Set(RelationMetadata metadata, SetOp setOp, IEnumerable<IRel> inputs)
+        : this(setOp, inputs)
+    {
+        this.Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
     }
 
     /// <summary>
@@ -95,7 +106,7 @@ public sealed class Set : NInput
     public SetOp SetOperation { get; }
 
     /// <inheritdoc/>
-    public override Remap? Transmute { get; }
+    public override RelationMetadata Metadata { get; } = RelationMetadata.Direct;
 
     /// <inheritdoc/>
     public override IReadOnlyList<IRel> Inputs { get; }

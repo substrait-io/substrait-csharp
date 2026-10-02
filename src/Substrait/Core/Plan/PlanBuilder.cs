@@ -11,6 +11,7 @@ namespace Substrait.Core.Plan;
 public sealed class PlanBuilder
 {
     private readonly List<IPlan.IRelation> relations = new();
+    private readonly Dictionary<uint, string> anchors = new();
 
     // Shared by this builder's references without retaining the builder itself.
     private readonly object owner = new();
@@ -49,8 +50,22 @@ public sealed class PlanBuilder
     private Reference Add(IPlan.IRelation entry)
     {
         int ordinal = this.relations.Count;
-        _ = PlanValidation.ValidateEntry(entry.Input, ordinal, this.relations, this.owner);
+        var entryAnchors = new Dictionary<uint, string>();
+        _ = PlanValidation.ValidateEntry(entry.Input, ordinal, this.relations, this.owner, entryAnchors);
+        foreach (KeyValuePair<uint, string> anchor in entryAnchors)
+        {
+            if (this.anchors.TryGetValue(anchor.Key, out string? previous))
+            {
+                throw new ArgumentException($"{anchor.Value}: duplicate relation anchor {anchor.Key}, already defined at {previous}.");
+            }
+        }
+
         this.relations.Add(entry);
+        foreach (KeyValuePair<uint, string> anchor in entryAnchors)
+        {
+            this.anchors.Add(anchor.Key, anchor.Value);
+        }
+
         return new Reference(ordinal, entry.Input, this.owner);
     }
 }

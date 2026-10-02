@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Substrait.Core.Expression;
+using Substrait.Core.Metadata;
 using Substrait.Core.Type;
 using Substrait.Tools;
 
@@ -32,7 +33,17 @@ public sealed class EmptyRead : Read
     public EmptyRead(NamedStruct initialSchema, IExpression? filter, Remap? transmute)
       : this(initialSchema, filter)
     {
-        this.Transmute = transmute;
+        this.Metadata = RelationMetadata.FromRemap(transmute);
+    }
+
+    /// <summary>Initializes an empty read with explicit metadata.</summary>
+    /// <param name="metadata">Immutable metadata, including the output mapping.</param>
+    /// <param name="initialSchema">Read schema.</param>
+    /// <param name="filter">Optional filter.</param>
+    public EmptyRead(RelationMetadata metadata, NamedStruct initialSchema, IExpression? filter)
+        : this(initialSchema, filter)
+    {
+        this.Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
     }
 
     /// <inheritdoc/>
@@ -42,7 +53,7 @@ public sealed class EmptyRead : Read
     public override IExpression? Filter { get; }
 
     /// <inheritdoc/>
-    public override Remap? Transmute { get; }
+    public override RelationMetadata Metadata { get; } = RelationMetadata.Direct;
 
     /// <inheritdoc/>
     public override TOutput Accept<TContext, TOutput>(RelVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);

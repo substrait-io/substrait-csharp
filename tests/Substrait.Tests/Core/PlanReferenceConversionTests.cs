@@ -453,7 +453,7 @@ public sealed class PlanReferenceConversionTests
         return new ProtoRel { Project = project };
     }
 
-    private static ProtoExpression WireSubquery(int kind, ProtoRel relation) => kind switch
+    internal static ProtoExpression WireSubquery(int kind, ProtoRel relation) => kind switch
     {
         0 => new() { Subquery = new() { Scalar = new() { Input = relation } } },
         1 => new()
@@ -505,7 +505,7 @@ public sealed class PlanReferenceConversionTests
         },
     };
 
-    private static IRel GetSubquery(IExpression expression) => expression switch
+    internal static IRel GetSubquery(IExpression expression) => expression switch
     {
         CoreExpression.ScalarSubquery scalar => scalar.Subquery,
         CoreExpression.InPredicateSubquery predicate => predicate.Subquery,

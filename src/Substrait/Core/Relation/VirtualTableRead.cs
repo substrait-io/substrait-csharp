@@ -3,6 +3,7 @@
 
 using System.Collections.Immutable;
 using Substrait.Core.Expression;
+using Substrait.Core.Metadata;
 using Substrait.Core.Type;
 using Substrait.Tools;
 using Struct = Substrait.Core.Expression.Expression.Struct;
@@ -37,7 +38,18 @@ public sealed class VirtualTableRead : Read
     public VirtualTableRead(NamedStruct initialSchema, IEnumerable<Struct> rows, IExpression? filter, Remap? transmute)
         : this(initialSchema, rows, filter)
     {
-        this.Transmute = transmute;
+        this.Metadata = RelationMetadata.FromRemap(transmute);
+    }
+
+    /// <summary>Initializes a virtual read with explicit metadata.</summary>
+    /// <param name="metadata">Immutable metadata, including the output mapping.</param>
+    /// <param name="initialSchema">Read schema.</param>
+    /// <param name="rows">Virtual rows.</param>
+    /// <param name="filter">Optional filter.</param>
+    public VirtualTableRead(RelationMetadata metadata, NamedStruct initialSchema, IEnumerable<Struct> rows, IExpression? filter)
+        : this(initialSchema, rows, filter)
+    {
+        this.Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
     }
 
     /// <inheritdoc/>
@@ -52,7 +64,7 @@ public sealed class VirtualTableRead : Read
     public override IExpression? Filter { get; }
 
     /// <inheritdoc/>
-    public override Remap? Transmute { get; }
+    public override RelationMetadata Metadata { get; } = RelationMetadata.Direct;
 
     /// <inheritdoc/>
     public override TOutput Accept<TContext, TOutput>(RelVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);

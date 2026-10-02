@@ -3,6 +3,7 @@
 
 using System.Collections.Immutable;
 using Substrait.Core.Expression;
+using Substrait.Core.Metadata;
 using Substrait.Protobuf;
 using Substrait.Tools;
 using ProtoBuildInput = Substrait.Protobuf.HashJoinRel.Types.BuildInput;
@@ -41,6 +42,21 @@ public sealed class HashJoin : PhysicalJoin
     /// <param name="buildInput">Build input.</param>
     public HashJoin(IRel left, IRel right, JoinType type, IEnumerable<ComparisonJoinKey> keys, IExpression? postJoinFilter, Remap? transmute, BuildInput buildInput)
         : base(left, right, type, postJoinFilter, transmute)
+    {
+        this.Keys = keys.ToImmutableList();
+        this.BuildLeft = buildInput == BuildInput.Left;
+    }
+
+    /// <summary>Initializes a hash join with explicit metadata.</summary>
+    /// <param name="metadata">Immutable metadata, including the output mapping.</param>
+    /// <param name="left">Left input.</param>
+    /// <param name="right">Right input.</param>
+    /// <param name="type">Join type.</param>
+    /// <param name="keys">Join keys.</param>
+    /// <param name="postJoinFilter">Optional post-join filter.</param>
+    /// <param name="buildInput">Build input.</param>
+    public HashJoin(RelationMetadata metadata, IRel left, IRel right, JoinType type, IEnumerable<ComparisonJoinKey> keys, IExpression? postJoinFilter, BuildInput buildInput = BuildInput.Unspecified)
+        : base(metadata, left, right, type, postJoinFilter)
     {
         this.Keys = keys.ToImmutableList();
         this.BuildLeft = buildInput == BuildInput.Left;

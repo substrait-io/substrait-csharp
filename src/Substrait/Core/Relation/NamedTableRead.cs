@@ -3,6 +3,7 @@
 
 using System.Collections.Immutable;
 using Substrait.Core.Expression;
+using Substrait.Core.Metadata;
 using Substrait.Core.Type;
 using Substrait.Tools;
 
@@ -36,8 +37,24 @@ public sealed class NamedTableRead : Read
     public NamedTableRead(NamedStruct initialSchema, IEnumerable<string> names, IExpression? filter, Remap? transmute)
         : this(initialSchema, names, filter)
     {
-        this.Transmute = transmute;
+        this.Metadata = RelationMetadata.FromRemap(transmute);
     }
+
+    /// <summary>Initializes a named read with explicit relation and table metadata.</summary>
+    /// <param name="metadata">Immutable relation metadata, including the output mapping.</param>
+    /// <param name="initialSchema">Read schema.</param>
+    /// <param name="names">Qualified table names.</param>
+    /// <param name="filter">Optional filter.</param>
+    /// <param name="tableAdvancedExtension">Extension on the named table, separate from read and common extensions.</param>
+    public NamedTableRead(RelationMetadata metadata, NamedStruct initialSchema, IEnumerable<string> names, IExpression? filter, ReadOnlyAdvancedExtension? tableAdvancedExtension = null)
+        : this(initialSchema, names, filter)
+    {
+        this.Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
+        this.TableAdvancedExtension = tableAdvancedExtension;
+    }
+
+    /// <summary>Gets the extension on the named-table message.</summary>
+    public ReadOnlyAdvancedExtension? TableAdvancedExtension { get; }
 
     /// <inheritdoc/>
     public override NamedStruct InitialSchema { get; }
@@ -51,7 +68,7 @@ public sealed class NamedTableRead : Read
     public override IExpression? Filter { get; }
 
     /// <inheritdoc/>
-    public override Remap? Transmute { get; }
+    public override RelationMetadata Metadata { get; } = RelationMetadata.Direct;
 
     /// <inheritdoc/>
     public override TOutput Accept<TContext, TOutput>(RelVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
@@ -59,13 +76,14 @@ public sealed class NamedTableRead : Read
     /// <inheritdoc/>
     public override int GetNodeHashCode()
     {
-        return HashCode.Combine(nameof(NamedTableRead), this.Names.CombineHashCodes(), this.InitialSchema, this.Filter);
+        return HashCode.Combine(nameof(NamedTableRead), this.Names.CombineHashCodes(), this.InitialSchema, this.Filter, this.TableAdvancedExtension);
     }
 
     /// <inheritdoc/>
     public override bool NodeEquals(IRel other)
     {
         return other is NamedTableRead o
+            && Equals(this.TableAdvancedExtension, o.TableAdvancedExtension)
             && Enumerable.SequenceEqual(this.Names, o.Names)
             && this.InitialSchema.Equals(o.InitialSchema)
             && this.Filter.EqualsWithNull(o.Filter);

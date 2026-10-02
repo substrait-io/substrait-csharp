@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Runtime.Serialization;
+using Google.Protobuf;
 using Substrait.Core.Extension;
 using Substrait.Core.Relation;
 using Substrait.Core.Relation.Converters;
@@ -41,10 +42,47 @@ public class ProtoToPlanConverter
     /// <returns>The internal plan.</returns>
     public IPlan From(
         Protobuf.Plan plan,
-        ExtensionsDictionary.StrictMode strictMode = ExtensionsDictionary.StrictMode.STRICT)
+        ExtensionsDictionary.StrictMode strictMode = ExtensionsDictionary.StrictMode.STRICT) =>
+        this.FromCore(plan, strictMode, ownsMetadata: false);
+
+    /// <summary>Parses binary protobuf bytes privately and converts without copying retained metadata.</summary>
+    /// <param name="data">Binary protobuf plan bytes.</param>
+    /// <param name="strictMode">The extension resolution mode.</param>
+    /// <returns>The validated immutable plan.</returns>
+    public IPlan FromBytes(byte[] data, ExtensionsDictionary.StrictMode strictMode = ExtensionsDictionary.StrictMode.STRICT) =>
+        this.FromCore(Protobuf.Plan.Parser.ParseFrom(data), strictMode, ownsMetadata: true);
+
+    /// <summary>Parses a binary protobuf stream privately. The caller's stream remains open.</summary>
+    /// <param name="stream">The readable binary stream at its current position.</param>
+    /// <param name="strictMode">The extension resolution mode.</param>
+    /// <returns>The validated immutable plan.</returns>
+    public IPlan FromStream(Stream stream, ExtensionsDictionary.StrictMode strictMode = ExtensionsDictionary.StrictMode.STRICT) =>
+        this.FromCore(Protobuf.Plan.Parser.ParseFrom(stream), strictMode, ownsMetadata: true);
+
+    /// <summary>Reads a binary protobuf file, closing the file on success or failure.</summary>
+    /// <param name="path">The binary plan file.</param>
+    /// <param name="strictMode">The extension resolution mode.</param>
+    /// <returns>The validated immutable plan.</returns>
+    public IPlan FromFile(string path, ExtensionsDictionary.StrictMode strictMode = ExtensionsDictionary.StrictMode.STRICT)
     {
+        using FileStream stream = File.OpenRead(path);
+        return this.FromStream(stream, strictMode);
+    }
+
+    /// <summary>Parses protobuf JSON privately. Any payloads require descriptors in the supplied parser's type registry.</summary>
+    /// <param name="json">The protobuf JSON plan.</param>
+    /// <param name="strictMode">The extension resolution mode.</param>
+    /// <param name="parser">Optional protobuf JSON parser with payload descriptors.</param>
+    /// <returns>The validated immutable plan.</returns>
+    public IPlan FromJson(string json, ExtensionsDictionary.StrictMode strictMode = ExtensionsDictionary.StrictMode.STRICT, JsonParser? parser = null) =>
+        this.FromCore((parser ?? JsonParser.Default).Parse<Protobuf.Plan>(json), strictMode, ownsMetadata: true);
+
+    private IPlan FromCore(Protobuf.Plan plan, ExtensionsDictionary.StrictMode strictMode, bool ownsMetadata)
+    {
+        _ = plan ?? throw new ArgumentNullException(nameof(plan));
         var inputs = new Protobuf.Rel[plan.Relations.Count];
         var dependencies = new List<IReadOnlyList<int>>(plan.Relations.Count);
+        var anchors = new Dictionary<uint, string>();
         for (int ordinal = 0; ordinal < plan.Relations.Count; ++ordinal)
         {
             Protobuf.PlanRel entry = plan.Relations[ordinal];
@@ -54,12 +92,12 @@ public class ProtoToPlanConverter
                 Protobuf.PlanRel.RelTypeOneofCase.Rel => entry.Rel,
                 _ => throw new SerializationException($"Plan relation ordinal {ordinal} must have a root input or a non-root relation; its variant or input is unset."),
             };
-            dependencies.Add(ProtoPlanDependencies.Find(inputs[ordinal], ordinal, plan.Relations.Count));
+            dependencies.Add(ProtoPlanDependencies.Find(inputs[ordinal], ordinal, plan.Relations.Count, anchors));
         }
 
         IReadOnlyList<int> order = PlanValidation.GetDependencyOrder(dependencies, message => new SerializationException(message));
         var converted = new IRel?[plan.Relations.Count];
-        var relationConverter = this.GetProtoRelConverter(new ExtensionsDictionary.Builder(plan).Build(), strictMode);
+        var relationConverter = new ProtoToRelConverter(new ExtensionsDictionary.Builder(plan).Build(), this.extensions, strictMode, ownsMetadata);
         relationConverter.ReferenceResolver = ordinal =>
         {
             PlanValidation.ValidateOrdinal(ordinal, converted.Length, "Plan reference resolution", message => new SerializationException(message));
@@ -87,7 +125,7 @@ public class ProtoToPlanConverter
                 : new Plan.Relation(input);
         });
 
-        Protobuf.Version version = plan.Version;
+        Protobuf.Version version = plan.Version ?? throw new SerializationException("Plan version is required by this converter.");
         return Plan.FromRelations(
             entries,
             new Version(

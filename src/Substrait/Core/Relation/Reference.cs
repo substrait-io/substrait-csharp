@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
+using Substrait.Core.Metadata;
 using Substrait.Core.Type;
 using Substrait.Tools;
 
@@ -53,6 +54,9 @@ public sealed class Reference : ZeroInput
 
     /// <inheritdoc/>
     public override Remap? Transmute => null;
+
+    /// <inheritdoc/>
+    public override RelationMetadata Metadata => RelationMetadata.Empty;
 
     /// <summary>
     /// Gets the originating builder's opaque identity token, or null for explicitly

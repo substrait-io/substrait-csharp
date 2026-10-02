@@ -3,6 +3,7 @@
 
 using System.Collections.Immutable;
 using Substrait.Core.Expression;
+using Substrait.Core.Metadata;
 using Substrait.Core.Type;
 using Substrait.Tools;
 
@@ -39,7 +40,19 @@ public sealed class Aggregate : SingleInput
     public Aggregate(IRel input, IEnumerable<IExpression> groupingExpressions, IEnumerable<Grouping> groupings, IEnumerable<Measure> measures, Remap? transmute)
         : this(input, groupingExpressions, groupings, measures)
     {
-        this.Transmute = transmute;
+        this.Metadata = RelationMetadata.FromRemap(transmute);
+    }
+
+    /// <summary>Initializes an aggregate with explicit metadata.</summary>
+    /// <param name="metadata">Immutable metadata, including the output mapping.</param>
+    /// <param name="input">Input relation.</param>
+    /// <param name="groupingExpressions">Grouping expressions.</param>
+    /// <param name="groupings">Grouping expression references.</param>
+    /// <param name="measures">Aggregate measures.</param>
+    public Aggregate(RelationMetadata metadata, IRel input, IEnumerable<IExpression> groupingExpressions, IEnumerable<Grouping> groupings, IEnumerable<Measure> measures)
+        : this(input, groupingExpressions, groupings, measures)
+    {
+        this.Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
     }
 
     /// <inheritdoc/>
@@ -62,7 +75,7 @@ public sealed class Aggregate : SingleInput
     public IReadOnlyList<Measure> Measures { get; }
 
     /// <inheritdoc/>
-    public override Remap? Transmute { get; }
+    public override RelationMetadata Metadata { get; } = RelationMetadata.Direct;
 
     /// <inheritdoc/>
     public override TOutput Accept<TContext, TOutput>(RelVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);

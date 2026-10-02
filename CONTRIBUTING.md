@@ -93,6 +93,15 @@ will never subsequently be modified or exposed. Nested facades share that owned
 graph without further cloning. See [metadata facades](docs/metadata-facades.md)
 for the public API and its scope.
 
+## Plan traversal
+
+Plan dependency discovery uses typed protobuf traversal rather than runtime
+descriptor access. When adding relation or expression support, update the
+child helpers in `ProtoPlanDependencies` and their coverage tests. Include all
+expression-bearing fields, subquery operands, and recursive schema/literal/
+selection structures: the latter retain cycle detection for caller-created
+protobuf objects. Acyclic hints and opaque extension payloads are not traversed.
+
 ## Public API changes
 
 The Public API analyzer tracks the package surface in

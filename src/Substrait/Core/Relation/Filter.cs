@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Substrait.Core.Expression;
+using Substrait.Core.Metadata;
 using Substrait.Core.Type;
 
 namespace Substrait.Core.Relation;
@@ -31,7 +32,17 @@ public sealed class Filter : SingleInput
     public Filter(IRel input, IExpression condition, Remap? transmute)
       : this(input, condition)
     {
-        this.Transmute = transmute;
+        this.Metadata = RelationMetadata.FromRemap(transmute);
+    }
+
+    /// <summary>Initializes a filter with explicit metadata.</summary>
+    /// <param name="metadata">Immutable metadata, including the output mapping.</param>
+    /// <param name="input">Input relation.</param>
+    /// <param name="condition">Filter condition.</param>
+    public Filter(RelationMetadata metadata, IRel input, IExpression condition)
+        : this(input, condition)
+    {
+        this.Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
     }
 
     /// <inheritdoc/>
@@ -43,7 +54,7 @@ public sealed class Filter : SingleInput
     public IExpression Condition { get; }
 
     /// <inheritdoc/>
-    public override Remap? Transmute { get; }
+    public override RelationMetadata Metadata { get; } = RelationMetadata.Direct;
 
     /// <inheritdoc/>
     public override TOutput Accept<TContext, TOutput>(RelVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);

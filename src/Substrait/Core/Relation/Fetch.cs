@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Substrait.Core.Expression;
+using Substrait.Core.Metadata;
 using Substrait.Core.Type;
 
 namespace Substrait.Core.Relation;
@@ -34,7 +35,18 @@ public sealed class Fetch : SingleInput
     public Fetch(IRel input, IExpression count, IExpression offset, Remap? transmute)
       : this(input, count, offset)
     {
-        this.Transmute = transmute;
+        this.Metadata = RelationMetadata.FromRemap(transmute);
+    }
+
+    /// <summary>Initializes a fetch with explicit metadata.</summary>
+    /// <param name="metadata">Immutable metadata, including the output mapping.</param>
+    /// <param name="input">Input relation.</param>
+    /// <param name="count">Row count expression.</param>
+    /// <param name="offset">Row offset expression.</param>
+    public Fetch(RelationMetadata metadata, IRel input, IExpression count, IExpression offset)
+        : this(input, count, offset)
+    {
+        this.Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
     }
 
     /// <inheritdoc/>
@@ -52,7 +64,7 @@ public sealed class Fetch : SingleInput
     public IExpression Offset { get; }
 
     /// <inheritdoc/>
-    public override Remap? Transmute { get; }
+    public override RelationMetadata Metadata { get; } = RelationMetadata.Direct;
 
     /// <inheritdoc/>
     public override TOutput Accept<TContext, TOutput>(RelVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
