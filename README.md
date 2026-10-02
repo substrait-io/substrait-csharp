@@ -71,6 +71,10 @@ for changes from the previously bundled v0.73.0 specification.
 
 ## Conversion and serialization
 
+Generated [read-only metadata facades](docs/metadata-facades.md) provide immutable
+snapshots of protobuf relation metadata, including opaque advanced extensions.
+They are currently standalone APIs; relation conversion integration is separate.
+
 Use `ProtoToPlanConverter` and `PlanToProtoConverter` to convert between
 generated protobuf plans and the immutable internal representation. Extension
 references can be resolved strictly or selectively with
