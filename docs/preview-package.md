@@ -40,6 +40,16 @@ corpus is still required before package adoption. Existing non-public fixture
 collections cannot be copied into this repository without the provenance review
 described in `tests/README.md`.
 
+## Read-only metadata facades
+
+`Substrait.Core.Metadata` adds generated facades for common relation metadata
+and advanced extensions. Public imports and exports deep-copy mutable protobuf
+messages; nested access exposes read-only facades and collections. Unknown fields,
+opaque `Any` payloads, and field presence are retained. These standalone APIs
+do not yet change relation conversion, validate plan anchors, or add parsing
+entry points. See [metadata facades](metadata-facades.md) for ownership, equality,
+and protobuf JSON limitations.
+
 ## Multi-relation plans and references
 
 Plan conversion supports any ordered mixture of root and non-root entries,

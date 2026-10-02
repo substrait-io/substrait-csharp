@@ -21,6 +21,7 @@ Run the same validation used by continuous integration:
 
 ```shell
 dotnet restore Substrait.sln
+dotnet run --project tools/Substrait.MetadataGenerator --configuration Release --no-restore -- --check
 dotnet format Substrait.sln --verify-no-changes --no-restore
 dotnet build Substrait.sln --configuration Release --no-restore
 dotnet test Substrait.sln --configuration Release --no-build
@@ -54,10 +55,43 @@ version update is needed. Its Git hash comes from the package's `SubstraitGitHas
 assembly metadata when available; older packages without that metadata leave it
 empty.
 
+Regenerate the read-only metadata facades as described below when updating the
+protobuf package. Review the generated diff and update the public API baseline
+explicitly; regeneration does not approve new public APIs.
+
 Run the solution tests and standalone package smoke tests: upstream releases
 can change generated APIs, grammar visitors, and extension YAML. Keep fixture
 provenance requirements in `tests/README.md` in mind when adding or updating test
 data.
+
+## Generated metadata facades
+
+The checked-in files under `src/Substrait/Core/Metadata/Generated` are produced
+by `tools/Substrait.MetadataGenerator`. Do not edit them manually. The generator
+references the same centrally pinned protobuf package as the library and starts
+from the `RelCommon` and `AdvancedExtension` descriptors, following only their
+message-field dependencies. It does not reference the core library or run during
+normal library compilation.
+
+```shell
+dotnet run --project tools/Substrait.MetadataGenerator -- --write
+dotnet run --project tools/Substrait.MetadataGenerator -- --check
+```
+
+`--write` updates missing or stale generated files. `--check` verifies exact,
+deterministic output without modifying files and fails on missing, stale, or
+unexpected files. Both commands reject unexpected files in the generated
+directory; explicitly remove obsolete generated files after reviewing a schema
+update. Unsupported field shapes fail generation rather than being omitted.
+Generator tests target .NET 10; facade tests run on both .NET 8 and .NET 10.
+
+Generation uses protobuf field descriptors and verified CLR names. Emitted
+properties access typed members directly, with no runtime reflection. Public
+imports and exports copy mutable protobuf data. Internal `FromOwnedProto`
+factories must only receive privately owned messages whose entire mutable graph
+will never subsequently be modified or exposed. Nested facades share that owned
+graph without further cloning. See [metadata facades](docs/metadata-facades.md)
+for the public API and its scope.
 
 ## Public API changes
 

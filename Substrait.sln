@@ -7,6 +7,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Substrait", "src\Substrait\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Substrait.Tests", "tests\Substrait.Tests\Substrait.Tests.csproj", "{8A5E418B-5876-466C-AFFF-0317820C7E52}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{07C2787E-EAC7-C090-1BA3-A61EC2A24D84}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Substrait.MetadataGenerator", "tools\Substrait.MetadataGenerator\Substrait.MetadataGenerator.csproj", "{C4DB4795-2448-4CCE-8803-836671100E3A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Substrait.MetadataGenerator.Tests", "tests\Substrait.MetadataGenerator.Tests\Substrait.MetadataGenerator.Tests.csproj", "{69496364-8D17-47FC-A722-9DA6A2B0CC47}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,5 +29,17 @@ Global
 		{8A5E418B-5876-466C-AFFF-0317820C7E52}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8A5E418B-5876-466C-AFFF-0317820C7E52}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8A5E418B-5876-466C-AFFF-0317820C7E52}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C4DB4795-2448-4CCE-8803-836671100E3A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C4DB4795-2448-4CCE-8803-836671100E3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C4DB4795-2448-4CCE-8803-836671100E3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C4DB4795-2448-4CCE-8803-836671100E3A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{69496364-8D17-47FC-A722-9DA6A2B0CC47}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{69496364-8D17-47FC-A722-9DA6A2B0CC47}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{69496364-8D17-47FC-A722-9DA6A2B0CC47}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{69496364-8D17-47FC-A722-9DA6A2B0CC47}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{C4DB4795-2448-4CCE-8803-836671100E3A} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
+		{69496364-8D17-47FC-A722-9DA6A2B0CC47} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

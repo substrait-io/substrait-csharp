@@ -1,4 +1,92 @@
 #nullable enable
+override Substrait.Core.Metadata.ReadOnlyAdvancedExtension.Equals(object? obj) -> bool
+override Substrait.Core.Metadata.ReadOnlyAdvancedExtension.GetHashCode() -> int
+override Substrait.Core.Metadata.ReadOnlyAny.Equals(object? obj) -> bool
+override Substrait.Core.Metadata.ReadOnlyAny.GetHashCode() -> int
+override Substrait.Core.Metadata.ReadOnlyRelCommon.Equals(object? obj) -> bool
+override Substrait.Core.Metadata.ReadOnlyRelCommon.GetHashCode() -> int
+override Substrait.Core.Metadata.ReadOnlyRelCommonDirect.Equals(object? obj) -> bool
+override Substrait.Core.Metadata.ReadOnlyRelCommonDirect.GetHashCode() -> int
+override Substrait.Core.Metadata.ReadOnlyRelCommonEmit.Equals(object? obj) -> bool
+override Substrait.Core.Metadata.ReadOnlyRelCommonEmit.GetHashCode() -> int
+override Substrait.Core.Metadata.ReadOnlyRelCommonHint.Equals(object? obj) -> bool
+override Substrait.Core.Metadata.ReadOnlyRelCommonHint.GetHashCode() -> int
+override Substrait.Core.Metadata.ReadOnlyRelCommonHintLoadedComputation.Equals(object? obj) -> bool
+override Substrait.Core.Metadata.ReadOnlyRelCommonHintLoadedComputation.GetHashCode() -> int
+override Substrait.Core.Metadata.ReadOnlyRelCommonHintRuntimeConstraint.Equals(object? obj) -> bool
+override Substrait.Core.Metadata.ReadOnlyRelCommonHintRuntimeConstraint.GetHashCode() -> int
+override Substrait.Core.Metadata.ReadOnlyRelCommonHintSavedComputation.Equals(object? obj) -> bool
+override Substrait.Core.Metadata.ReadOnlyRelCommonHintSavedComputation.GetHashCode() -> int
+override Substrait.Core.Metadata.ReadOnlyRelCommonHintStats.Equals(object? obj) -> bool
+override Substrait.Core.Metadata.ReadOnlyRelCommonHintStats.GetHashCode() -> int
+static Substrait.Core.Metadata.ReadOnlyAdvancedExtension.FromProto(Substrait.Protobuf.AdvancedExtension! value) -> Substrait.Core.Metadata.ReadOnlyAdvancedExtension!
+static Substrait.Core.Metadata.ReadOnlyAny.FromProto(Google.Protobuf.WellKnownTypes.Any! value) -> Substrait.Core.Metadata.ReadOnlyAny!
+static Substrait.Core.Metadata.ReadOnlyRelCommon.FromProto(Substrait.Protobuf.RelCommon! value) -> Substrait.Core.Metadata.ReadOnlyRelCommon!
+static Substrait.Core.Metadata.ReadOnlyRelCommonDirect.FromProto(Substrait.Protobuf.RelCommon.Types.Direct! value) -> Substrait.Core.Metadata.ReadOnlyRelCommonDirect!
+static Substrait.Core.Metadata.ReadOnlyRelCommonEmit.FromProto(Substrait.Protobuf.RelCommon.Types.Emit! value) -> Substrait.Core.Metadata.ReadOnlyRelCommonEmit!
+static Substrait.Core.Metadata.ReadOnlyRelCommonHint.FromProto(Substrait.Protobuf.RelCommon.Types.Hint! value) -> Substrait.Core.Metadata.ReadOnlyRelCommonHint!
+static Substrait.Core.Metadata.ReadOnlyRelCommonHintLoadedComputation.FromProto(Substrait.Protobuf.RelCommon.Types.Hint.Types.LoadedComputation! value) -> Substrait.Core.Metadata.ReadOnlyRelCommonHintLoadedComputation!
+static Substrait.Core.Metadata.ReadOnlyRelCommonHintRuntimeConstraint.FromProto(Substrait.Protobuf.RelCommon.Types.Hint.Types.RuntimeConstraint! value) -> Substrait.Core.Metadata.ReadOnlyRelCommonHintRuntimeConstraint!
+static Substrait.Core.Metadata.ReadOnlyRelCommonHintSavedComputation.FromProto(Substrait.Protobuf.RelCommon.Types.Hint.Types.SavedComputation! value) -> Substrait.Core.Metadata.ReadOnlyRelCommonHintSavedComputation!
+static Substrait.Core.Metadata.ReadOnlyRelCommonHintStats.FromProto(Substrait.Protobuf.RelCommon.Types.Hint.Types.Stats! value) -> Substrait.Core.Metadata.ReadOnlyRelCommonHintStats!
+Substrait.Core.Metadata.ReadOnlyAdvancedExtension
+Substrait.Core.Metadata.ReadOnlyAdvancedExtension.Enhancement.get -> Substrait.Core.Metadata.ReadOnlyAny?
+Substrait.Core.Metadata.ReadOnlyAdvancedExtension.Equals(Substrait.Core.Metadata.ReadOnlyAdvancedExtension? other) -> bool
+Substrait.Core.Metadata.ReadOnlyAdvancedExtension.Optimization.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Metadata.ReadOnlyAny!>!
+Substrait.Core.Metadata.ReadOnlyAdvancedExtension.ToProto() -> Substrait.Protobuf.AdvancedExtension!
+Substrait.Core.Metadata.ReadOnlyAny
+Substrait.Core.Metadata.ReadOnlyAny.Equals(Substrait.Core.Metadata.ReadOnlyAny? other) -> bool
+Substrait.Core.Metadata.ReadOnlyAny.ToProto() -> Google.Protobuf.WellKnownTypes.Any!
+Substrait.Core.Metadata.ReadOnlyAny.TypeUrl.get -> string!
+Substrait.Core.Metadata.ReadOnlyAny.Value.get -> Google.Protobuf.ByteString!
+Substrait.Core.Metadata.ReadOnlyRelCommon
+Substrait.Core.Metadata.ReadOnlyRelCommon.AdvancedExtension.get -> Substrait.Core.Metadata.ReadOnlyAdvancedExtension?
+Substrait.Core.Metadata.ReadOnlyRelCommon.Direct.get -> Substrait.Core.Metadata.ReadOnlyRelCommonDirect?
+Substrait.Core.Metadata.ReadOnlyRelCommon.Emit.get -> Substrait.Core.Metadata.ReadOnlyRelCommonEmit?
+Substrait.Core.Metadata.ReadOnlyRelCommon.EmitKindCase.get -> Substrait.Protobuf.RelCommon.EmitKindOneofCase
+Substrait.Core.Metadata.ReadOnlyRelCommon.Equals(Substrait.Core.Metadata.ReadOnlyRelCommon? other) -> bool
+Substrait.Core.Metadata.ReadOnlyRelCommon.Hint.get -> Substrait.Core.Metadata.ReadOnlyRelCommonHint?
+Substrait.Core.Metadata.ReadOnlyRelCommon.RelAnchor.get -> uint?
+Substrait.Core.Metadata.ReadOnlyRelCommon.ToProto() -> Substrait.Protobuf.RelCommon!
+Substrait.Core.Metadata.ReadOnlyRelCommonDirect
+Substrait.Core.Metadata.ReadOnlyRelCommonDirect.Equals(Substrait.Core.Metadata.ReadOnlyRelCommonDirect? other) -> bool
+Substrait.Core.Metadata.ReadOnlyRelCommonDirect.ToProto() -> Substrait.Protobuf.RelCommon.Types.Direct!
+Substrait.Core.Metadata.ReadOnlyRelCommonEmit
+Substrait.Core.Metadata.ReadOnlyRelCommonEmit.Equals(Substrait.Core.Metadata.ReadOnlyRelCommonEmit? other) -> bool
+Substrait.Core.Metadata.ReadOnlyRelCommonEmit.OutputMapping.get -> System.Collections.Generic.IReadOnlyList<int>!
+Substrait.Core.Metadata.ReadOnlyRelCommonEmit.ToProto() -> Substrait.Protobuf.RelCommon.Types.Emit!
+Substrait.Core.Metadata.ReadOnlyRelCommonHint
+Substrait.Core.Metadata.ReadOnlyRelCommonHint.AdvancedExtension.get -> Substrait.Core.Metadata.ReadOnlyAdvancedExtension?
+Substrait.Core.Metadata.ReadOnlyRelCommonHint.Alias.get -> string!
+Substrait.Core.Metadata.ReadOnlyRelCommonHint.Constraint.get -> Substrait.Core.Metadata.ReadOnlyRelCommonHintRuntimeConstraint?
+Substrait.Core.Metadata.ReadOnlyRelCommonHint.Equals(Substrait.Core.Metadata.ReadOnlyRelCommonHint? other) -> bool
+Substrait.Core.Metadata.ReadOnlyRelCommonHint.LoadedComputations.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Metadata.ReadOnlyRelCommonHintLoadedComputation!>!
+Substrait.Core.Metadata.ReadOnlyRelCommonHint.OutputNames.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Substrait.Core.Metadata.ReadOnlyRelCommonHint.SavedComputations.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Metadata.ReadOnlyRelCommonHintSavedComputation!>!
+Substrait.Core.Metadata.ReadOnlyRelCommonHint.Stats.get -> Substrait.Core.Metadata.ReadOnlyRelCommonHintStats?
+Substrait.Core.Metadata.ReadOnlyRelCommonHint.ToProto() -> Substrait.Protobuf.RelCommon.Types.Hint!
+Substrait.Core.Metadata.ReadOnlyRelCommonHintLoadedComputation
+Substrait.Core.Metadata.ReadOnlyRelCommonHintLoadedComputation.AdvancedExtension.get -> Substrait.Core.Metadata.ReadOnlyAdvancedExtension?
+Substrait.Core.Metadata.ReadOnlyRelCommonHintLoadedComputation.ComputationIdReference.get -> int
+Substrait.Core.Metadata.ReadOnlyRelCommonHintLoadedComputation.Equals(Substrait.Core.Metadata.ReadOnlyRelCommonHintLoadedComputation? other) -> bool
+Substrait.Core.Metadata.ReadOnlyRelCommonHintLoadedComputation.ToProto() -> Substrait.Protobuf.RelCommon.Types.Hint.Types.LoadedComputation!
+Substrait.Core.Metadata.ReadOnlyRelCommonHintLoadedComputation.Type.get -> Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType
+Substrait.Core.Metadata.ReadOnlyRelCommonHintRuntimeConstraint
+Substrait.Core.Metadata.ReadOnlyRelCommonHintRuntimeConstraint.AdvancedExtension.get -> Substrait.Core.Metadata.ReadOnlyAdvancedExtension?
+Substrait.Core.Metadata.ReadOnlyRelCommonHintRuntimeConstraint.Equals(Substrait.Core.Metadata.ReadOnlyRelCommonHintRuntimeConstraint? other) -> bool
+Substrait.Core.Metadata.ReadOnlyRelCommonHintRuntimeConstraint.ToProto() -> Substrait.Protobuf.RelCommon.Types.Hint.Types.RuntimeConstraint!
+Substrait.Core.Metadata.ReadOnlyRelCommonHintSavedComputation
+Substrait.Core.Metadata.ReadOnlyRelCommonHintSavedComputation.AdvancedExtension.get -> Substrait.Core.Metadata.ReadOnlyAdvancedExtension?
+Substrait.Core.Metadata.ReadOnlyRelCommonHintSavedComputation.ComputationId.get -> int
+Substrait.Core.Metadata.ReadOnlyRelCommonHintSavedComputation.Equals(Substrait.Core.Metadata.ReadOnlyRelCommonHintSavedComputation? other) -> bool
+Substrait.Core.Metadata.ReadOnlyRelCommonHintSavedComputation.ToProto() -> Substrait.Protobuf.RelCommon.Types.Hint.Types.SavedComputation!
+Substrait.Core.Metadata.ReadOnlyRelCommonHintSavedComputation.Type.get -> Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType
+Substrait.Core.Metadata.ReadOnlyRelCommonHintStats
+Substrait.Core.Metadata.ReadOnlyRelCommonHintStats.AdvancedExtension.get -> Substrait.Core.Metadata.ReadOnlyAdvancedExtension?
+Substrait.Core.Metadata.ReadOnlyRelCommonHintStats.Equals(Substrait.Core.Metadata.ReadOnlyRelCommonHintStats? other) -> bool
+Substrait.Core.Metadata.ReadOnlyRelCommonHintStats.RecordSize.get -> double
+Substrait.Core.Metadata.ReadOnlyRelCommonHintStats.RowCount.get -> double
+Substrait.Core.Metadata.ReadOnlyRelCommonHintStats.ToProto() -> Substrait.Protobuf.RelCommon.Types.Hint.Types.Stats!
 Substrait.Core.Plan.IPlan.IRelation
 Substrait.Core.Plan.IPlan.IRelation.Input.get -> Substrait.Core.Relation.IRel!
 Substrait.Core.Plan.IPlan.Relations.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Plan.IPlan.IRelation!>!

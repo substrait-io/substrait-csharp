@@ -44,6 +44,9 @@ jobs:
       - name: Restore
         run: dotnet restore Substrait.sln
 
+      - name: Verify generated metadata facades
+        run: dotnet run --project tools/Substrait.MetadataGenerator --configuration Release --no-restore -- --check
+
       - name: Verify formatting
         run: dotnet format Substrait.sln --verify-no-changes --no-restore
 
