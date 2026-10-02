@@ -14,8 +14,6 @@ indent_size = 4
 dotnet_sort_system_directives_first = true
 csharp_new_line_before_open_brace = all
 csharp_style_namespace_declarations = file_scoped:warning
-file_header_template = Copyright (c) Microsoft Corporation\nSPDX-License-Identifier: Apache-2.0
-dotnet_diagnostic.IDE0073.severity = warning
 
 [src/Substrait/obj/**/*.cs]
 dotnet_diagnostic.RS0016.severity = none
