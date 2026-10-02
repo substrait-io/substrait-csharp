@@ -7,6 +7,7 @@ using System.Runtime.Serialization;
 using Substrait.Core.Expression;
 using Substrait.Core.Expression.Converters;
 using Substrait.Core.Extension;
+using Substrait.Core.Metadata;
 using Substrait.Core.Type;
 using Substrait.Core.Type.Converters;
 using Substrait.Protobuf;
@@ -27,6 +28,7 @@ public class ProtoToRelConverter
     private readonly ExtensionsDictionary lookup;
     private readonly ExtensionsDictionary.StrictMode strictMode;
     private readonly ProtoToTypeConverter typeConverter;
+    private readonly bool ownsMetadata;
 
     internal Func<int, IRel>? ReferenceResolver { get; set; }
 
@@ -52,7 +54,17 @@ public class ProtoToRelConverter
         ExtensionsDictionary lookup,
         ExtensionsCollection extensions,
         ExtensionsDictionary.StrictMode strictMode = ExtensionsDictionary.StrictMode.STRICT)
+        : this(lookup, extensions, strictMode, ownsMetadata: false)
     {
+    }
+
+    internal ProtoToRelConverter(
+        ExtensionsDictionary lookup,
+        ExtensionsCollection extensions,
+        ExtensionsDictionary.StrictMode strictMode,
+        bool ownsMetadata)
+    {
+        this.ownsMetadata = ownsMetadata;
         this.lookup = lookup;
         this.extensions = extensions;
         this.strictMode = strictMode;
@@ -103,32 +115,32 @@ public class ProtoToRelConverter
                     break;
                 case ProtoRel.RelTypeOneofCase.Filter:
                     ProcessSingleInput(current, current.Filter.Input, inputs, destination, inputCount,
-                        input => new Filter(input, this.expressionConverter.From(current.Filter.Condition, input.RecordType, enclosingSchemas), OptionalRemap(current.Filter.Common)), stack);
+                        input => new Filter(this.Metadata(current.Filter.Common, current.Filter.AdvancedExtension), input, this.expressionConverter.From(current.Filter.Condition, input.RecordType, enclosingSchemas)), stack);
                     break;
                 case ProtoRel.RelTypeOneofCase.Project:
                     ProcessSingleInput(current, current.Project.Input, inputs, destination, inputCount,
-                        input => new Project(input, current.Project.Expressions.Select(expression => this.expressionConverter.From(expression, input.RecordType, enclosingSchemas)), OptionalRemap(current.Project.Common)), stack);
+                        input => new Project(this.Metadata(current.Project.Common, current.Project.AdvancedExtension), input, current.Project.Expressions.Select(expression => this.expressionConverter.From(expression, input.RecordType, enclosingSchemas))), stack);
                     break;
                 case ProtoRel.RelTypeOneofCase.Fetch:
                     ProcessSingleInput(current, current.Fetch.Input, inputs, destination, inputCount,
                         input => new Fetch(
+                            this.Metadata(current.Fetch.Common, current.Fetch.AdvancedExtension),
                             input,
                             this.expressionConverter.From(current.Fetch.CountExpr, input.RecordType, enclosingSchemas),
-                            this.expressionConverter.From(current.Fetch.OffsetExpr, input.RecordType, enclosingSchemas),
-                            OptionalRemap(current.Fetch.Common)), stack);
+                            this.expressionConverter.From(current.Fetch.OffsetExpr, input.RecordType, enclosingSchemas)), stack);
                     break;
                 case ProtoRel.RelTypeOneofCase.Sort:
                     ProcessSingleInput(current, current.Sort.Input, inputs, destination, inputCount,
                         input => new Sort(
+                            this.Metadata(current.Sort.Common, current.Sort.AdvancedExtension),
                             input,
                             current.Sort.Sorts.Select(field => new SortField(
                                 this.expressionConverter.From(field.Expr, input.RecordType, enclosingSchemas),
-                                field.Direction.FromProto())),
-                            OptionalRemap(current.Sort.Common)), stack);
+                                field.Direction.FromProto()))), stack);
                     break;
                 case ProtoRel.RelTypeOneofCase.Cross:
                     ProcessInputs(current, [current.Cross.Left, current.Cross.Right], inputs, destination, inputCount,
-                        relations => new Cross(relations[0], relations[1], OptionalRemap(current.Cross.Common)), stack);
+                        relations => new Cross(this.Metadata(current.Cross.Common, current.Cross.AdvancedExtension), relations[0], relations[1]), stack);
                     break;
                 case ProtoRel.RelTypeOneofCase.Join:
                     ProcessInputs(current, [current.Join.Left, current.Join.Right], inputs, destination, inputCount,
@@ -140,7 +152,7 @@ public class ProtoToRelConverter
                     break;
                 case ProtoRel.RelTypeOneofCase.Set:
                     ProcessInputs(current, current.Set.Inputs, inputs, destination, inputCount,
-                        relations => new Set(current.Set.Op.FromProto(), relations, OptionalRemap(current.Set.Common)), stack);
+                        relations => new Set(this.Metadata(current.Set.Common, current.Set.AdvancedExtension), current.Set.Op.FromProto(), relations), stack);
                     break;
                 case ProtoRel.RelTypeOneofCase.Exchange:
                     ProcessSingleInput(current, current.Exchange.Input, inputs, destination, inputCount,
@@ -202,8 +214,15 @@ public class ProtoToRelConverter
         }
     }
 
-    private static Remap? OptionalRemap(RelCommon common) =>
-        common.Emit is null ? null : new Remap(common.Emit.OutputMapping);
+    private RelationMetadata Metadata(RelCommon? common, AdvancedExtension? advancedExtension)
+    {
+        if (common is { HasRelAnchor: true, RelAnchor: 0 })
+        {
+            throw new SerializationException("Relation anchor 0 is invalid; an explicitly set anchor must be positive.");
+        }
+
+        return RelationMetadata.Capture(common, advancedExtension, this.ownsMetadata);
+    }
 
     private Aggregate CreateAggregate(
         AggregateRel aggregate,
@@ -254,11 +273,11 @@ public class ProtoToRelConverter
         });
 
         return new Aggregate(
+            this.Metadata(aggregate.Common, aggregate.AdvancedExtension),
             input,
             aggregate.GroupingExpressions.Select(expression => this.expressionConverter.From(expression, input.RecordType, enclosingSchemas)),
             aggregate.Groupings.Select(grouping => new Aggregate.Grouping(grouping.ExpressionReferences.Select(reference => (int)reference))),
-            measures,
-            OptionalRemap(aggregate.Common));
+            measures);
     }
 
     private Join CreateJoin(
@@ -269,12 +288,12 @@ public class ProtoToRelConverter
     {
         var schema = TypeFactory.REQUIRED.Struct(left.RecordType.Fields, right.RecordType.Fields);
         return new Join(
+            this.Metadata(join.Common, join.AdvancedExtension),
             left,
             right,
             join.Type.FromProto(),
             join.Expression is null ? null : this.expressionConverter.From(join.Expression, schema, enclosingSchemas),
-            join.PostJoinFilter is null ? null : this.expressionConverter.From(join.PostJoinFilter, schema, enclosingSchemas),
-            OptionalRemap(join.Common));
+            join.PostJoinFilter is null ? null : this.expressionConverter.From(join.PostJoinFilter, schema, enclosingSchemas));
     }
 
     private HashJoin CreateHashJoin(
@@ -285,6 +304,7 @@ public class ProtoToRelConverter
     {
         var schema = TypeFactory.REQUIRED.Struct(left.RecordType.Fields, right.RecordType.Fields);
         return new HashJoin(
+            this.Metadata(hashJoin.Common, hashJoin.AdvancedExtension),
             left,
             right,
             hashJoin.Type.FromProto(),
@@ -295,7 +315,6 @@ public class ProtoToRelConverter
                     ? new PhysicalJoin.ComparisonJoinKey.ComparisonType(key.Comparison.Simple.FromProto())
                     : new PhysicalJoin.ComparisonJoinKey.ComparisonType(key.Comparison.CustomFunctionReference))),
             hashJoin.PostJoinFilter is null ? null : this.expressionConverter.From(hashJoin.PostJoinFilter, schema, enclosingSchemas),
-            OptionalRemap(hashJoin.Common),
             EnumUtils.Cast<HashJoinRel.Types.BuildInput, HashJoin.BuildInput>(hashJoin.BuildInput));
     }
 
@@ -312,15 +331,15 @@ public class ProtoToRelConverter
         return exchange.ExchangeKindCase switch
         {
             ExchangeRel.ExchangeKindOneofCase.ScatterByFields => new ScatterExchange(
+                this.Metadata(exchange.Common, exchange.AdvancedExtension),
                 input,
                 exchange.PartitionCount,
-                exchange.ScatterByFields.Fields.Select(field => this.expressionConverter.CreateReference(field, input.RecordType, enclosingSchemas)),
-                OptionalRemap(exchange.Common)),
+                exchange.ScatterByFields.Fields.Select(field => this.expressionConverter.CreateReference(field, input.RecordType, enclosingSchemas))),
             ExchangeRel.ExchangeKindOneofCase.SingleTarget => new SingleBucketExchange(
+                this.Metadata(exchange.Common, exchange.AdvancedExtension),
                 input,
                 exchange.PartitionCount,
-                this.expressionConverter.From(exchange.SingleTarget.Expression, input.RecordType, enclosingSchemas),
-                OptionalRemap(exchange.Common)),
+                this.expressionConverter.From(exchange.SingleTarget.Expression, input.RecordType, enclosingSchemas)),
             _ => throw new NotImplementedException(exchange.ExchangeKindCase.ToString()),
         };
     }
@@ -334,13 +353,15 @@ public class ProtoToRelConverter
 
         return read.ReadTypeCase switch
         {
-            ReadRel.ReadTypeOneofCase.NamedTable => new NamedTableRead(schema, read.NamedTable.Names, filter, OptionalRemap(read.Common)),
+            ReadRel.ReadTypeOneofCase.NamedTable => new NamedTableRead(
+                this.Metadata(read.Common, read.AdvancedExtension), schema, read.NamedTable.Names, filter,
+                RelationMetadata.CaptureExtension(read.NamedTable.AdvancedExtension, this.ownsMetadata)),
             ReadRel.ReadTypeOneofCase.VirtualTable => new VirtualTableRead(
+                this.Metadata(read.Common, read.AdvancedExtension),
                 schema,
                 read.VirtualTable.Expressions.Select(row => new StructExpression(row.Fields.Select(this.expressionConverter.From))),
-                filter,
-                OptionalRemap(read.Common)),
-            ReadRel.ReadTypeOneofCase.None => new EmptyRead(schema, filter, OptionalRemap(read.Common)),
+                filter),
+            ReadRel.ReadTypeOneofCase.None => new EmptyRead(this.Metadata(read.Common, read.AdvancedExtension), schema, filter),
             _ => throw new NotImplementedException(read.ReadTypeCase.ToString()),
         };
     }

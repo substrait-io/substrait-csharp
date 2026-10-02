@@ -279,7 +279,7 @@ public sealed class MetadataFacadeTests
         Assert.AreEqual(original.Enhancement, facade.Enhancement!.ToProto());
     }
 
-    private static ProtoCommon CreateCommon() => AddUnknownField(new ProtoCommon
+    internal static ProtoCommon CreateCommon() => AddUnknownField(new ProtoCommon
     {
         RelAnchor = uint.MaxValue,
         Emit = new() { OutputMapping = { 2, 0, 2 } },

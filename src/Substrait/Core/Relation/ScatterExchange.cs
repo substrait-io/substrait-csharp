@@ -3,6 +3,7 @@
 
 using System.Collections.Immutable;
 using Substrait.Core.Expression;
+using Substrait.Core.Metadata;
 using Substrait.Tools;
 
 namespace Substrait.Core.Relation;
@@ -41,6 +42,17 @@ public sealed class ScatterExchange : Exchange
     /// Gets fields to scatter by.
     /// </summary>
     public IReadOnlyList<FieldReference> Fields { get; }
+
+    /// <summary>Initializes a scatter exchange with explicit metadata.</summary>
+    /// <param name="metadata">Immutable metadata, including the output mapping.</param>
+    /// <param name="input">Input relation.</param>
+    /// <param name="partitionCount">Partition count.</param>
+    /// <param name="fields">Fields to scatter by.</param>
+    public ScatterExchange(RelationMetadata metadata, IRel input, int partitionCount, IEnumerable<FieldReference> fields)
+        : base(metadata, input, partitionCount)
+    {
+        this.Fields = fields.ToImmutableList();
+    }
 
     /// <inheritdoc/>
     public override TOutput Accept<TContext, TOutput>(RelVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);

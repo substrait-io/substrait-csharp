@@ -3,6 +3,7 @@
 
 using System.Collections.Immutable;
 using Substrait.Core.Expression;
+using Substrait.Core.Metadata;
 using Substrait.Core.Type;
 using Substrait.Protobuf;
 using Substrait.Tools;
@@ -46,6 +47,19 @@ public sealed class Join : AbstractJoin
     /// Gets join condition.
     /// </summary>
     public IExpression? Condition { get; }
+
+    /// <summary>Initializes a logical join with explicit metadata.</summary>
+    /// <param name="metadata">Immutable metadata, including the output mapping.</param>
+    /// <param name="left">Left input.</param>
+    /// <param name="right">Right input.</param>
+    /// <param name="type">Join type.</param>
+    /// <param name="condition">Optional join condition.</param>
+    /// <param name="postJoinFilter">Optional post-join filter.</param>
+    public Join(RelationMetadata metadata, IRel left, IRel right, JoinType type, IExpression? condition, IExpression? postJoinFilter)
+        : base(metadata, left, right, type, postJoinFilter)
+    {
+        this.Condition = condition;
+    }
 
     /// <inheritdoc/>
     public override TOutput Accept<TContext, TOutput>(RelVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);

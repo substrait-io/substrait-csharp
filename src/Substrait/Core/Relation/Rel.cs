@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
+using Substrait.Core.Metadata;
 using Substrait.Core.Type;
 using Substrait.Tools;
 using Substrait.Tools.Visitor;
@@ -34,7 +35,10 @@ public abstract class Rel : IRel, IEquatable<Rel>, INodeEquatable<IRel>
     }
 
     /// <inheritdoc/>
-    public abstract Remap? Transmute { get; }
+    public virtual Remap? Transmute => this.Metadata.Transmute;
+
+    /// <inheritdoc/>
+    public virtual RelationMetadata Metadata => RelationMetadata.Direct;
 
     /// <inheritdoc/>
     public abstract IReadOnlyList<IRel> Inputs { get; }
@@ -117,6 +121,7 @@ public abstract class Rel : IRel, IEquatable<Rel>, INodeEquatable<IRel>
             {
                 return context.MoveNext()
                     && context.Current is not null
+                    && rel.Metadata.Equals(context.Current.Metadata)
                     && rel.Transmute.EqualsWithNull(context.Current.Transmute)
                     && rel switch
                     {
@@ -165,7 +170,7 @@ public abstract class Rel : IRel, IEquatable<Rel>, INodeEquatable<IRel>
                 {
                     // The hash codes of input nodes have been generated (or ensured the hash code is already generated)
                     // by the bottom up traversal thus it won't trigger a deep recursive call.
-                    INodeEquatable<IRel> r => HashCode.Combine(r.GetNodeHashCode(), rel.InputNodes.CombineHashCodes(), rel.Transmute),
+                    INodeEquatable<IRel> r => HashCode.Combine(r.GetNodeHashCode(), rel.InputNodes.CombineHashCodes(), rel.Transmute, rel.Metadata),
                     _ => rel.GetHashCode(),
                 };
             }

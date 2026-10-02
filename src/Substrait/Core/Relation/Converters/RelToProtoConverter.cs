@@ -53,14 +53,14 @@ public class RelToProtoConverter
         }
 
         public override ProtoRel Visit(Filter relation, PlanToProtoConverter.ConverterContext context) =>
-            new() { Filter = new() { Input = context.GetOutput(relation.Input), Condition = this.expressionConverter.From(relation.Condition, context), Common = Common(relation.Transmute) } };
+            new() { Filter = new() { Input = context.GetOutput(relation.Input), Condition = this.expressionConverter.From(relation.Condition, context), Common = Common(relation), AdvancedExtension = relation.Metadata.AdvancedExtension?.ToProto() } };
 
         public override ProtoRel Visit(Cross relation, PlanToProtoConverter.ConverterContext context) =>
-            new() { Cross = new() { Left = context.GetOutput(relation.Left), Right = context.GetOutput(relation.Right), Common = Common(relation.Transmute) } };
+            new() { Cross = new() { Left = context.GetOutput(relation.Left), Right = context.GetOutput(relation.Right), Common = Common(relation), AdvancedExtension = relation.Metadata.AdvancedExtension?.ToProto() } };
 
         public override ProtoRel Visit(Project relation, PlanToProtoConverter.ConverterContext context)
         {
-            var project = new ProjectRel { Input = context.GetOutput(relation.Input), Common = Common(relation.Transmute) };
+            var project = new ProjectRel { Input = context.GetOutput(relation.Input), Common = Common(relation), AdvancedExtension = relation.Metadata.AdvancedExtension?.ToProto() };
             project.Expressions.AddRange(relation.Expressions.Select(expression => this.expressionConverter.From(expression, context)));
             return new ProtoRel { Project = project };
         }
@@ -68,7 +68,7 @@ public class RelToProtoConverter
         public override ProtoRel Visit(NamedTableRead relation, PlanToProtoConverter.ConverterContext context)
         {
             ReadRel read = this.CreateRead(relation, context);
-            read.NamedTable = new() { Names = { relation.Names } };
+            read.NamedTable = new() { Names = { relation.Names }, AdvancedExtension = relation.TableAdvancedExtension?.ToProto() };
             return new ProtoRel { Read = read };
         }
 
@@ -90,7 +90,7 @@ public class RelToProtoConverter
 
         public override ProtoRel Visit(Sort relation, PlanToProtoConverter.ConverterContext context)
         {
-            var sort = new SortRel { Input = context.GetOutput(relation.Input), Common = Common(relation.Transmute) };
+            var sort = new SortRel { Input = context.GetOutput(relation.Input), Common = Common(relation), AdvancedExtension = relation.Metadata.AdvancedExtension?.ToProto() };
             sort.Sorts.AddRange(relation.SortFields.Select(field => new SortField
             {
                 Expr = this.expressionConverter.From(field.Expr, context),
@@ -107,20 +107,21 @@ public class RelToProtoConverter
                     Input = context.GetOutput(relation.Input),
                     CountExpr = this.expressionConverter.From(relation.Count, context),
                     OffsetExpr = this.expressionConverter.From(relation.Offset, context),
-                    Common = Common(relation.Transmute),
+                    Common = Common(relation),
+                    AdvancedExtension = relation.Metadata.AdvancedExtension?.ToProto(),
                 },
             };
 
         public override ProtoRel Visit(Set relation, PlanToProtoConverter.ConverterContext context)
         {
-            var set = new SetRel { Op = relation.SetOperation.ToProto(), Common = Common(relation.Transmute) };
+            var set = new SetRel { Op = relation.SetOperation.ToProto(), Common = Common(relation), AdvancedExtension = relation.Metadata.AdvancedExtension?.ToProto() };
             set.Inputs.AddRange(relation.Inputs.Select(context.GetOutput));
             return new ProtoRel { Set = set };
         }
 
         public override ProtoRel Visit(Aggregate relation, PlanToProtoConverter.ConverterContext context)
         {
-            var aggregate = new AggregateRel { Input = context.GetOutput(relation.Input), Common = Common(relation.Transmute) };
+            var aggregate = new AggregateRel { Input = context.GetOutput(relation.Input), Common = Common(relation), AdvancedExtension = relation.Metadata.AdvancedExtension?.ToProto() };
             aggregate.GroupingExpressions.AddRange(relation.GroupingExpressions.Select(expression => this.expressionConverter.From(expression, context)));
             aggregate.Groupings.AddRange(relation.Groupings.Select(grouping =>
             {
@@ -163,7 +164,8 @@ public class RelToProtoConverter
                     Type = relation.Type.ToProto(),
                     Expression = relation.Condition is null ? null : this.expressionConverter.From(relation.Condition, context),
                     PostJoinFilter = relation.PostJoinFilter is null ? null : this.expressionConverter.From(relation.PostJoinFilter, context),
-                    Common = Common(relation.Transmute),
+                    Common = Common(relation),
+                    AdvancedExtension = relation.Metadata.AdvancedExtension?.ToProto(),
                 },
             };
 
@@ -176,7 +178,8 @@ public class RelToProtoConverter
                 Type = relation.Type.ToHashJoinProto(),
                 BuildInput = relation.BuildLeft ? HashJoinRel.Types.BuildInput.Left : HashJoinRel.Types.BuildInput.Right,
                 PostJoinFilter = relation.PostJoinFilter is null ? null : this.expressionConverter.From(relation.PostJoinFilter, context),
-                Common = Common(relation.Transmute),
+                Common = Common(relation),
+                AdvancedExtension = relation.Metadata.AdvancedExtension?.ToProto(),
             };
             hashJoin.Keys.AddRange(relation.Keys.Select(key => new ComparisonJoinKey
             {
@@ -196,7 +199,8 @@ public class RelToProtoConverter
                 Input = context.GetOutput(relation.Input),
                 PartitionCount = relation.PartitionCount,
                 ScatterByFields = new(),
-                Common = Common(relation.Transmute),
+                Common = Common(relation),
+                AdvancedExtension = relation.Metadata.AdvancedExtension?.ToProto(),
             };
             exchange.ScatterByFields.Fields.AddRange(relation.Fields.Select(field => this.expressionConverter.From(field, context).Selection));
             return new ProtoRel { Exchange = exchange };
@@ -210,7 +214,8 @@ public class RelToProtoConverter
                     Input = context.GetOutput(relation.Input),
                     PartitionCount = relation.PartitionCount,
                     SingleTarget = new() { Expression = this.expressionConverter.From(relation.Expression, context) },
-                    Common = Common(relation.Transmute),
+                    Common = Common(relation),
+                    AdvancedExtension = relation.Metadata.AdvancedExtension?.ToProto(),
                 },
             };
         public override ProtoRel Visit(IRel other, PlanToProtoConverter.ConverterContext context) => Unsupported(other);
@@ -218,16 +223,28 @@ public class RelToProtoConverter
         private static ProtoRel Unsupported(IRel relation) =>
             throw new NotImplementedException($"Conversion for {relation.GetType().Name} is not implemented.");
 
-        private static RelCommon Common(Remap? remap) => remap is null
-            ? new RelCommon { Direct = new() }
-            : new RelCommon { Emit = new() { OutputMapping = { remap.Indices } } };
+        private static RelCommon? Common(IRel relation)
+        {
+            if (relation.Metadata.Common?.RelAnchor == 0)
+            {
+                throw new ArgumentException("Relation anchor 0 is invalid; an explicitly set anchor must be positive.", nameof(relation));
+            }
+
+            if (!Equals(relation.Transmute, relation.Metadata.Transmute))
+            {
+                throw new ArgumentException("Relation output mapping must match its metadata.", nameof(relation));
+            }
+
+            return relation.Metadata.Common?.ToProto();
+        }
 
         private ReadRel CreateRead(Read relation, PlanToProtoConverter.ConverterContext context)
         {
             var read = new ReadRel
             {
                 BaseSchema = this.CreateNamedStruct(relation.InitialSchema, context),
-                Common = Common(relation.Transmute),
+                Common = Common(relation),
+                AdvancedExtension = relation.Metadata.AdvancedExtension?.ToProto(),
             };
             if (relation.Filter is not null)
             {

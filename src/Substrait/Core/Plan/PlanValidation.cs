@@ -12,6 +12,7 @@ internal static class PlanValidation
     internal static void Validate(IReadOnlyList<IPlan.IRelation> relations)
     {
         var dependencies = new List<IReadOnlyList<int>>(relations.Count);
+        var anchors = new Dictionary<uint, string>();
         for (int ordinal = 0; ordinal < relations.Count; ++ordinal)
         {
             if (relations[ordinal]?.Input is not IRel input)
@@ -19,7 +20,7 @@ internal static class PlanValidation
                 throw new ArgumentException($"Plan relation ordinal {ordinal} must have an input.");
             }
 
-            dependencies.Add(ValidateEntry(input, ordinal, relations));
+            dependencies.Add(ValidateEntry(input, ordinal, relations, anchors: anchors));
         }
 
         _ = GetDependencyOrder(dependencies, message => new ArgumentException(message));
@@ -29,11 +30,13 @@ internal static class PlanValidation
         IRel input,
         int ordinal,
         IReadOnlyList<IPlan.IRelation> relations,
-        object? owner = null)
+        object? owner = null,
+        Dictionary<uint, string>? anchors = null)
     {
+        anchors ??= new Dictionary<uint, string>();
+        int occurrence = 0;
         var dependencies = new HashSet<int>();
         var active = new HashSet<object>(ReferenceEqualityComparer.Instance);
-        var visited = new Dictionary<object, int>(ReferenceEqualityComparer.Instance);
         var stack = new Stack<(object Node, int Depth, bool Complete)>();
         stack.Push((input, 0, false));
         while (stack.Count > 0)
@@ -42,22 +45,26 @@ internal static class PlanValidation
             if (complete)
             {
                 active.Remove(node);
-                visited[node] = depth;
                 continue;
             }
 
-            if (active.Contains(node))
+            if (!active.Add(node))
             {
                 throw new ArgumentException($"Plan relation ordinal {ordinal} contains a cycle in its relation or expression tree.");
             }
 
-            if (visited.TryGetValue(node, out int previousDepth) && previousDepth <= depth)
+            stack.Push((node, depth, true));
+            if (node is IRel metadataRelation)
             {
-                continue;
+                string location = $"Plan relation ordinal {ordinal}, relation occurrence {occurrence++}";
+                if (metadataRelation.Metadata is null || !Equals(metadataRelation.Transmute, metadataRelation.Metadata.Transmute))
+                {
+                    throw new ArgumentException($"{location}: relation metadata must be present and match the output mapping.");
+                }
+
+                RegisterAnchor(metadataRelation.Metadata.Common?.RelAnchor, anchors, location, message => new ArgumentException(message));
             }
 
-            active.Add(node);
-            stack.Push((node, depth, true));
             if (node is Reference reference)
             {
                 if (owner is not null && !ReferenceEquals(reference.Owner, owner))
@@ -112,6 +119,29 @@ internal static class PlanValidation
         }
 
         return dependencies.ToArray();
+    }
+
+    internal static void RegisterAnchor(uint? anchor, Dictionary<uint, string> anchors, string location, Func<string, Exception> error)
+    {
+        if (anchor is not uint value)
+        {
+            return;
+        }
+
+        if (value == 0)
+        {
+            throw error($"{location}: relation anchor 0 is invalid; an explicitly set anchor must be positive.");
+        }
+
+        // Add performs one lookup on the valid path, including on netstandard2.0.
+        try
+        {
+            anchors.Add(value, location);
+        }
+        catch (ArgumentException) when (anchors.TryGetValue(value, out string? previous))
+        {
+            throw error($"{location}: duplicate relation anchor {value}, already defined at {previous}.");
+        }
     }
 
     internal static void ValidateBinding(Reference reference, IReadOnlyList<IPlan.IRelation> relations, int? sourceOrdinal = null)

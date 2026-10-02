@@ -3,6 +3,7 @@
 
 using System.Collections.Immutable;
 using Substrait.Core.Expression;
+using Substrait.Core.Metadata;
 using Substrait.Core.Type;
 using Substrait.Protobuf;
 using Substrait.Tools;
@@ -40,7 +41,19 @@ public abstract class AbstractJoin : BiInput
         this.Right = right;
         this.Type = type;
         this.PostJoinFilter = postJoinFilter;
-        this.Transmute = transmute;
+        this.Metadata = RelationMetadata.FromRemap(transmute);
+    }
+
+    /// <summary>Initializes a join with explicit metadata.</summary>
+    /// <param name="metadata">Immutable metadata, including the output mapping.</param>
+    /// <param name="left">Left input.</param>
+    /// <param name="right">Right input.</param>
+    /// <param name="type">Join type.</param>
+    /// <param name="postJoinFilter">Optional post-join filter.</param>
+    protected AbstractJoin(RelationMetadata metadata, IRel left, IRel right, JoinType type, IExpression? postJoinFilter)
+        : this(left, right, type, postJoinFilter)
+    {
+        this.Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
     }
 
     /// <summary>
@@ -131,7 +144,7 @@ public abstract class AbstractJoin : BiInput
     public JoinType Type { get; }
 
     /// <inheritdoc/>
-    public override Remap? Transmute { get; }
+    public override RelationMetadata Metadata { get; }
 
     /// <inheritdoc/>
     protected override Type.ParameterizedType.Struct DeriveRecordType()

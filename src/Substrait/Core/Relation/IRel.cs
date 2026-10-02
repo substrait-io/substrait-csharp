@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+using Substrait.Core.Metadata;
 using Substrait.Core.Type;
 using Substrait.Tools.Visitor;
 
@@ -11,6 +12,9 @@ namespace Substrait.Core.Relation;
 /// </summary>
 public interface IRel : INavigableNode<IRel>
 {
+    /// <summary>Gets the immutable relation metadata. References have empty metadata.</summary>
+    public RelationMetadata Metadata { get; }
+
     /// <summary>
     /// Gets transmute.
     /// </summary>

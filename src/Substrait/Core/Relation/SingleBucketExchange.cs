@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Substrait.Core.Expression;
+using Substrait.Core.Metadata;
 
 namespace Substrait.Core.Relation;
 
@@ -39,6 +40,17 @@ public sealed class SingleBucketExchange : Exchange
     /// Gets expression that provides the bucket number.
     /// </summary>
     public IExpression Expression { get; }
+
+    /// <summary>Initializes a single-bucket exchange with explicit metadata.</summary>
+    /// <param name="metadata">Immutable metadata, including the output mapping.</param>
+    /// <param name="input">Input relation.</param>
+    /// <param name="partitionCount">Partition count.</param>
+    /// <param name="expression">Bucket expression.</param>
+    public SingleBucketExchange(RelationMetadata metadata, IRel input, int partitionCount, IExpression expression)
+        : base(metadata, input, partitionCount)
+    {
+        this.Expression = expression;
+    }
 
     /// <inheritdoc/>
     public override TOutput Accept<TContext, TOutput>(RelVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);

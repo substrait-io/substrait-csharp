@@ -45,10 +45,25 @@ described in `tests/README.md`.
 `Substrait.Core.Metadata` adds generated facades for common relation metadata
 and advanced extensions. Public imports and exports deep-copy mutable protobuf
 messages; nested access exposes read-only facades and collections. Unknown fields,
-opaque `Any` payloads, and field presence are retained. These standalone APIs
-do not yet change relation conversion, validate plan anchors, or add parsing
-entry points. See [metadata facades](metadata-facades.md) for ownership, equality,
-and protobuf JSON limitations.
+opaque `Any` payloads, and field presence are retained by supported relation
+converters. `IRel.Metadata` contains common and operator-level metadata;
+named-table extensions have a separate property. New metadata-first constructors
+coexist with the old remap constructors. `Transmute` is derived from metadata.
+
+Custom `IRel` implementations must provide non-null metadata with a matching
+output mapping and recompile. Concrete relation `Transmute` properties are now
+inherited from the base implementation. Structural equality and hashing include
+metadata and preserve distinctions such as absent versus explicit direct output.
+Plans reject explicit zero and duplicate relation anchors, counting inline
+occurrences rather than distinct object identities. Explicit reference sharing
+does not duplicate a target anchor.
+
+New bytes, stream, file, and JSON plan entry points privately parse protobufs and
+retain metadata without extra cloning. Existing protobuf-object entry points
+copy retained metadata. See [metadata facades](metadata-facades.md) for ownership,
+equality, migration, validation, and protobuf JSON limitations. No specification
+package update is required, and anchor-based outer-reference resolution remains
+unsupported.
 
 ## Multi-relation plans and references
 

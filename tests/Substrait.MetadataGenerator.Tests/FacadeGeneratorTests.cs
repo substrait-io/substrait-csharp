@@ -51,10 +51,11 @@ public sealed class FacadeGeneratorTests
     public void GeneratedMembersPreserveOptionalAndOneofPresence()
     {
         var files = FacadeGenerator.Generate([RelCommon.Descriptor]);
-        StringAssert.Contains(files["ReadOnlyRelCommon.g.cs"], "uint? RelAnchor => this.value.HasRelAnchor");
-        StringAssert.Contains(files["ReadOnlyRelCommon.g.cs"], "ReadOnlyRelCommonDirect? Direct");
-        StringAssert.Contains(files["ReadOnlyRelCommon.g.cs"], "EmitKindCase => this.value.EmitKindCase");
-        Assert.IsFalse(files["ReadOnlyRelCommon.g.cs"].Contains("RelAnchorCase", StringComparison.Ordinal));
+        string common = files["ReadOnlyRelCommon.g.cs"];
+        StringAssert.Contains(common, "uint? RelAnchor => this.value.HasRelAnchor");
+        StringAssert.Contains(common, "ReadOnlyRelCommonDirect? Direct");
+        StringAssert.Contains(common, "EmitKindCase => this.value.EmitKindCase");
+        Assert.IsFalse(common.Contains("RelAnchorCase", StringComparison.Ordinal));
     }
 
     [TestMethod]
