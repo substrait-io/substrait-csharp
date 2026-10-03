@@ -1,4 +1,6 @@
 #nullable enable
+override Substrait.Core.Metadata.PlanMetadata.Equals(object? obj) -> bool
+override Substrait.Core.Metadata.PlanMetadata.GetHashCode() -> int
 override Substrait.Core.Metadata.ReadOnlyAdvancedExtension.Equals(object? obj) -> bool
 override Substrait.Core.Metadata.ReadOnlyAdvancedExtension.GetHashCode() -> int
 override Substrait.Core.Metadata.ReadOnlyAny.Equals(object? obj) -> bool
@@ -34,6 +36,7 @@ override Substrait.Core.Relation.Reference.Metadata.get -> Substrait.Core.Metada
 override Substrait.Core.Relation.Set.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 override Substrait.Core.Relation.Sort.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 override Substrait.Core.Relation.VirtualTableRead.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
+static Substrait.Core.Metadata.PlanMetadata.Empty.get -> Substrait.Core.Metadata.PlanMetadata!
 static Substrait.Core.Metadata.ReadOnlyAdvancedExtension.FromProto(Substrait.Protobuf.AdvancedExtension! value) -> Substrait.Core.Metadata.ReadOnlyAdvancedExtension!
 static Substrait.Core.Metadata.ReadOnlyAny.FromProto(Google.Protobuf.WellKnownTypes.Any! value) -> Substrait.Core.Metadata.ReadOnlyAny!
 static Substrait.Core.Metadata.ReadOnlyRelCommon.FromProto(Substrait.Protobuf.RelCommon! value) -> Substrait.Core.Metadata.ReadOnlyRelCommon!
@@ -47,6 +50,13 @@ static Substrait.Core.Metadata.ReadOnlyRelCommonHintStats.FromProto(Substrait.Pr
 static Substrait.Core.Metadata.RelationMetadata.Direct.get -> Substrait.Core.Metadata.RelationMetadata!
 static Substrait.Core.Metadata.RelationMetadata.Empty.get -> Substrait.Core.Metadata.RelationMetadata!
 static Substrait.Core.Metadata.RelationMetadata.FromRemap(Substrait.Core.Relation.Remap? transmute) -> Substrait.Core.Metadata.RelationMetadata!
+static Substrait.Core.Plan.Plan.FromRelations(Substrait.Core.Metadata.PlanMetadata! metadata, System.Collections.Generic.IEnumerable<Substrait.Core.Plan.IPlan.IRelation!>! relations, Substrait.Core.Plan.IVersion! version) -> Substrait.Core.Plan.Plan!
+Substrait.Core.Metadata.PlanMetadata
+Substrait.Core.Metadata.PlanMetadata.AdvancedExtensions.get -> Substrait.Core.Metadata.ReadOnlyAdvancedExtension?
+Substrait.Core.Metadata.PlanMetadata.Equals(Substrait.Core.Metadata.PlanMetadata? other) -> bool
+Substrait.Core.Metadata.PlanMetadata.ExpectedTypeUrls.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Substrait.Core.Metadata.PlanMetadata.PlanMetadata(Substrait.Core.Metadata.ReadOnlyAdvancedExtension? advancedExtensions = null, System.Collections.Generic.IEnumerable<string!>? expectedTypeUrls = null) -> void
+Substrait.Core.Metadata.PlanMetadata.PlanMetadata(Substrait.Protobuf.AdvancedExtension! message, System.Collections.Generic.IEnumerable<string!>? expectedTypeUrls = null) -> void
 Substrait.Core.Metadata.ReadOnlyAdvancedExtension
 Substrait.Core.Metadata.ReadOnlyAdvancedExtension.Enhancement.get -> Substrait.Core.Metadata.ReadOnlyAny?
 Substrait.Core.Metadata.ReadOnlyAdvancedExtension.Equals(Substrait.Core.Metadata.ReadOnlyAdvancedExtension? other) -> bool
@@ -117,7 +127,10 @@ Substrait.Core.Plan.Converters.ProtoToPlanConverter.FromJson(string! json, Subst
 Substrait.Core.Plan.Converters.ProtoToPlanConverter.FromStream(System.IO.Stream! stream, Substrait.Core.Extension.ExtensionsDictionary.StrictMode strictMode = Substrait.Core.Extension.ExtensionsDictionary.StrictMode.STRICT) -> Substrait.Core.Plan.IPlan!
 Substrait.Core.Plan.IPlan.IRelation
 Substrait.Core.Plan.IPlan.IRelation.Input.get -> Substrait.Core.Relation.IRel!
+Substrait.Core.Plan.IPlan.Metadata.get -> Substrait.Core.Metadata.PlanMetadata!
 Substrait.Core.Plan.IPlan.Relations.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Plan.IPlan.IRelation!>!
+Substrait.Core.Plan.Plan.Metadata.get -> Substrait.Core.Metadata.PlanMetadata!
+Substrait.Core.Plan.Plan.Plan(Substrait.Core.Metadata.PlanMetadata! metadata, System.Collections.Generic.IEnumerable<Substrait.Core.Plan.IPlan.IRoot!>! roots, Substrait.Core.Plan.IVersion! version) -> void
 Substrait.Core.Plan.Plan.Relations.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Plan.IPlan.IRelation!>!
 static Substrait.Core.Plan.Plan.FromRelations(System.Collections.Generic.IEnumerable<Substrait.Core.Plan.IPlan.IRelation!>! relations, Substrait.Core.Plan.IVersion! version) -> Substrait.Core.Plan.Plan!
 Substrait.Core.Plan.Plan.Relation
@@ -127,10 +140,29 @@ Substrait.Core.Plan.Plan.Relation.Equals(Substrait.Core.Plan.Plan.Relation? othe
 override Substrait.Core.Plan.Plan.Relation.Equals(object? obj) -> bool
 override Substrait.Core.Plan.Plan.Relation.GetHashCode() -> int
 Substrait.Core.Plan.PlanBuilder
+Substrait.Core.Plan.PlanBuilder.AddExpectedTypeUrl(string! typeUrl) -> void
+Substrait.Core.Plan.PlanBuilder.AddOptimization(Google.Protobuf.IMessage! message) -> void
+Substrait.Core.Plan.PlanBuilder.AddOptimization(Substrait.Core.Metadata.ReadOnlyAny! detail) -> void
+Substrait.Core.Plan.PlanBuilder.ClearAdvancedExtensions() -> void
+Substrait.Core.Plan.PlanBuilder.ClearEnhancement() -> void
+Substrait.Core.Plan.PlanBuilder.ClearExpectedTypeUrls() -> void
+Substrait.Core.Plan.PlanBuilder.ClearOptimizations() -> void
+Substrait.Core.Plan.PlanBuilder.Metadata.get -> Substrait.Core.Metadata.PlanMetadata!
+Substrait.Core.Plan.PlanBuilder.PlanBuilder(Substrait.Core.Metadata.PlanMetadata! metadata, Substrait.Core.Plan.IVersion? version) -> void
 Substrait.Core.Plan.PlanBuilder.PlanBuilder(Substrait.Core.Plan.IVersion? version = null) -> void
 Substrait.Core.Plan.PlanBuilder.RegisterSubplan(Substrait.Core.Relation.IRel! subtree) -> Substrait.Core.Relation.Reference!
 Substrait.Core.Plan.PlanBuilder.AddRoot(Substrait.Core.Relation.IRel! input, System.Collections.Generic.IEnumerable<string!>! names) -> Substrait.Core.Relation.Reference!
 Substrait.Core.Plan.PlanBuilder.Build() -> Substrait.Core.Plan.Plan!
+Substrait.Core.Plan.PlanBuilder.RemoveExpectedTypeUrlAt(int index) -> void
+Substrait.Core.Plan.PlanBuilder.RemoveOptimizationAt(int index) -> void
+Substrait.Core.Plan.PlanBuilder.ReplaceExpectedTypeUrl(int index, string! typeUrl) -> void
+Substrait.Core.Plan.PlanBuilder.ReplaceOptimization(int index, Google.Protobuf.IMessage! message) -> void
+Substrait.Core.Plan.PlanBuilder.ReplaceOptimization(int index, Substrait.Core.Metadata.ReadOnlyAny! detail) -> void
+Substrait.Core.Plan.PlanBuilder.SetAdvancedExtensions(Substrait.Core.Metadata.ReadOnlyAdvancedExtension! extensions) -> void
+Substrait.Core.Plan.PlanBuilder.SetAdvancedExtensions(Substrait.Protobuf.AdvancedExtension! message) -> void
+Substrait.Core.Plan.PlanBuilder.SetEnhancement(Google.Protobuf.IMessage! message) -> void
+Substrait.Core.Plan.PlanBuilder.SetEnhancement(Substrait.Core.Metadata.ReadOnlyAny! detail) -> void
+Substrait.Core.Plan.PlanBuilder.SetExpectedTypeUrls(System.Collections.Generic.IEnumerable<string!>! expectedTypeUrls) -> void
 Substrait.Core.Relation.AbstractJoin.AbstractJoin(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! left, Substrait.Core.Relation.IRel! right, Substrait.Core.Relation.AbstractJoin.JoinType type, Substrait.Core.Expression.IExpression? postJoinFilter) -> void
 Substrait.Core.Relation.Aggregate.Aggregate(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! input, System.Collections.Generic.IEnumerable<Substrait.Core.Expression.IExpression!>! groupingExpressions, System.Collections.Generic.IEnumerable<Substrait.Core.Relation.Aggregate.Grouping!>! groupings, System.Collections.Generic.IEnumerable<Substrait.Core.Relation.Aggregate.Measure!>! measures) -> void
 Substrait.Core.Relation.Cross.Cross(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! left, Substrait.Core.Relation.IRel! right) -> void

@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+using Substrait.Core.Metadata;
 using Substrait.Core.Relation;
 
 namespace Substrait.Core.Plan;
@@ -46,4 +47,7 @@ public interface IPlan
     /// Gets the version associated with the plan.
     /// </summary>
     public IVersion Version { get; }
+
+    /// <summary>Gets non-null plan-level metadata, preserving opaque advanced extensions and expected type URLs.</summary>
+    public PlanMetadata Metadata { get; }
 }
