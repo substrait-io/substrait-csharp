@@ -1,15 +1,26 @@
 // Copyright (c) Microsoft Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+using Google.Protobuf;
 using Google.Protobuf.Collections;
+using Google.Protobuf.WellKnownTypes;
+using Substrait.Core.Metadata;
 
 namespace Substrait.Tools;
 
 /// <summary>
-/// Utility methods for protobuf collections.
+/// Utility methods for protobuf values and collections.
 /// </summary>
 public static class ProtoUtils
 {
+    internal static ReadOnlyAny SnapshotAny(IMessage message)
+    {
+        _ = message ?? throw new ArgumentNullException(nameof(message));
+        return message is Any any
+            ? ReadOnlyAny.FromProto(any)
+            : ReadOnlyAny.FromOwnedProto(Any.Pack(message));
+    }
+
     /// <summary>
     /// Pre-allocates additional capacity and adds a range of values.
     /// </summary>
