@@ -213,6 +213,21 @@ internal static class ProtoPlanDependencies
             case Protobuf.Rel.RelTypeOneofCase.Reference:
                 yield return relation.Reference;
                 break;
+            case Protobuf.Rel.RelTypeOneofCase.ExtensionLeaf:
+                yield return relation.ExtensionLeaf.Common;
+                break;
+            case Protobuf.Rel.RelTypeOneofCase.ExtensionSingle:
+                yield return relation.ExtensionSingle.Common;
+                yield return relation.ExtensionSingle.Input;
+                break;
+            case Protobuf.Rel.RelTypeOneofCase.ExtensionMulti:
+                yield return relation.ExtensionMulti.Common;
+                foreach (Protobuf.Rel input in relation.ExtensionMulti.Inputs)
+                {
+                    yield return input;
+                }
+
+                break;
             default:
                 throw new NotImplementedException(relation.RelTypeCase.ToString());
         }

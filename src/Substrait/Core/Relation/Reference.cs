@@ -113,8 +113,9 @@ public sealed class Reference : ZeroInput
             {
                 stack.Push((reference.Target, false));
             }
-            else
+            else if (node is not (ExtensionLeaf or ExtensionSingle or ExtensionMulti))
             {
+                // Extension schemas are stored values and need not depend on their inputs.
                 foreach (IRel input in node.Inputs)
                 {
                     stack.Push((input, false));

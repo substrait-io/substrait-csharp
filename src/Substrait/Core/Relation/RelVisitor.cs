@@ -12,6 +12,24 @@ namespace Substrait.Core.Relation;
 /// <typeparam name="TOutput">The type of the output produced by the visitation.</typeparam>
 public abstract class RelVisitor<TContext, TOutput> : IVisitor<IRel, TContext, TOutput>
 {
+    /// <summary>Visits a custom leaf relation.</summary>
+    /// <param name="op">The relation.</param>
+    /// <param name="context">Input context.</param>
+    /// <returns>The visitor output.</returns>
+    public virtual TOutput Visit(ExtensionLeaf op, TContext context) => this.Visit((IRel)op, context);
+
+    /// <summary>Visits a custom single-input relation.</summary>
+    /// <param name="op">The relation.</param>
+    /// <param name="context">Input context.</param>
+    /// <returns>The visitor output.</returns>
+    public virtual TOutput Visit(ExtensionSingle op, TContext context) => this.Visit((IRel)op, context);
+
+    /// <summary>Visits a custom multi-input relation.</summary>
+    /// <param name="op">The relation.</param>
+    /// <param name="context">Input context.</param>
+    /// <returns>The visitor output.</returns>
+    public virtual TOutput Visit(ExtensionMulti op, TContext context) => this.Visit((IRel)op, context);
+
     /// <summary>Visits a reference leaf without traversing its target.</summary>
     /// <param name="op">The reference.</param>
     /// <param name="context">Input context.</param>

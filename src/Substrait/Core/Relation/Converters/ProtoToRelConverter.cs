@@ -29,6 +29,7 @@ public class ProtoToRelConverter
     private readonly ExtensionsDictionary.StrictMode strictMode;
     private readonly ProtoToTypeConverter typeConverter;
     private readonly bool ownsMetadata;
+    private readonly IExtensionRelationSchemaResolver? extensionSchemaResolver;
 
     internal Func<int, IRel>? ReferenceResolver { get; set; }
 
@@ -54,7 +55,21 @@ public class ProtoToRelConverter
         ExtensionsDictionary lookup,
         ExtensionsCollection extensions,
         ExtensionsDictionary.StrictMode strictMode = ExtensionsDictionary.StrictMode.STRICT)
-        : this(lookup, extensions, strictMode, ownsMetadata: false)
+        : this(lookup, extensions, extensionSchemaResolver: null, strictMode)
+    {
+    }
+
+    /// <summary>Initializes a converter with an explicit custom-relation schema contract.</summary>
+    /// <param name="lookup">The extension lookup.</param>
+    /// <param name="extensions">The available function and type extensions.</param>
+    /// <param name="extensionSchemaResolver">The custom-relation schema resolver, or null to retain unresolved schemas.</param>
+    /// <param name="strictMode">The function and type extension resolution mode.</param>
+    public ProtoToRelConverter(
+        ExtensionsDictionary lookup,
+        ExtensionsCollection extensions,
+        IExtensionRelationSchemaResolver? extensionSchemaResolver,
+        ExtensionsDictionary.StrictMode strictMode = ExtensionsDictionary.StrictMode.STRICT)
+        : this(lookup, extensions, strictMode, ownsMetadata: false, extensionSchemaResolver)
     {
     }
 
@@ -62,9 +77,11 @@ public class ProtoToRelConverter
         ExtensionsDictionary lookup,
         ExtensionsCollection extensions,
         ExtensionsDictionary.StrictMode strictMode,
-        bool ownsMetadata)
+        bool ownsMetadata,
+        IExtensionRelationSchemaResolver? extensionSchemaResolver)
     {
         this.ownsMetadata = ownsMetadata;
+        this.extensionSchemaResolver = extensionSchemaResolver;
         this.lookup = lookup;
         this.extensions = extensions;
         this.strictMode = strictMode;
@@ -87,6 +104,18 @@ public class ProtoToRelConverter
     /// <param name="enclosingSchemas">Schemas for enclosing contexts.</param>
     /// <returns>The internal relation.</returns>
     public IRel ToRel(ProtoRel protoRel, IReadOnlyList<Core.Type.ParameterizedType.Struct> enclosingSchemas)
+    {
+        try
+        {
+            return this.ToRelCore(protoRel, enclosingSchemas);
+        }
+        catch (ExtensionSchemaUnavailableException error)
+        {
+            throw new SerializationException($"Cannot convert {protoRel.RelTypeCase}: {error.Message}", error);
+        }
+    }
+
+    private IRel ToRelCore(ProtoRel protoRel, IReadOnlyList<Core.Type.ParameterizedType.Struct> enclosingSchemas)
     {
         var stack = new Stack<(ProtoRel Relation, List<IRel> Inputs, List<IRel> Output, int InputCount)>();
         var output = new List<IRel>();
@@ -158,6 +187,22 @@ public class ProtoToRelConverter
                     ProcessSingleInput(current, current.Exchange.Input, inputs, destination, inputCount,
                         input => this.CreateExchange(current.Exchange, input, enclosingSchemas), stack);
                     break;
+                case ProtoRel.RelTypeOneofCase.ExtensionLeaf:
+                    destination.Add(this.CreateExtension(ExtensionRelationKind.Leaf,
+                        current.ExtensionLeaf.Common, current.ExtensionLeaf.Detail, []));
+                    break;
+                case ProtoRel.RelTypeOneofCase.ExtensionSingle:
+                    ProcessSingleInput(current,
+                        current.ExtensionSingle.Input ?? throw new SerializationException("ExtensionSingle requires an input relation."),
+                        inputs, destination, inputCount,
+                        input => this.CreateExtension(ExtensionRelationKind.Single,
+                            current.ExtensionSingle.Common, current.ExtensionSingle.Detail, [input]), stack);
+                    break;
+                case ProtoRel.RelTypeOneofCase.ExtensionMulti:
+                    ProcessInputs(current, current.ExtensionMulti.Inputs, inputs, destination, inputCount,
+                        relations => this.CreateExtension(ExtensionRelationKind.Multi,
+                            current.ExtensionMulti.Common, current.ExtensionMulti.Detail, relations), stack);
+                    break;
                 default:
                     throw new NotImplementedException(current.RelTypeCase.ToString());
             }
@@ -222,6 +267,26 @@ public class ProtoToRelConverter
         }
 
         return RelationMetadata.Capture(common, advancedExtension, this.ownsMetadata);
+    }
+
+    private IRel CreateExtension(
+        ExtensionRelationKind kind,
+        RelCommon? common,
+        Google.Protobuf.WellKnownTypes.Any? detail,
+        IReadOnlyList<IRel> inputs)
+    {
+        RelationMetadata metadata = this.Metadata(common, null);
+        ReadOnlyAny? payload = detail is null ? null : this.ownsMetadata
+            ? ReadOnlyAny.FromOwnedProto(detail) : ReadOnlyAny.FromProto(detail);
+        ImmutableList<IRel> immutableInputs = inputs.ToImmutableList();
+        Core.Type.ParameterizedType.Struct? schema = this.extensionSchemaResolver?.Resolve(kind, payload, immutableInputs);
+        return kind switch
+        {
+            ExtensionRelationKind.Leaf => new ExtensionLeaf(metadata, payload, schema),
+            ExtensionRelationKind.Single => new ExtensionSingle(metadata, immutableInputs[0], payload, schema),
+            ExtensionRelationKind.Multi => new ExtensionMulti(metadata, immutableInputs, payload, schema),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown extension relation kind."),
+        };
     }
 
     private Aggregate CreateAggregate(
