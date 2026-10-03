@@ -52,6 +52,19 @@ public class RelToProtoConverter
             return new ProtoRel { Reference = new() { SubtreeOrdinal = relation.SubtreeOrdinal } };
         }
 
+        public override ProtoRel Visit(ExtensionLeaf relation, PlanToProtoConverter.ConverterContext context) =>
+            new() { ExtensionLeaf = new() { Common = Common(relation), Detail = relation.Detail?.ToProto() } };
+
+        public override ProtoRel Visit(ExtensionSingle relation, PlanToProtoConverter.ConverterContext context) =>
+            new() { ExtensionSingle = new() { Common = Common(relation), Input = context.GetOutput(relation.Input), Detail = relation.Detail?.ToProto() } };
+
+        public override ProtoRel Visit(ExtensionMulti relation, PlanToProtoConverter.ConverterContext context)
+        {
+            var extension = new ExtensionMultiRel { Common = Common(relation), Detail = relation.Detail?.ToProto() };
+            extension.Inputs.AddRange(relation.Inputs.Select(context.GetOutput));
+            return new ProtoRel { ExtensionMulti = extension };
+        }
+
         public override ProtoRel Visit(Filter relation, PlanToProtoConverter.ConverterContext context) =>
             new() { Filter = new() { Input = context.GetOutput(relation.Input), Condition = this.expressionConverter.From(relation.Condition, context), Common = Common(relation), AdvancedExtension = relation.Metadata.AdvancedExtension?.ToProto() } };
 

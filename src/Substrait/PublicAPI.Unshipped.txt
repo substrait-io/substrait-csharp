@@ -24,8 +24,25 @@ override Substrait.Core.Metadata.RelationMetadata.GetHashCode() -> int
 override Substrait.Core.Relation.AbstractJoin.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 override Substrait.Core.Relation.Aggregate.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 override Substrait.Core.Relation.Cross.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
+override Substrait.Core.Relation.DefaultRelVisitor<TContext, TOutput>.Visit(Substrait.Core.Relation.ExtensionLeaf! op, TContext context) -> TOutput
+override Substrait.Core.Relation.DefaultRelVisitor<TContext, TOutput>.Visit(Substrait.Core.Relation.ExtensionMulti! op, TContext context) -> TOutput
+override Substrait.Core.Relation.DefaultRelVisitor<TContext, TOutput>.Visit(Substrait.Core.Relation.ExtensionSingle! op, TContext context) -> TOutput
 override Substrait.Core.Relation.EmptyRead.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 override Substrait.Core.Relation.Exchange.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
+override Substrait.Core.Relation.ExtensionLeaf.Accept<TContext, TOutput>(Substrait.Core.Relation.RelVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
+override Substrait.Core.Relation.ExtensionLeaf.GetNodeHashCode() -> int
+override Substrait.Core.Relation.ExtensionLeaf.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
+override Substrait.Core.Relation.ExtensionLeaf.NodeEquals(Substrait.Core.Relation.IRel! other) -> bool
+override Substrait.Core.Relation.ExtensionMulti.Accept<TContext, TOutput>(Substrait.Core.Relation.RelVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
+override Substrait.Core.Relation.ExtensionMulti.GetNodeHashCode() -> int
+override Substrait.Core.Relation.ExtensionMulti.Inputs.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Relation.IRel!>!
+override Substrait.Core.Relation.ExtensionMulti.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
+override Substrait.Core.Relation.ExtensionMulti.NodeEquals(Substrait.Core.Relation.IRel! other) -> bool
+override Substrait.Core.Relation.ExtensionSingle.Accept<TContext, TOutput>(Substrait.Core.Relation.RelVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
+override Substrait.Core.Relation.ExtensionSingle.GetNodeHashCode() -> int
+override Substrait.Core.Relation.ExtensionSingle.Input.get -> Substrait.Core.Relation.IRel!
+override Substrait.Core.Relation.ExtensionSingle.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
+override Substrait.Core.Relation.ExtensionSingle.NodeEquals(Substrait.Core.Relation.IRel! other) -> bool
 override Substrait.Core.Relation.Fetch.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 override Substrait.Core.Relation.Filter.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 override Substrait.Core.Relation.NamedTableRead.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
@@ -115,6 +132,7 @@ Substrait.Core.Plan.Converters.ProtoToPlanConverter.FromBytes(byte[]! data, Subs
 Substrait.Core.Plan.Converters.ProtoToPlanConverter.FromFile(string! path, Substrait.Core.Extension.ExtensionsDictionary.StrictMode strictMode = Substrait.Core.Extension.ExtensionsDictionary.StrictMode.STRICT) -> Substrait.Core.Plan.IPlan!
 Substrait.Core.Plan.Converters.ProtoToPlanConverter.FromJson(string! json, Substrait.Core.Extension.ExtensionsDictionary.StrictMode strictMode = Substrait.Core.Extension.ExtensionsDictionary.StrictMode.STRICT, Google.Protobuf.JsonParser? parser = null) -> Substrait.Core.Plan.IPlan!
 Substrait.Core.Plan.Converters.ProtoToPlanConverter.FromStream(System.IO.Stream! stream, Substrait.Core.Extension.ExtensionsDictionary.StrictMode strictMode = Substrait.Core.Extension.ExtensionsDictionary.StrictMode.STRICT) -> Substrait.Core.Plan.IPlan!
+Substrait.Core.Plan.Converters.ProtoToPlanConverter.ProtoToPlanConverter(Substrait.Core.Extension.ExtensionsCollection! extensions, Substrait.Core.Relation.IExtensionRelationSchemaResolver? extensionSchemaResolver) -> void
 Substrait.Core.Plan.IPlan.IRelation
 Substrait.Core.Plan.IPlan.IRelation.Input.get -> Substrait.Core.Relation.IRel!
 Substrait.Core.Plan.IPlan.Relations.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Plan.IPlan.IRelation!>!
@@ -133,12 +151,44 @@ Substrait.Core.Plan.PlanBuilder.AddRoot(Substrait.Core.Relation.IRel! input, Sys
 Substrait.Core.Plan.PlanBuilder.Build() -> Substrait.Core.Plan.Plan!
 Substrait.Core.Relation.AbstractJoin.AbstractJoin(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! left, Substrait.Core.Relation.IRel! right, Substrait.Core.Relation.AbstractJoin.JoinType type, Substrait.Core.Expression.IExpression? postJoinFilter) -> void
 Substrait.Core.Relation.Aggregate.Aggregate(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! input, System.Collections.Generic.IEnumerable<Substrait.Core.Expression.IExpression!>! groupingExpressions, System.Collections.Generic.IEnumerable<Substrait.Core.Relation.Aggregate.Grouping!>! groupings, System.Collections.Generic.IEnumerable<Substrait.Core.Relation.Aggregate.Measure!>! measures) -> void
+Substrait.Core.Relation.Converters.ProtoToRelConverter.ProtoToRelConverter(Substrait.Core.Extension.ExtensionsDictionary! lookup, Substrait.Core.Extension.ExtensionsCollection! extensions, Substrait.Core.Relation.IExtensionRelationSchemaResolver? extensionSchemaResolver, Substrait.Core.Extension.ExtensionsDictionary.StrictMode strictMode = Substrait.Core.Extension.ExtensionsDictionary.StrictMode.STRICT) -> void
 Substrait.Core.Relation.Cross.Cross(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! left, Substrait.Core.Relation.IRel! right) -> void
 Substrait.Core.Relation.EmptyRead.EmptyRead(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Type.NamedStruct! initialSchema, Substrait.Core.Expression.IExpression? filter) -> void
 Substrait.Core.Relation.Exchange.Exchange(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! input, int partitionCount) -> void
+Substrait.Core.Relation.ExtensionLeaf
+Substrait.Core.Relation.ExtensionLeaf.Detail.get -> Substrait.Core.Metadata.ReadOnlyAny?
+Substrait.Core.Relation.ExtensionLeaf.ExtensionLeaf(Google.Protobuf.IMessage! message, Substrait.Core.Type.ParameterizedType.Struct? unmappedRecordType = null) -> void
+Substrait.Core.Relation.ExtensionLeaf.ExtensionLeaf(Substrait.Core.Metadata.ReadOnlyAny? detail, Substrait.Core.Type.ParameterizedType.Struct? unmappedRecordType = null) -> void
+Substrait.Core.Relation.ExtensionLeaf.ExtensionLeaf(Substrait.Core.Metadata.RelationMetadata! metadata, Google.Protobuf.IMessage! message, Substrait.Core.Type.ParameterizedType.Struct? unmappedRecordType = null) -> void
+Substrait.Core.Relation.ExtensionLeaf.ExtensionLeaf(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Metadata.ReadOnlyAny? detail, Substrait.Core.Type.ParameterizedType.Struct? unmappedRecordType = null) -> void
+Substrait.Core.Relation.ExtensionLeaf.UnmappedRecordType.get -> Substrait.Core.Type.ParameterizedType.Struct?
+Substrait.Core.Relation.ExtensionMulti
+Substrait.Core.Relation.ExtensionMulti.Detail.get -> Substrait.Core.Metadata.ReadOnlyAny?
+Substrait.Core.Relation.ExtensionMulti.ExtensionMulti(Substrait.Core.Metadata.RelationMetadata! metadata, System.Collections.Generic.IEnumerable<Substrait.Core.Relation.IRel!>! inputs, Google.Protobuf.IMessage! message, Substrait.Core.Type.ParameterizedType.Struct? unmappedRecordType = null) -> void
+Substrait.Core.Relation.ExtensionMulti.ExtensionMulti(Substrait.Core.Metadata.RelationMetadata! metadata, System.Collections.Generic.IEnumerable<Substrait.Core.Relation.IRel!>! inputs, Substrait.Core.Metadata.ReadOnlyAny? detail, Substrait.Core.Type.ParameterizedType.Struct? unmappedRecordType = null) -> void
+Substrait.Core.Relation.ExtensionMulti.ExtensionMulti(System.Collections.Generic.IEnumerable<Substrait.Core.Relation.IRel!>! inputs, Google.Protobuf.IMessage! message, Substrait.Core.Type.ParameterizedType.Struct? unmappedRecordType = null) -> void
+Substrait.Core.Relation.ExtensionMulti.ExtensionMulti(System.Collections.Generic.IEnumerable<Substrait.Core.Relation.IRel!>! inputs, Substrait.Core.Metadata.ReadOnlyAny? detail, Substrait.Core.Type.ParameterizedType.Struct? unmappedRecordType = null) -> void
+Substrait.Core.Relation.ExtensionMulti.UnmappedRecordType.get -> Substrait.Core.Type.ParameterizedType.Struct?
+Substrait.Core.Relation.ExtensionRelationKind
+Substrait.Core.Relation.ExtensionRelationKind.Leaf = 0 -> Substrait.Core.Relation.ExtensionRelationKind
+Substrait.Core.Relation.ExtensionRelationKind.Multi = 2 -> Substrait.Core.Relation.ExtensionRelationKind
+Substrait.Core.Relation.ExtensionRelationKind.Single = 1 -> Substrait.Core.Relation.ExtensionRelationKind
+Substrait.Core.Relation.ExtensionSchemaUnavailableException
+Substrait.Core.Relation.ExtensionSchemaUnavailableException.ExtensionSchemaUnavailableException() -> void
+Substrait.Core.Relation.ExtensionSchemaUnavailableException.ExtensionSchemaUnavailableException(string? message) -> void
+Substrait.Core.Relation.ExtensionSchemaUnavailableException.ExtensionSchemaUnavailableException(string? message, System.Exception? innerException) -> void
+Substrait.Core.Relation.ExtensionSingle
+Substrait.Core.Relation.ExtensionSingle.Detail.get -> Substrait.Core.Metadata.ReadOnlyAny?
+Substrait.Core.Relation.ExtensionSingle.ExtensionSingle(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! input, Google.Protobuf.IMessage! message, Substrait.Core.Type.ParameterizedType.Struct? unmappedRecordType = null) -> void
+Substrait.Core.Relation.ExtensionSingle.ExtensionSingle(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! input, Substrait.Core.Metadata.ReadOnlyAny? detail, Substrait.Core.Type.ParameterizedType.Struct? unmappedRecordType = null) -> void
+Substrait.Core.Relation.ExtensionSingle.ExtensionSingle(Substrait.Core.Relation.IRel! input, Google.Protobuf.IMessage! message, Substrait.Core.Type.ParameterizedType.Struct? unmappedRecordType = null) -> void
+Substrait.Core.Relation.ExtensionSingle.ExtensionSingle(Substrait.Core.Relation.IRel! input, Substrait.Core.Metadata.ReadOnlyAny? detail, Substrait.Core.Type.ParameterizedType.Struct? unmappedRecordType = null) -> void
+Substrait.Core.Relation.ExtensionSingle.UnmappedRecordType.get -> Substrait.Core.Type.ParameterizedType.Struct?
 Substrait.Core.Relation.Fetch.Fetch(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! input, Substrait.Core.Expression.IExpression! count, Substrait.Core.Expression.IExpression! offset) -> void
 Substrait.Core.Relation.Filter.Filter(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! input, Substrait.Core.Expression.IExpression! condition) -> void
 Substrait.Core.Relation.HashJoin.HashJoin(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! left, Substrait.Core.Relation.IRel! right, Substrait.Core.Relation.AbstractJoin.JoinType type, System.Collections.Generic.IEnumerable<Substrait.Core.Relation.PhysicalJoin.ComparisonJoinKey!>! keys, Substrait.Core.Expression.IExpression? postJoinFilter, Substrait.Core.Relation.HashJoin.BuildInput buildInput = Substrait.Core.Relation.HashJoin.BuildInput.Unspecified) -> void
+Substrait.Core.Relation.IExtensionRelationSchemaResolver
+Substrait.Core.Relation.IExtensionRelationSchemaResolver.Resolve(Substrait.Core.Relation.ExtensionRelationKind kind, Substrait.Core.Metadata.ReadOnlyAny? detail, System.Collections.Generic.IReadOnlyList<Substrait.Core.Relation.IRel!>! inputs) -> Substrait.Core.Type.ParameterizedType.Struct?
 Substrait.Core.Relation.IRel.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 Substrait.Core.Relation.Join.Join(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! left, Substrait.Core.Relation.IRel! right, Substrait.Core.Relation.AbstractJoin.JoinType type, Substrait.Core.Expression.IExpression? condition, Substrait.Core.Expression.IExpression? postJoinFilter) -> void
 Substrait.Core.Relation.NamedTableRead.NamedTableRead(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Type.NamedStruct! initialSchema, System.Collections.Generic.IEnumerable<string!>! names, Substrait.Core.Expression.IExpression? filter, Substrait.Core.Metadata.ReadOnlyAdvancedExtension? tableAdvancedExtension = null) -> void
@@ -160,6 +210,9 @@ Substrait.Core.Relation.Sort.Sort(Substrait.Core.Metadata.RelationMetadata! meta
 Substrait.Core.Relation.VirtualTableRead.VirtualTableRead(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Type.NamedStruct! initialSchema, System.Collections.Generic.IEnumerable<Substrait.Core.Expression.Expression.Struct!>! rows, Substrait.Core.Expression.IExpression? filter) -> void
 virtual Substrait.Core.Relation.Rel.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 virtual Substrait.Core.Relation.Rel.Transmute.get -> Substrait.Core.Relation.Remap?
+virtual Substrait.Core.Relation.RelVisitor<TContext, TOutput>.Visit(Substrait.Core.Relation.ExtensionLeaf! op, TContext context) -> TOutput
+virtual Substrait.Core.Relation.RelVisitor<TContext, TOutput>.Visit(Substrait.Core.Relation.ExtensionMulti! op, TContext context) -> TOutput
+virtual Substrait.Core.Relation.RelVisitor<TContext, TOutput>.Visit(Substrait.Core.Relation.ExtensionSingle! op, TContext context) -> TOutput
 virtual Substrait.Core.Relation.RelVisitor<TContext, TOutput>.Visit(Substrait.Core.Relation.Reference! op, TContext context) -> TOutput
 override Substrait.Core.Relation.DefaultRelVisitor<TContext, TOutput>.Visit(Substrait.Core.Relation.Reference! op, TContext context) -> TOutput
 Substrait.Core.Extension.Functions.FunctionImpl.Deprecated.get -> Substrait.Core.Extension.Functions.FunctionImpl.Deprecation?

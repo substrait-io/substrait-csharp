@@ -16,6 +16,7 @@ namespace Substrait.Core.Plan.Converters;
 public class ProtoToPlanConverter
 {
     private readonly ExtensionsCollection extensions;
+    private readonly IExtensionRelationSchemaResolver? extensionSchemaResolver;
 
     /// <summary>
     /// Initializes a converter using standard extensions.
@@ -30,8 +31,17 @@ public class ProtoToPlanConverter
     /// </summary>
     /// <param name="extensions">The available extensions.</param>
     public ProtoToPlanConverter(ExtensionsCollection extensions)
+        : this(extensions, extensionSchemaResolver: null)
+    {
+    }
+
+    /// <summary>Initializes a converter with an explicit custom-relation schema contract.</summary>
+    /// <param name="extensions">The available function and type extensions.</param>
+    /// <param name="extensionSchemaResolver">The custom-relation schema resolver, or null to retain unresolved schemas.</param>
+    public ProtoToPlanConverter(ExtensionsCollection extensions, IExtensionRelationSchemaResolver? extensionSchemaResolver)
     {
         this.extensions = extensions;
+        this.extensionSchemaResolver = extensionSchemaResolver;
     }
 
     /// <summary>
@@ -97,7 +107,7 @@ public class ProtoToPlanConverter
 
         IReadOnlyList<int> order = PlanValidation.GetDependencyOrder(dependencies, message => new SerializationException(message));
         var converted = new IRel?[plan.Relations.Count];
-        var relationConverter = new ProtoToRelConverter(new ExtensionsDictionary.Builder(plan).Build(), this.extensions, strictMode, ownsMetadata);
+        var relationConverter = new ProtoToRelConverter(new ExtensionsDictionary.Builder(plan).Build(), this.extensions, strictMode, ownsMetadata, this.extensionSchemaResolver);
         relationConverter.ReferenceResolver = ordinal =>
         {
             PlanValidation.ValidateOrdinal(ordinal, converted.Length, "Plan reference resolution", message => new SerializationException(message));
@@ -145,5 +155,5 @@ public class ProtoToPlanConverter
     protected ProtoToRelConverter GetProtoRelConverter(
         ExtensionsDictionary lookup,
         ExtensionsDictionary.StrictMode strictMode) =>
-        new(lookup, this.extensions, strictMode);
+        new(lookup, this.extensions, this.extensionSchemaResolver, strictMode);
 }

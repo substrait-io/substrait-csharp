@@ -125,6 +125,135 @@ required enhancements or reject them rather than silently ignore them.
 `ReferenceRel` has no common or advanced-extension field; `Reference.Metadata`
 is always empty and its target's metadata stays on the defining entry.
 
+## Custom extension relations and schemas
+
+`ExtensionLeaf`, `ExtensionSingle`, and `ExtensionMulti` model the three custom
+relation variants. Their `Detail` is a nullable `ReadOnlyAny`: absent, empty,
+and unknown payloads remain distinct and are never unpacked by the library.
+All relation inputs are immutable and visited in order. A multi-input
+extension's contract determines the allowed input count, including whether
+zero or one input is meaningful.
+
+These variants have `RelCommon` but no operator-level `advanced_extension`
+field. Their metadata-first constructors therefore reject non-null
+`RelationMetadata.AdvancedExtension`; extensions within `Common` are preserved.
+Constructors without metadata use explicit direct output.
+
+The specification leaves schema derivation to an agreement between producer and
+consumer, documented alongside the extension's detail message. Supply a schema
+directly when constructing a relation:
+
+```csharp
+using Google.Protobuf.WellKnownTypes;
+using Substrait.Core.Metadata;
+using Substrait.Core.Relation;
+using Substrait.Core.Type;
+
+var schema = new NamedStruct(
+    ["order_id"], TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64]));
+var orders = new NamedTableRead(schema, ["orders"], filter: null);
+var detail = ReadOnlyAny.FromProto(new Any
+{
+    TypeUrl = "type.acme.example/acme.KeepRowsV1",
+});
+var custom = new ExtensionSingle(
+    orders, detail, unmappedRecordType: orders.RecordType);
+```
+
+Here the application explicitly declares that `KeepRowsV1` preserves its
+input's schema; the library does not assume this for single-input extensions.
+
+All three operators also accept a generated protobuf `IMessage`, with or without
+explicit metadata. The `message` constructor packs it immediately using
+`Any.Pack` and the standard `type.googleapis.com` prefix, retaining an immutable
+snapshot rather than the mutable message. For example, using a well-known
+protobuf message as a demonstration payload:
+
+```csharp
+var message = new StringValue { Value = "custom configuration" };
+var fromMessage = new ExtensionSingle(
+    orders, message: message, unmappedRecordType: orders.RecordType);
+message.Value = "changed"; // Does not change fromMessage.Detail.
+```
+
+The stored `Detail` remains a `ReadOnlyAny`. Passing an already-packed `Any`
+copies it without wrapping it in another `Any`, preserving custom type URLs,
+payload bytes, unknown fields, and empty-message presence. To choose a custom
+type URL prefix, pack the message yourself and pass the resulting `Any`.
+Message construction does not infer the relation's output schema from the
+protobuf message type. Do not mutate a message concurrently with construction.
+
+The `message` overload rejects null. Use `detail: null` for absent payloads,
+for example `new ExtensionLeaf(detail: null)`, since a positional null is
+ambiguous between the `IMessage` and `ReadOnlyAny` overloads.
+
+For imports, implement `IExtensionRelationSchemaResolver`:
+
+```csharp
+using System.Runtime.Serialization;
+using Substrait.Core.Metadata;
+using Substrait.Core.Relation;
+using Struct = Substrait.Core.Type.ParameterizedType.Struct;
+
+public sealed class AcmeSchemaResolver : IExtensionRelationSchemaResolver
+{
+    public Struct? Resolve(
+        ExtensionRelationKind kind,
+        ReadOnlyAny? detail,
+        IReadOnlyList<IRel> inputs)
+    {
+        if (detail?.TypeUrl != "type.acme.example/acme.KeepRowsV1")
+        {
+            return null;
+        }
+
+        if (kind != ExtensionRelationKind.Single || inputs.Count != 1)
+        {
+            throw new SerializationException("KeepRowsV1 requires exactly one input.");
+        }
+
+        return inputs[0].RecordType;
+    }
+}
+```
+
+Pass the resolver to `new ProtoToPlanConverter(extensions, resolver)` or
+`new ProtoToRelConverter(lookup, extensions, resolver, strictMode)`.
+Here `extensions` is the existing function/type `ExtensionsCollection` and
+`lookup` is the plan's `ExtensionsDictionary`. All plan input entry points and
+nested subqueries use the same resolver. Existing constructor overloads use no
+resolver. Function/type `StrictMode` does not change custom-relation resolution.
+
+The resolver runs once per extension occurrence, bottom-up, and receives
+immutable detail and ordered, already-converted inputs. Return `null` for an
+unknown schema, or throw for a recognized but invalid extension. Implementations
+should be deterministic, and safe for concurrent calls if the converter is
+shared. Input schemas are not evaluated unless the resolver requests them:
+a fixed output schema may be resolved even when an input's schema is unknown.
+An application may decode a known detail message, but the library does not
+require descriptors or retain the resolver in the resulting relation.
+
+`UnmappedRecordType` stores the result as an immutable value. It is the schema
+**before this relation's emit mapping**; input `RecordType` values already
+include their respective mappings. For example, an unmapped schema
+`[i64, string, bool]` with emit `[2, 0]` exposes `[bool, i64]` through
+`RecordType`. Mapping is applied once by the relation base class.
+
+A null schema means unresolved, not zero columns. An actual empty struct means
+zero columns. Unresolved extensions can be traversed, compared, hashed, and
+exported without a schema. Reading their `RecordType` throws
+`ExtensionSchemaUnavailableException` identifying the variant and type URL.
+Schema-dependent import, such as a filter above an unresolved extension, fails
+with a contextual `SerializationException` retaining that cause. This is not
+schema-free import of arbitrary plans; the existing expression model still
+requires input types.
+
+Equality and hashing include the supplied unmapped schema, detail, metadata,
+and ordered inputs, without deriving schemas. Resolved and unresolved models
+are distinct. A schema is not separately serialized or written into the detail;
+reimport with the same contract to recover it. Opaque binary round trips need
+no payload descriptors; standard protobuf JSON still requires a type registry.
+
 ## Serialized input entry points
 
 `ProtoToPlanConverter` supports:

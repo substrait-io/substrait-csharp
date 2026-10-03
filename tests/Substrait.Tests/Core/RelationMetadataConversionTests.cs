@@ -67,7 +67,7 @@ public sealed class RelationMetadataConversionTests
             await Assert.That(converted).IsEqualTo(relation).Because(name);
             await Assert.That(converted.GetHashCode()).IsEqualTo(relation.GetHashCode()).Because(name);
             await Assert.That(converted.RecordType).IsEqualTo(relation.RecordType).Because(name);
-            await Assert.That(converted.Metadata).IsEqualTo(metadata).Because(name);
+            await Assert.That(converted.Metadata).IsEqualTo(relation.Metadata).Because(name);
             await Assert.That(new PlanToProtoConverter().From(parsed)).IsEqualTo(wire).Because(name);
 
             ProtoRel standaloneWire = new RelToProtoConverter().From(relation);
@@ -190,10 +190,10 @@ public sealed class RelationMetadataConversionTests
         await Assert.That(new PlanToProtoConverter().From(plan)).IsEqualTo(wire);
     }
 
-    internal static ProtoToPlanConverter Decoder() => new(new ExtensionsCollection());
+    internal static ProtoToPlanConverter Decoder() => new(new ExtensionsCollection(), new ExtensionSchemaResolver());
 
     internal static ProtoToRelConverter Reader() => new(
-        new ExtensionsDictionary.Builder().Build(), new ExtensionsCollection(), ExtensionsDictionary.StrictMode.OFF);
+        new ExtensionsDictionary.Builder().Build(), new ExtensionsCollection(), new ExtensionSchemaResolver(), ExtensionsDictionary.StrictMode.OFF);
 
     internal static NamedStruct Schema() => new(["value"], TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64]));
 
@@ -228,5 +228,15 @@ public sealed class RelationMetadataConversionTests
         yield return new Set(metadata, Set.SetOp.UnionAll, [input, Read()]);
         yield return new ScatterExchange(metadata, input, 2, [field]);
         yield return new SingleBucketExchange(metadata, input, 2, new Literal.I64Literal(1));
+        RelationMetadata commonOnly = new(metadata.Common);
+        yield return new ExtensionLeaf(commonOnly, detail: null, Schema().Struct);
+        yield return new ExtensionSingle(commonOnly, input, detail: null, Schema().Struct);
+        yield return new ExtensionMulti(commonOnly, [input, Read()], detail: null, Schema().Struct);
+    }
+
+    private sealed class ExtensionSchemaResolver : IExtensionRelationSchemaResolver
+    {
+        public ParameterizedType.Struct? Resolve(ExtensionRelationKind kind, ReadOnlyAny? detail, IReadOnlyList<IRel> inputs) =>
+            Schema().Struct;
     }
 }
