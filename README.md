@@ -102,6 +102,15 @@ one. Unknown schemas remain unresolved rather than being guessed; schema-depende
 operations fail explicitly. See [extension schema contracts](docs/metadata-facades.md#custom-extension-relations-and-schemas)
 for examples, output mapping, and round-trip limitations.
 
+`IPlan.Metadata` preserves plan-level advanced extensions and the ordered
+`expected_type_urls` declarations. Use `PlanBuilder.SetEnhancement`,
+`AddOptimization`, and the related editing methods while composing a plan;
+earlier built plans remain immutable. Payload methods accept protobuf messages
+or read-only facades. Existing `PlanMetadata` can also be passed to the
+metadata-first plan constructor, `Plan.FromRelations`, or `PlanBuilder`.
+See [plan extension metadata](docs/metadata-facades.md#plan-extension-metadata)
+for construction, payload ownership, and compatibility details.
+
 Plans can contain ordered mixtures of roots and reusable non-root relations.
 Use `PlanBuilder` to assign reference ordinals and safely share a registered
 subplan across outputs:
