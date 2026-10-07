@@ -121,6 +121,7 @@ public sealed class TypeVariationImpl : IEquatable<TypeVariationImpl>, ITypeVari
     /// <inheritdoc/>
     public bool IsCompatible(IType type)
     {
-        return this.BaseTypeName.Equals(type.TypeName, StringComparison.OrdinalIgnoreCase);
+        return this.BaseTypeName.Equals(type.TypeName, StringComparison.OrdinalIgnoreCase)
+            || (type is PrimitiveType.Time && this.BaseTypeName.Equals("precision_time", StringComparison.OrdinalIgnoreCase));
     }
 }

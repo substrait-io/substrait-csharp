@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Runtime.Serialization;
 using Substrait.Core.Extension;
 using Substrait.Core.Extension.Functions;
 using Substrait.Core.Extension.Types;
@@ -50,19 +51,23 @@ public sealed class ProtoToTypeConverterTests
     [Test]
     [Arguments(0)]
     [Arguments(3)]
+    [Arguments(6)]
     [Arguments(9)]
-    public async Task RejectsUnsupportedTimePrecision(int precision)
+    [Arguments(12)]
+    public async Task PreservesTimePrecision(int precision)
     {
         ProtoType type = new()
         {
             PrecisionTime = new() { Precision = precision, Nullability = ProtoType.Types.Nullability.Required },
         };
 
-        await Assert.That(() => new ProtoToTypeConverter().From(type)).ThrowsExactly<NotSupportedException>();
+        var converted = new ProtoToTypeConverter().From(type);
+        await Assert.That(converted).IsEqualTo(TypeFactory.REQUIRED.PrecisionTime(precision));
+        await Assert.That(new TypeToProtoConverter().From(converted)).IsEqualTo(type);
     }
 
     [Test]
-    public async Task RejectsMissingOrFractionalIntervalPrecision()
+    public async Task RejectsMissingIntervalPrecisionButPreservesFractionalPrecision()
     {
         ProtoType type = new()
         {
@@ -70,9 +75,9 @@ public sealed class ProtoToTypeConverterTests
         };
         ProtoToTypeConverter converter = new();
 
-        await Assert.That(() => converter.From(type)).ThrowsExactly<NotSupportedException>();
+        await Assert.That(() => converter.From(type)).ThrowsExactly<SerializationException>();
         type.IntervalDay.Precision = 6;
-        await Assert.That(() => converter.From(type)).ThrowsExactly<NotSupportedException>();
+        await Assert.That(new TypeToProtoConverter().From(converter.From(type))).IsEqualTo(type);
     }
 
     [Test]

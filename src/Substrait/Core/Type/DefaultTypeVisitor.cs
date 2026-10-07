@@ -75,6 +75,12 @@ public abstract class DefaultTypeVisitor<TContext, TOutput> : TypeVisitor<TConte
     }
 
     /// <inheritdoc/>
+    public override TOutput Visit(Uuid type, TContext context) => this.DefaultVisit(type, context);
+
+    /// <inheritdoc/>
+    public override TOutput Visit(IntervalCompound type, TContext context) => this.DefaultVisit(type, context);
+
+    /// <inheritdoc/>
     public override TOutput Visit(Time type, TContext context)
     {
         return this.DefaultVisit(type, context);

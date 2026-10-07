@@ -49,7 +49,7 @@ public abstract class PrimitiveType : IType
     public abstract TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context);
 
     /// <inheritdoc/>
-    public string ToTypeString() => this.TypeName;
+    public virtual string ToTypeString() => this.TypeName;
 
     /// <inheritdoc/>
     public override string ToString()
@@ -58,7 +58,7 @@ public abstract class PrimitiveType : IType
     }
 
     /// <inheritdoc/>
-    public bool NodeEquals(IType other, ITypeComparison comparison)
+    public virtual bool NodeEquals(IType other, ITypeComparison comparison)
     {
         if (ReferenceEquals(this, other))
         {
@@ -503,17 +503,65 @@ public abstract class PrimitiveType : IType
     }
 
     /// <summary>
-    /// Immutable implementation of time type.
+    /// Immutable implementation of UUID type.
     /// </summary>
-    public sealed class Time : PrimitiveType
+    public sealed class Uuid : PrimitiveType, IEquatable<Uuid>
     {
-        private static readonly Time REQUIRED = new Time(NullableType.Required, typeVariation: null);
-        private static readonly Time NULLABLE = new Time(NullableType.Nullable, typeVariation: null);
+        private static readonly Uuid REQUIRED = new(NullableType.Required, null);
+        private static readonly Uuid NULLABLE = new(NullableType.Nullable, null);
 
-        private Time(NullableType nullable, ITypeVariation? typeVariation = null)
+        private Uuid(NullableType nullable, ITypeVariation? typeVariation)
             : base(nullable, typeVariation)
         {
         }
+
+        /// <inheritdoc/>
+        public override string ShortTypeName => "uuid";
+
+        /// <summary>Gets a UUID type with the specified nullability and variation.</summary>
+        /// <param name="nullable">Whether it is nullable.</param>
+        /// <param name="typeVariation">Type variation.</param>
+        /// <returns>The UUID type.</returns>
+        public static Uuid Of(NullableType nullable, ITypeVariation? typeVariation = null)
+        {
+            return nullable switch
+            {
+                NullableType.Required => typeVariation is null ? REQUIRED : new Uuid(nullable, typeVariation),
+                NullableType.Nullable => typeVariation is null ? NULLABLE : new Uuid(nullable, typeVariation),
+                _ => throw new NotImplementedException(nullable.ToString()),
+            };
+        }
+
+        /// <inheritdoc/>
+        public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public bool Equals(Uuid? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is Uuid other && this.Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.TypeVariation);
+    }
+
+    /// <summary>
+    /// Immutable implementation of time type, defaulting to microsecond precision.
+    /// </summary>
+    public sealed class Time : PrimitiveType, IEquatable<Time>
+    {
+        private static readonly Time REQUIRED = new Time(6, NullableType.Required, typeVariation: null);
+        private static readonly Time NULLABLE = new Time(6, NullableType.Nullable, typeVariation: null);
+
+        private Time(int precision, NullableType nullable, ITypeVariation? typeVariation)
+            : base(nullable, typeVariation)
+        {
+            ParameterizedType.ValidatePrecision(precision);
+            this.Precision = precision;
+        }
+
+        /// <summary>Gets the number of fractional second digits, from 0 through 12.</summary>
+        public int Precision { get; }
 
         /// <inheritdoc/>
         public override string ShortTypeName => "time";
@@ -526,18 +574,42 @@ public abstract class PrimitiveType : IType
         /// <returns>The instance of <see cref="Time"/> class.</returns>
         public static Time Of(NullableType nullable, ITypeVariation? typeVariation = null)
         {
-            if (typeVariation is not null)
-            {
-                return new Time(nullable, typeVariation);
-            }
+            return Of(6, nullable, typeVariation);
+        }
 
+        /// <summary>Gets a time type with explicit precision.</summary>
+        /// <param name="precision">Fractional second digits, from 0 through 12.</param>
+        /// <param name="nullable">Whether it is nullable.</param>
+        /// <param name="typeVariation">Type variation.</param>
+        /// <returns>The time type.</returns>
+        public static Time Of(int precision, NullableType nullable, ITypeVariation? typeVariation = null)
+        {
             return nullable switch
             {
-                NullableType.Required => REQUIRED,
-                NullableType.Nullable => NULLABLE,
+                NullableType.Required => precision == 6 && typeVariation is null ? REQUIRED : new Time(precision, nullable, typeVariation),
+                NullableType.Nullable => precision == 6 && typeVariation is null ? NULLABLE : new Time(precision, nullable, typeVariation),
                 _ => throw new NotImplementedException(nullable.ToString()),
             };
         }
+
+        /// <inheritdoc/>
+        public override string ToTypeString() => this.Precision == 6 ? base.ToTypeString() : $"precision_time<{this.Precision}>";
+
+        /// <inheritdoc/>
+        public override string ToString() => this.Precision == 6 ? base.ToString() : $"pt{(this.Nullable == NullableType.Nullable ? "?" : string.Empty)}<{this.Precision}>";
+
+        /// <inheritdoc/>
+        public override bool NodeEquals(IType other, ITypeComparison comparison) =>
+            base.NodeEquals(other, comparison) && (!comparison.IsOn(ITypeComparison.TypeParameter) || this.Precision == ((Time)other).Precision);
+
+        /// <inheritdoc/>
+        public bool Equals(Time? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is Time other && this.Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.Precision, this.TypeVariation);
 
         /// <inheritdoc/>
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
@@ -588,17 +660,22 @@ public abstract class PrimitiveType : IType
     }
 
     /// <summary>
-    /// Immutable implementation of interval day type.
+    /// Immutable implementation of interval day type, defaulting to second precision.
     /// </summary>
-    public sealed class IntervalDay : PrimitiveType
+    public sealed class IntervalDay : PrimitiveType, IEquatable<IntervalDay>
     {
-        private static readonly IntervalDay REQUIRED = new IntervalDay(NullableType.Required, typeVariation: null);
-        private static readonly IntervalDay NULLABLE = new IntervalDay(NullableType.Nullable, typeVariation: null);
+        private static readonly IntervalDay REQUIRED = new IntervalDay(0, NullableType.Required, typeVariation: null);
+        private static readonly IntervalDay NULLABLE = new IntervalDay(0, NullableType.Nullable, typeVariation: null);
 
-        private IntervalDay(NullableType nullable, ITypeVariation? typeVariation)
+        private IntervalDay(int precision, NullableType nullable, ITypeVariation? typeVariation)
             : base(nullable, typeVariation)
         {
+            ParameterizedType.ValidatePrecision(precision);
+            this.Precision = precision;
         }
+
+        /// <summary>Gets the number of fractional second digits, from 0 through 12.</summary>
+        public int Precision { get; }
 
         /// <inheritdoc/>
         public override string ShortTypeName => "iday";
@@ -614,18 +691,42 @@ public abstract class PrimitiveType : IType
         /// <returns>The instance of <see cref="IntervalDay"/> class.</returns>
         public static IntervalDay Of(NullableType nullable, ITypeVariation? typeVariation = null)
         {
-            if (typeVariation is not null)
-            {
-                return new IntervalDay(nullable, typeVariation);
-            }
+            return Of(0, nullable, typeVariation);
+        }
 
+        /// <summary>Gets a day interval type with explicit precision.</summary>
+        /// <param name="precision">Fractional second digits, from 0 through 12.</param>
+        /// <param name="nullable">Whether it is nullable.</param>
+        /// <param name="typeVariation">Type variation.</param>
+        /// <returns>The day interval type.</returns>
+        public static IntervalDay Of(int precision, NullableType nullable, ITypeVariation? typeVariation = null)
+        {
             return nullable switch
             {
-                NullableType.Required => REQUIRED,
-                NullableType.Nullable => NULLABLE,
+                NullableType.Required => precision == 0 && typeVariation is null ? REQUIRED : new IntervalDay(precision, nullable, typeVariation),
+                NullableType.Nullable => precision == 0 && typeVariation is null ? NULLABLE : new IntervalDay(precision, nullable, typeVariation),
                 _ => throw new NotImplementedException(nullable.ToString()),
             };
         }
+
+        /// <inheritdoc/>
+        public override string ToTypeString() => this.Precision == 0 ? base.ToTypeString() : $"{this.TypeName}<{this.Precision}>";
+
+        /// <inheritdoc/>
+        public override string ToString() => this.Precision == 0 ? base.ToString() : $"{base.ToString()}<{this.Precision}>";
+
+        /// <inheritdoc/>
+        public override bool NodeEquals(IType other, ITypeComparison comparison) =>
+            base.NodeEquals(other, comparison) && (!comparison.IsOn(ITypeComparison.TypeParameter) || this.Precision == ((IntervalDay)other).Precision);
+
+        /// <inheritdoc/>
+        public bool Equals(IntervalDay? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is IntervalDay other && this.Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.Precision, this.TypeVariation);
 
         /// <inheritdoc/>
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
