@@ -17,7 +17,7 @@
     <PackageVersion Include="Substrait.Net.Protobuf" Version="0.104.0" />
     <PackageVersion Include="System.Collections.Immutable" Version="10.0.12" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />
-    <PackageVersion Include="TUnit" Version="1.69.16" />
+    <PackageVersion Include="TUnit" Version="1.72.4" />
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
   </ItemGroup>
 </Project>
