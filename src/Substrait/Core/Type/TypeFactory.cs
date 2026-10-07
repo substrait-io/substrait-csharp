@@ -47,6 +47,33 @@ public class TypeFactory : PrimitiveTypeFactory
         };
     }
 
+    /// <summary>Returns a time type with explicit precision.</summary>
+    /// <param name="precision">Fractional second digits, from 0 through 12.</param>
+    /// <param name="typeVariation">Type variation.</param>
+    /// <returns>The time type.</returns>
+    public PrimitiveType.Time PrecisionTime(int precision, ITypeVariation? typeVariation = null)
+    {
+        return PrimitiveType.Time.Of(precision, this.Nullable, typeVariation);
+    }
+
+    /// <summary>Returns a day interval type with explicit precision.</summary>
+    /// <param name="precision">Fractional second digits, from 0 through 12.</param>
+    /// <param name="typeVariation">Type variation.</param>
+    /// <returns>The day interval type.</returns>
+    public PrimitiveType.IntervalDay IntervalDay(int precision, ITypeVariation? typeVariation = null)
+    {
+        return PrimitiveType.IntervalDay.Of(precision, this.Nullable, typeVariation);
+    }
+
+    /// <summary>Returns a compound interval type with explicit precision.</summary>
+    /// <param name="precision">Fractional second digits, from 0 through 12.</param>
+    /// <param name="typeVariation">Type variation.</param>
+    /// <returns>The compound interval type.</returns>
+    public ParameterizedType.IntervalCompound IntervalCompound(int precision, ITypeVariation? typeVariation = null)
+    {
+        return new ParameterizedType.IntervalCompound(precision, this.Nullable, typeVariation);
+    }
+
     /// <summary>
     /// PrecisionTimestamp.
     /// </summary>
@@ -187,6 +214,9 @@ public class TypeFactory : PrimitiveTypeFactory
         {
             switch (parameterizedType)
             {
+                case ParameterizedType.IntervalCompound interval:
+                    return this.IntervalCompound(interval.Precision, typeVariation);
+
                 case ParameterizedType.PrecisionTimestamp pts:
                     return this.PrecisionTimestamp(pts.Precision, typeVariation);
 

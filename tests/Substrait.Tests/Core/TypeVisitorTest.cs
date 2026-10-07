@@ -74,9 +74,13 @@ public class TypeVisitorTest
             this.primitiveTypeFactory.STR,
             this.primitiveTypeFactory.BINARY,
             this.primitiveTypeFactory.DATE,
+            this.primitiveTypeFactory.UUID,
             this.primitiveTypeFactory.TIME,
             this.primitiveTypeFactory.INTERVAL_DAY,
             this.primitiveTypeFactory.INTERVAL_YEAR,
+            this.typeFactory.PrecisionTime(9),
+            this.typeFactory.IntervalDay(12),
+            this.typeFactory.IntervalCompound(3),
             this.typeFactory.PrecisionTimestamp(9),
             this.typeFactory.PrecisionTimestampTZ(6),
             this.typeFactory.FixedChar(1),
@@ -86,11 +90,22 @@ public class TypeVisitorTest
 
         var structType = this.typeFactory.Struct(fields);
 
-        string topDownExpected = "Struct|Bool|I8|I16|I32|I64|FP32|FP64|Str|Binary|Date|Time|IntervalDay|IntervalYear|PrecisionTimestamp|PrecisionTimestampTZ|FixedChar|VarChar|FixedBinary|Decimal|";
-        string bottomUpExpected = "Bool|I8|I16|I32|I64|FP32|FP64|Str|Binary|Date|Time|IntervalDay|IntervalYear|PrecisionTimestamp|PrecisionTimestampTZ|FixedChar|VarChar|FixedBinary|Decimal|Struct|";
+        string topDownExpected = "Struct|Bool|I8|I16|I32|I64|FP32|FP64|Str|Binary|Date|Uuid|Time|IntervalDay|IntervalYear|Time|IntervalDay|IntervalCompound|PrecisionTimestamp|PrecisionTimestampTZ|FixedChar|VarChar|FixedBinary|Decimal|";
+        string bottomUpExpected = "Bool|I8|I16|I32|I64|FP32|FP64|Str|Binary|Date|Uuid|Time|IntervalDay|IntervalYear|Time|IntervalDay|IntervalCompound|PrecisionTimestamp|PrecisionTimestampTZ|FixedChar|VarChar|FixedBinary|Decimal|Struct|";
 
         await this.CheckTopDownTraversal(structType, topDownExpected);
         await this.CheckBottomUpTraversal(structType, bottomUpExpected);
+    }
+
+    [Test]
+    public async Task NewTypeVisitorOverloadsRemainOptional()
+    {
+        foreach (var type in new[] { typeof(PrimitiveType.Uuid), typeof(ParameterizedType.IntervalCompound) })
+        {
+            var method = typeof(TypeVisitor<object, object>).GetMethod("Visit", [type, typeof(object)])!;
+            await Assert.That(method.IsVirtual).IsTrue();
+            await Assert.That(method.IsAbstract).IsFalse();
+        }
     }
 
     /// <summary>

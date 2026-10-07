@@ -99,6 +99,56 @@ public abstract class ParameterizedType : IType
     /// <returns>true if <paramref name="other"/> has equal non-nested type parameters.</returns>
     protected abstract bool NodeEqualTypeParameters(IType other);
 
+    internal static void ValidatePrecision(int precision)
+    {
+        if (precision < 0 || precision > MaxSubsecondPrecision)
+        {
+            throw new ArgumentOutOfRangeException(nameof(precision), precision, $"0-{MaxSubsecondPrecision} (seconds to picoseconds)");
+        }
+    }
+
+    /// <summary>Immutable compound interval with explicit fractional second precision.</summary>
+    public sealed class IntervalCompound : ParameterizedType, IEquatable<IntervalCompound>
+    {
+        /// <summary>Initializes a new instance of the <see cref="IntervalCompound"/> class.</summary>
+        /// <param name="precision">Fractional second digits, from 0 through 12.</param>
+        /// <param name="nullable">Whether it is nullable.</param>
+        /// <param name="typeVariation">Type variation.</param>
+        public IntervalCompound(int precision, NullableType nullable, ITypeVariation? typeVariation)
+            : base(nullable, typeVariation)
+        {
+            ValidatePrecision(precision);
+            this.Precision = precision;
+        }
+
+        /// <summary>Gets the number of fractional second digits.</summary>
+        public int Precision { get; }
+
+        /// <inheritdoc/>
+        public override string ShortTypeName => "icompound";
+
+        /// <inheritdoc/>
+        public override string TypeName => "interval_compound";
+
+        /// <inheritdoc/>
+        public override string ToTypeString() => $"{this.TypeName}<{this.Precision}>";
+
+        /// <inheritdoc/>
+        public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public bool Equals(IntervalCompound? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is IntervalCompound other && this.Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.Precision, this.TypeVariation);
+
+        /// <inheritdoc/>
+        protected override bool NodeEqualTypeParameters(IType other) => other is IntervalCompound interval && this.Precision == interval.Precision;
+    }
+
     /// <summary>
     /// Immutable implementation of PrecisionTimestamp type.
     /// </summary>
@@ -113,11 +163,7 @@ public abstract class ParameterizedType : IType
         public PrecisionTimestamp(int precision, NullableType nullable, ITypeVariation? typeVariation)
             : base(nullable, typeVariation)
         {
-            if (precision < 0 || precision > MaxSubsecondPrecision)
-            {
-                throw new ArgumentOutOfRangeException(nameof(precision), precision, $"0-{MaxSubsecondPrecision} (seconds to picoseconds)");
-            }
-
+            ValidatePrecision(precision);
             this.Precision = precision;
         }
 
@@ -182,11 +228,7 @@ public abstract class ParameterizedType : IType
         public PrecisionTimestampTZ(int precision, NullableType nullable, ITypeVariation? typeVariation)
             : base(nullable, typeVariation)
         {
-            if (precision < 0 || precision > MaxSubsecondPrecision)
-            {
-                throw new ArgumentOutOfRangeException(nameof(precision), precision, $"0-{MaxSubsecondPrecision} (seconds to picoseconds)");
-            }
-
+            ValidatePrecision(precision);
             this.Precision = precision;
         }
 

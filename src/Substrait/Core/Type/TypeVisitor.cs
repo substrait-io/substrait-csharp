@@ -94,6 +94,18 @@ public abstract class TypeVisitor<TContext, TOutput> : IVisitor<IType, TContext,
     /// <returns>The output as a result of the visit.</returns>
     public abstract TOutput Visit(Date type, TContext context);
 
+    /// <summary>Visits a UUID type, falling back to the general type handler.</summary>
+    /// <param name="type">UUID type.</param>
+    /// <param name="context">Input context.</param>
+    /// <returns>The result of the visit.</returns>
+    public virtual TOutput Visit(Uuid type, TContext context) => this.Visit((IType)type, context);
+
+    /// <summary>Visits a compound interval, falling back to the general type handler.</summary>
+    /// <param name="type">Compound interval type.</param>
+    /// <param name="context">Input context.</param>
+    /// <returns>The result of the visit.</returns>
+    public virtual TOutput Visit(IntervalCompound type, TContext context) => this.Visit((IType)type, context);
+
     /// <summary>
     /// Visits a <see cref="Time"/> type.
     /// </summary>

@@ -70,6 +70,59 @@ equality, migration, validation, and protobuf JSON limitations. No specification
 package update is required, and anchor-based outer-reference resolution remains
 unsupported.
 
+## UUID and temporal types
+
+Core type conversion supports UUID, time, day intervals, and compound intervals
+with nullability and type variations preserved through nested structs.
+UUID remains distinct from binary and string types. Time and interval precision
+accepts every integer from 0 through 12 (seconds through picoseconds), not just
+multiples of three.
+
+```csharp
+using Substrait.Core.Type;
+using Substrait.Core.Type.Converters;
+
+PrimitiveType.Uuid id = TypeFactory.REQUIRED.UUID;
+PrimitiveType.Time time = TypeFactory.NULLABLE.PrecisionTime(9);
+PrimitiveType.IntervalDay duration = TypeFactory.REQUIRED.IntervalDay(6);
+ParameterizedType.IntervalCompound calendarDuration =
+    TypeFactory.NULLABLE.IntervalCompound(3);
+
+var schema = TypeFactory.REQUIRED.Struct([id, time, duration, calendarDuration]);
+var protobuf = new TypeToProtoConverter().From(schema);
+IType roundTrip = new ProtoToTypeConverter().From(protobuf);
+```
+
+The existing `PrimitiveType.Time` and `PrimitiveType.IntervalDay` public types,
+visitor methods, and factory return types are retained. Their new `Precision`
+properties and precision-aware `Of(int precision, ...)` overloads do not change
+the defaults: `TIME`, `Time_(variation)`, and `Time.Of(nullable, variation)` still
+mean precision 6; `INTERVAL_DAY`, `IntervalDay_(variation)`, and
+`IntervalDay.Of(nullable, variation)` still mean explicit precision 0.
+These classes remain under `PrimitiveType` for API compatibility even though
+they now carry a precision parameter. Strict comparison and value equality
+include precision, nullability, and type variation; nullability/variation
+rewriting retains precision.
+
+Legacy time names (`time`) and default-precision text representations remain
+unchanged. Non-default time precision is rendered as `precision_time<P>` by
+`ToTypeString()`, and non-default day intervals as `interval_day<P>`.
+Time variations may name either the historical `time` parent or the current
+`precision_time` parent. Custom variations must be supplied through an explicit
+extension context on import; outbound conversion collects their references.
+The default extension catalog does not supply custom variations.
+
+New UUID and compound-interval visitor overloads are virtual fallbacks to
+`Visit(IType, ...)`; existing custom visitors need not implement them.
+`DefaultTypeVisitor` sends them to `DefaultVisit`.
+
+Out-of-range precision throws `ArgumentOutOfRangeException`, consistent with
+timestamp types. A protobuf day interval with absent precision throws
+`SerializationException`; explicitly present zero is valid. This replaces the
+earlier `NotSupportedException` for unsupported day-interval precision.
+No specification package update is needed. This support concerns type metadata,
+not UUID/temporal literal value encoding or additional YAML grammar support.
+
 ## Custom extension relations
 
 The core model and converters support all three extension relation variants,
@@ -218,10 +271,11 @@ and wire compatibility:
   The old `type_variations.yaml` catalog is no longer published upstream, so
   default type variations are empty. Custom type variations can still be loaded
   explicitly. Function implementation deprecation metadata is preserved.
-- The existing microsecond `Time` model is serialized as `precision_time<6>`;
-  other time precisions are rejected rather than rescaled or truncated.
-  Day intervals use explicit precision 0 (whole seconds); fractional or
-  unspecified-precision interval types are rejected.
+- The default `Time` model is serialized as `precision_time<6>` and default
+  day intervals use explicit precision 0 (whole seconds). Precision-aware
+  factories preserve all precisions from 0 through 12 without rescaling or
+  truncation; absent day-interval precision remains invalid. See
+  [UUID and temporal types](#uuid-and-temporal-types) for APIs and compatibility.
 - Offset-based outer references remain supported using the deprecated
   `steps_out` representation. Relation-anchor outer references are explicitly
   unsupported by the internal model.

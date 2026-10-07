@@ -39,6 +39,7 @@ public class PrimitiveTypeFactory
         this.STR = PrimitiveType.Str.Of(nullable);
         this.BINARY = PrimitiveType.Binary.Of(nullable);
         this.DATE = PrimitiveType.Date.Of(nullable);
+        this.UUID = PrimitiveType.Uuid.Of(nullable);
         this.TIME = PrimitiveType.Time.Of(nullable);
         this.INTERVAL_DAY = PrimitiveType.IntervalDay.Of(nullable);
         this.INTERVAL_YEAR = PrimitiveType.IntervalYear.Of(nullable);
@@ -93,6 +94,9 @@ public class PrimitiveTypeFactory
     /// Gets a date type.
     /// </summary>
     public PrimitiveType.Date DATE { get; }
+
+    /// <summary>Gets a UUID type.</summary>
+    public PrimitiveType.Uuid UUID { get; }
 
     /// <summary>
     /// Gets a time type.
@@ -156,7 +160,7 @@ public class PrimitiveTypeFactory
             return type;
         }
 
-        if (type.TypeVariation is not null)
+        if (typeVariation is not null)
         {
             return type switch
             {
@@ -170,8 +174,9 @@ public class PrimitiveTypeFactory
                 PrimitiveType.Str => PrimitiveType.Str.Of(this.Nullable, typeVariation),
                 PrimitiveType.Binary => PrimitiveType.Binary.Of(this.Nullable, typeVariation),
                 PrimitiveType.Date => PrimitiveType.Date.Of(this.Nullable, typeVariation),
-                PrimitiveType.Time => PrimitiveType.Time.Of(this.Nullable, typeVariation),
-                PrimitiveType.IntervalDay => PrimitiveType.IntervalDay.Of(this.Nullable, typeVariation),
+                PrimitiveType.Uuid => PrimitiveType.Uuid.Of(this.Nullable, typeVariation),
+                PrimitiveType.Time time => PrimitiveType.Time.Of(time.Precision, this.Nullable, typeVariation),
+                PrimitiveType.IntervalDay interval => PrimitiveType.IntervalDay.Of(interval.Precision, this.Nullable, typeVariation),
                 PrimitiveType.IntervalYear => PrimitiveType.IntervalYear.Of(this.Nullable, typeVariation),
                 _ => throw new NotImplementedException($"Unsupported primitive type: {type.GetType().Name}"),
             };
@@ -189,8 +194,9 @@ public class PrimitiveTypeFactory
             PrimitiveType.Str => this.STR,
             PrimitiveType.Binary => this.BINARY,
             PrimitiveType.Date => this.DATE,
-            PrimitiveType.Time => this.TIME,
-            PrimitiveType.IntervalDay => this.INTERVAL_DAY,
+            PrimitiveType.Uuid => this.UUID,
+            PrimitiveType.Time time => PrimitiveType.Time.Of(time.Precision, this.Nullable),
+            PrimitiveType.IntervalDay interval => PrimitiveType.IntervalDay.Of(interval.Precision, this.Nullable),
             PrimitiveType.IntervalYear => this.INTERVAL_YEAR,
             _ => throw new NotImplementedException($"Unsupported primitive type: {type.GetType().Name}"),
         };
@@ -294,6 +300,14 @@ public class PrimitiveTypeFactory
     public PrimitiveType.Date Date_(ITypeVariation? typeVariation)
     {
         return PrimitiveType.Date.Of(this.Nullable, typeVariation);
+    }
+
+    /// <summary>Returns a UUID type with a type variation.</summary>
+    /// <param name="typeVariation">Type variation.</param>
+    /// <returns>The UUID type.</returns>
+    public PrimitiveType.Uuid Uuid_(ITypeVariation? typeVariation)
+    {
+        return PrimitiveType.Uuid.Of(this.Nullable, typeVariation);
     }
 
     /// <summary>
