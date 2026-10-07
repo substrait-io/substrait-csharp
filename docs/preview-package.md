@@ -89,6 +89,29 @@ messages and copying an already-packed `Any` without nesting. The corresponding
 positional null for absent payloads to avoid overload ambiguity.
 See [extension schema contracts](metadata-facades.md#custom-extension-relations-and-schemas).
 
+## Plan extension metadata
+
+`IPlan.Metadata` exposes immutable `PlanMetadata` containing plan-level advanced
+extensions and expected payload type URLs. Metadata-first plan constructors,
+`Plan.FromRelations`, and `PlanBuilder` preserve it through composition and
+conversion. Builder editing methods let callers set, add, replace, remove, and
+clear payloads and expected type URLs without constructing immutable metadata
+upfront. `PlanBuilder.Metadata` exposes the current immutable snapshot; later
+edits do not change previously built plans. Payload methods accept read-only
+facades or protobuf messages, packing ordinary messages and copying an existing
+`Any` without repacking. Whole-message replacement accepts a read-only facade or
+a protobuf `AdvancedExtension`; public imports and exports are detached snapshots.
+Absent/empty messages, unknown payloads and fields, and list order/duplicates
+are preserved and participate in plan equality. No specification or dependency
+update is required. Simple function/type extension declarations are unchanged.
+
+Custom `IPlan` implementations must provide the new non-null `Metadata` property
+and recompile, using `PlanMetadata.Empty` if appropriate. This is a breaking
+preview interface change. Existing concrete plan/builder constructors remain
+available and default to empty metadata. See
+[plan extension metadata](metadata-facades.md#plan-extension-metadata) for examples
+and binary/protobuf JSON limitations.
+
 ## Multi-relation plans and references
 
 Plan conversion supports any ordered mixture of root and non-root entries,

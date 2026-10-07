@@ -2,6 +2,7 @@
 
 using Google.Protobuf;
 using Substrait.Core.Expression;
+using Substrait.Core.Metadata;
 using Substrait.Core.Plan;
 using Substrait.Core.Plan.Converters;
 using Substrait.Core.Relation;
@@ -487,5 +488,7 @@ public sealed class PlanBuilderTests
         public IReadOnlyList<IPlan.IRoot> Roots { get; } = roots ?? relations.OfType<IPlan.IRoot>().ToArray();
 
         public IVersion Version => PlanVersion.Current;
+
+        public PlanMetadata Metadata => PlanMetadata.Empty;
     }
 }

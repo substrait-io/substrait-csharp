@@ -237,5 +237,7 @@ public sealed class RelationAnchorTests
         public IReadOnlyList<IPlan.IRoot> Roots => this.Relations.OfType<IPlan.IRoot>().ToArray();
 
         public IVersion Version => Substrait.Core.Plan.Version.Current;
+
+        public PlanMetadata Metadata => PlanMetadata.Empty;
     }
 }

@@ -4,6 +4,7 @@
 using System.Runtime.Serialization;
 using Google.Protobuf;
 using Substrait.Core.Extension;
+using Substrait.Core.Metadata;
 using Substrait.Core.Relation;
 using Substrait.Core.Relation.Converters;
 using Substrait.Tools;
@@ -137,6 +138,7 @@ public class ProtoToPlanConverter
 
         Protobuf.Version version = plan.Version ?? throw new SerializationException("Plan version is required by this converter.");
         return Plan.FromRelations(
+            PlanMetadata.Capture(plan.AdvancedExtensions, plan.ExpectedTypeUrls, ownsMetadata),
             entries,
             new Version(
                 version.MajorNumber,

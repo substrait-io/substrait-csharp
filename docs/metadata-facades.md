@@ -1,8 +1,9 @@
 # Read-only metadata facades
 
 `Substrait.Core.Metadata` provides generated, immutable facades over protobuf
-relation metadata. Core relations retain these facades through `RelationMetadata`,
-and converters preserve them in both directions.
+metadata. Core relations retain these facades through `RelationMetadata`, and
+plans retain their advanced extensions through `PlanMetadata`. Converters
+preserve them in both directions.
 
 The supported roots are `ReadOnlyRelCommon` and `ReadOnlyAdvancedExtension`.
 Their nested message fields use corresponding facades, including `ReadOnlyAny`
@@ -254,6 +255,117 @@ are distinct. A schema is not separately serialized or written into the detail;
 reimport with the same contract to recover it. Opaque binary round trips need
 no payload descriptors; standard protobuf JSON still requires a type registry.
 
+## Plan extension metadata
+
+`IPlan.Metadata` exposes an immutable `PlanMetadata` with:
+
+- `AdvancedExtensions`: a nullable `ReadOnlyAdvancedExtension` corresponding
+  to `Plan.advanced_extensions`, separate from relation-level extensions.
+- `ExpectedTypeUrls`: an immutable, ordered list corresponding to
+  `Plan.expected_type_urls`. Duplicates, case, and empty strings are preserved;
+  null list elements are rejected because protobuf strings cannot be null.
+
+Use the existing `PlanBuilder` to edit extensions while composing a plan; no
+immutable metadata object is required upfront. Callers explicitly choose whether
+a payload is an enhancement or an optimization; the library does not infer its
+meaning or unpack it:
+
+```csharp
+using Google.Protobuf.WellKnownTypes;
+using Substrait.Core.Plan;
+using Substrait.Core.Plan.Converters;
+using Substrait.Core.Relation;
+using Substrait.Core.Type;
+
+var schema = new Substrait.Core.Type.NamedStruct(
+    ["order_id"], TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64]));
+var orders = new NamedTableRead(schema, ["orders"], filter: null);
+var builder = new PlanBuilder();
+builder.AddRoot(orders, ["order_id"]);
+var configuration = new StringValue { Value = "required configuration" };
+builder.SetEnhancement(configuration);
+builder.AddOptimization(new StringValue { Value = "optional optimization" });
+builder.AddExpectedTypeUrl("type.googleapis.com/google.protobuf.StringValue");
+IPlan plan = builder.Build();
+
+configuration.Value = "changed";
+builder.ClearEnhancement();
+// Neither the source mutation nor the builder edit changes the earlier plan.
+string typeUrl = plan.Metadata.AdvancedExtensions!.Enhancement!.TypeUrl;
+Substrait.Protobuf.Plan protobuf = new PlanToProtoConverter().From(plan);
+IPlan roundTrip = new ProtoToPlanConverter().From(protobuf);
+```
+
+Builder editing methods are:
+
+| Purpose | Methods |
+| --- | --- |
+| Entire advanced-extension message | `SetAdvancedExtensions`, `ClearAdvancedExtensions` |
+| Enhancement payload | `SetEnhancement`, `ClearEnhancement` |
+| Ordered optimization payloads | `AddOptimization`, `ReplaceOptimization`, `RemoveOptimizationAt`, `ClearOptimizations` |
+| Ordered expected type URLs | `SetExpectedTypeUrls`, `AddExpectedTypeUrl`, `ReplaceExpectedTypeUrl`, `RemoveExpectedTypeUrlAt`, `ClearExpectedTypeUrls` |
+
+Payload setters accept either `ReadOnlyAny` or `IMessage`. Ordinary messages are
+packed using the standard `type.googleapis.com` prefix; an existing `Any` is
+copied without repacking, preserving custom type URLs and unknown fields.
+`SetAdvancedExtensions` accepts either `ReadOnlyAdvancedExtension` or the
+protobuf `AdvancedExtension` message. Public message inputs and URL collections
+are snapshotted when accepted. Setters reject null; use the explicit clear
+methods instead. Replacement and removal indexes are zero-based and must exist.
+Failed edits do not change the builder's metadata.
+
+`builder.Metadata` exposes the current immutable snapshot for inspection.
+Each edit replaces that snapshot, leaving previous snapshots and built plans
+unchanged. An unchanged `Build()` reuses the current metadata rather than
+recopying it. Editing an advanced-extension field preserves the other fields
+and unknown protobuf fields. Expected type URLs are edited independently and
+are never inferred from payloads. Builders are not thread-safe.
+
+Setting or adding a payload creates the advanced-extension message if absent.
+Removing the last payload leaves a present empty message; only
+`ClearAdvancedExtensions()` removes the whole message, without changing expected
+type URLs. Clearing an enhancement or optimization list when the message is
+already absent leaves it absent.
+
+Callers with existing immutable metadata can still construct `PlanMetadata` from
+a `ReadOnlyAdvancedExtension` or a protobuf `AdvancedExtension`. The protobuf
+constructor snapshots the entire message, including nested payloads and unknown
+fields. That metadata can be supplied to
+`new Plan(metadata, roots, version)` or
+`Plan.FromRelations(metadata, relations, version)`, or used as the starting point
+for `new PlanBuilder(metadata, version)`. The builder's metadata-first overload
+requires an explicit `version` argument (null selects the current version), so
+the existing `new PlanBuilder(null)` call remains unambiguous.
+
+`PlanMetadata.Empty` has absent advanced extensions and no expected type URLs.
+Existing plan constructors, factories, and builders use it by default.
+`new PlanMetadata(new AdvancedExtension())` instead preserves a present empty
+message. To explicitly pass an absent facade, use
+`new PlanMetadata(advancedExtensions: null)`; the protobuf `message` overload
+rejects null. A null expected-URL collection means an empty list.
+
+Metadata and plan equality/hashing include advanced-extension presence and
+contents, optimization order, and the exact ordered expected type URLs.
+Adding metadata can therefore make two otherwise identical plans unequal.
+Neither construction nor conversion sorts, deduplicates, validates descriptor
+availability, or infers the expected type URLs from payloads. The list may
+contain unused or ignorable message types, and does not require a matching
+payload to appear in the plan.
+
+All plan import entry points preserve these fields. `From(Protobuf.Plan)` copies
+caller-owned messages; binary and JSON entry points privately own their parsed
+messages and can retain the facades without extra cloning. Exports always return
+detached protobuf messages. Do not mutate input messages or collections
+concurrently with construction/import.
+
+Unknown payloads survive binary round trips without descriptors. Protobuf JSON
+still needs the payload descriptors in a type registry; `expected_type_urls`
+does not provide descriptors or populate that registry. Opaque enhancements are
+preserved, not accepted as executable: consumers must understand required
+enhancements or reject them. Function/type extension `StrictMode` does not
+change advanced-extension preservation. Simple extension declarations and URNs
+remain a separate mechanism with unchanged behavior.
+
 ## Serialized input entry points
 
 `ProtoToPlanConverter` supports:
@@ -297,6 +409,12 @@ Preserving relation anchors does not add support for anchor-based outer
 references or lateral joins. Those remain separate features.
 
 ## Preview API migration
+
+Custom `IPlan` implementations must add a non-null `PlanMetadata Metadata`
+property and recompile. Use `PlanMetadata.Empty` when no plan extensions are
+present. This is a source/binary compatibility change for custom interface
+implementations in the preview API; existing `Plan` and `PlanBuilder` constructor
+signatures remain available. Export explicitly rejects null plan metadata.
 
 Custom `IRel` implementations must add `Metadata` and recompile. It must be
 non-null, and its `Transmute` projection must equal the relation's output mapping.

@@ -3,6 +3,7 @@
 
 using Substrait.Core.Expression;
 using Substrait.Core.Extension;
+using Substrait.Core.Metadata;
 using Substrait.Core.Relation;
 using Substrait.Core.Relation.Converters;
 using Substrait.Core.Type;
@@ -31,10 +32,12 @@ public class PlanToProtoConverter
         }
 
         PlanValidation.Validate(plan.Relations);
+        PlanMetadata metadata = plan.Metadata ?? throw new ArgumentException("Plan metadata must not be null.", nameof(plan));
         var context = new ConverterContext { PlanRelations = plan.Relations };
         var relationConverter = new RelToProtoConverter();
         var result = new Protobuf.Plan
         {
+            AdvancedExtensions = metadata.AdvancedExtensions?.ToProto(),
             Version = new Protobuf.Version
             {
                 MajorNumber = plan.Version.MajorNumber,
@@ -44,6 +47,7 @@ public class PlanToProtoConverter
                 Producer = plan.Version.Producer,
             },
         };
+        result.ExpectedTypeUrls.AddRange(metadata.ExpectedTypeUrls);
         result.Relations.AddRange(plan.Relations.Select(entry => entry is IPlan.IRoot root
             ? new Protobuf.PlanRel
             {

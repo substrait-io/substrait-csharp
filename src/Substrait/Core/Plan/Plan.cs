@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Immutable;
+using Substrait.Core.Metadata;
 using Substrait.Core.Relation;
 using Substrait.Tools;
 using static Substrait.Core.Plan.IPlan;
@@ -19,12 +20,22 @@ public sealed class Plan : IPlan, IEquatable<Plan>
     /// <param name="roots">The roots of the plan.</param>
     /// <param name="version">The version of the plan.</param>
     public Plan(IEnumerable<IRoot> roots, IVersion version)
-        : this(roots.Cast<IRelation>().ToImmutableList(), version)
+        : this(PlanMetadata.Empty, roots, version)
     {
     }
 
-    private Plan(ImmutableList<IRelation> relations, IVersion version)
+    /// <summary>Initializes a plan with explicit immutable metadata and output roots.</summary>
+    /// <param name="metadata">The plan-level metadata.</param>
+    /// <param name="roots">The roots of the plan.</param>
+    /// <param name="version">The version of the plan.</param>
+    public Plan(PlanMetadata metadata, IEnumerable<IRoot> roots, IVersion version)
+        : this(metadata, roots.Cast<IRelation>().ToImmutableList(), version)
     {
+    }
+
+    private Plan(PlanMetadata metadata, ImmutableList<IRelation> relations, IVersion version)
+    {
+        this.Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
         PlanValidation.Validate(relations);
         this.Relations = relations.Select(entry => entry is IRoot root
             ? (IRelation)new Root(root.Input, root.Names)
@@ -40,7 +51,15 @@ public sealed class Plan : IPlan, IEquatable<Plan>
     /// <param name="version">The plan version.</param>
     /// <returns>An immutable, validated plan.</returns>
     public static Plan FromRelations(IEnumerable<IRelation> relations, IVersion version) =>
-        new(relations.ToImmutableList(), version);
+        FromRelations(PlanMetadata.Empty, relations, version);
+
+    /// <summary>Creates a plan with explicit metadata and ordered root and non-root entries.</summary>
+    /// <param name="metadata">The plan-level metadata.</param>
+    /// <param name="relations">All entries in ordinal order.</param>
+    /// <param name="version">The plan version.</param>
+    /// <returns>An immutable, validated plan.</returns>
+    public static Plan FromRelations(PlanMetadata metadata, IEnumerable<IRelation> relations, IVersion version) =>
+        new(metadata, relations.ToImmutableList(), version);
 
     /// <inheritdoc/>
     public IReadOnlyList<IRelation> Relations { get; }
@@ -52,6 +71,9 @@ public sealed class Plan : IPlan, IEquatable<Plan>
     public IVersion Version { get; }
 
     /// <inheritdoc/>
+    public PlanMetadata Metadata { get; }
+
+    /// <inheritdoc/>
     public bool Equals(Plan? other)
     {
         if (ReferenceEquals(this, other))
@@ -59,7 +81,8 @@ public sealed class Plan : IPlan, IEquatable<Plan>
             return true;
         }
 
-        return other is not null && Enumerable.SequenceEqual(this.Relations, other.Relations) && this.Version.Equals(other.Version);
+        return other is not null && Enumerable.SequenceEqual(this.Relations, other.Relations)
+            && this.Version.Equals(other.Version) && this.Metadata.Equals(other.Metadata);
     }
 
     /// <inheritdoc/>
@@ -71,7 +94,7 @@ public sealed class Plan : IPlan, IEquatable<Plan>
     /// <inheritdoc/>
     public override int GetHashCode()
     {
-        return HashCode.Combine(this.Relations.CombineHashCodes(), this.Version);
+        return HashCode.Combine(this.Relations.CombineHashCodes(), this.Version, this.Metadata);
     }
 
     /// <summary>
