@@ -70,6 +70,25 @@ equality, migration, validation, and protobuf JSON limitations. No specification
 package update is required, and anchor-based outer-reference resolution remains
 unsupported.
 
+## Custom extension relations
+
+The core model and converters support all three extension relation variants,
+including opaque detail preservation, common metadata, input traversal, and
+plan references/anchors beneath their inputs. The new visitor overloads are
+virtual fallbacks, so existing visitor subclasses need not implement them.
+No specification package update is needed.
+
+Schemas are caller-supplied immutable values or results of an explicit
+`IExtensionRelationSchemaResolver` during import. Missing schemas do not prevent
+opaque export but fail explicitly when needed by a typed operation. Supplied
+schemas participate in model equality and are not serialized separately.
+Existing converter overloads remain available without a schema resolver.
+Operator constructors also accept protobuf `IMessage` payloads, packing ordinary
+messages and copying an already-packed `Any` without nesting. The corresponding
+`ReadOnlyAny` overloads remain available; use `detail: null` rather than a
+positional null for absent payloads to avoid overload ambiguity.
+See [extension schema contracts](metadata-facades.md#custom-extension-relations-and-schemas).
+
 ## Multi-relation plans and references
 
 Plan conversion supports any ordered mixture of root and non-root entries,

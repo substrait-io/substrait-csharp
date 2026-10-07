@@ -71,6 +71,23 @@ public sealed class RelationVisitorTests
     }
 
     [Test]
+    public async Task DispatchersVisitAllExtensionInputsInOrderWithoutRequestingSchemas()
+    {
+        ExtensionMulti relation = new(
+            [new ExtensionSingle(new ExtensionLeaf(detail: null), detail: null), new ExtensionMulti([], detail: null)], detail: null);
+        StringBuilderContext topDownContext = new();
+        StringBuilderContext bottomUpContext = new();
+
+        new RelTopDownDispatcher<StringBuilderContext, VoidOutput>(new RelationPrinter())
+            .Dispatch(relation, topDownContext);
+        new RelBottomUpDispatcher<StringBuilderContext, VoidOutput>(new RelationPrinter())
+            .Dispatch(relation, bottomUpContext);
+
+        await Assert.That(topDownContext.ToString()).IsEqualTo("ExtensionMulti|ExtensionSingle|ExtensionLeaf|ExtensionMulti|");
+        await Assert.That(bottomUpContext.ToString()).IsEqualTo("ExtensionLeaf|ExtensionSingle|ExtensionMulti|ExtensionMulti|");
+    }
+
+    [Test]
     public async Task RelationEqualityIncludesNestedInputs()
     {
         Project first = CreateRelationTree(true);

@@ -51,6 +51,17 @@ public sealed class RelationMetadata : IEquatable<RelationMetadata>
     /// <inheritdoc/>
     public override int GetHashCode() => HashCode.Combine(this.Common, this.AdvancedExtension);
 
+    internal static RelationMetadata ValidateCommonOnly(RelationMetadata metadata)
+    {
+        _ = metadata ?? throw new ArgumentNullException(nameof(metadata));
+        if (metadata.AdvancedExtension is not null)
+        {
+            throw new ArgumentException("Extension relations support common metadata but have no operator-level advanced_extension field.", nameof(metadata));
+        }
+
+        return metadata;
+    }
+
     internal static RelationMetadata Capture(RelCommon? common, AdvancedExtension? advancedExtension, bool owned) => new(
         common is null ? null : owned ? ReadOnlyRelCommon.FromOwnedProto(common) : ReadOnlyRelCommon.FromProto(common),
         CaptureExtension(advancedExtension, owned));

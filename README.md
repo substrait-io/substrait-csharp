@@ -95,6 +95,13 @@ standalone relation converters copy retained metadata, and protobuf exports
 remain detached. See [metadata ownership and API migration](docs/metadata-facades.md)
 for constructor, equality, anchor, and format details.
 
+Custom `ExtensionLeaf`, `ExtensionSingle`, and `ExtensionMulti` relations preserve
+opaque detail payloads and common metadata. Supply an unmapped schema when
+constructing a relation, or an `IExtensionRelationSchemaResolver` when importing
+one. Unknown schemas remain unresolved rather than being guessed; schema-dependent
+operations fail explicitly. See [extension schema contracts](docs/metadata-facades.md#custom-extension-relations-and-schemas)
+for examples, output mapping, and round-trip limitations.
+
 Plans can contain ordered mixtures of roots and reusable non-root relations.
 Use `PlanBuilder` to assign reference ordinals and safely share a registered
 subplan across outputs:

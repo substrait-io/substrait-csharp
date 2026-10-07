@@ -27,6 +27,8 @@ public sealed class ProtoPlanDependenciesTests
         ProtoRel.RelTypeOneofCase.Cross, ProtoRel.RelTypeOneofCase.Join,
         ProtoRel.RelTypeOneofCase.HashJoin, ProtoRel.RelTypeOneofCase.Set,
         ProtoRel.RelTypeOneofCase.Exchange, ProtoRel.RelTypeOneofCase.Reference,
+        ProtoRel.RelTypeOneofCase.ExtensionLeaf, ProtoRel.RelTypeOneofCase.ExtensionSingle,
+        ProtoRel.RelTypeOneofCase.ExtensionMulti,
     ];
 
     private static readonly ProtoExpression.RexTypeOneofCase[] SupportedExpressions =
