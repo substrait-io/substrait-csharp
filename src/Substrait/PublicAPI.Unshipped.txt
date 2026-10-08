@@ -1,4 +1,7 @@
 #nullable enable
+override Substrait.Core.Extension.Types.TypeAnchor.Equals(object? obj) -> bool
+override Substrait.Core.Extension.Types.TypeAnchor.GetHashCode() -> int
+override Substrait.Core.Extension.Types.TypeAnchor.ToString() -> string!
 override Substrait.Core.Metadata.PlanMetadata.Equals(object? obj) -> bool
 override Substrait.Core.Metadata.PlanMetadata.GetHashCode() -> int
 override Substrait.Core.Metadata.ReadOnlyAdvancedExtension.Equals(object? obj) -> bool
@@ -55,6 +58,7 @@ override Substrait.Core.Relation.Sort.Metadata.get -> Substrait.Core.Metadata.Re
 override Substrait.Core.Relation.VirtualTableRead.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.IntervalCompound! type, TContext context) -> TOutput
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Uuid! type, TContext context) -> TOutput
+override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.UserDefinedType! type, TContext context) -> TOutput
 override Substrait.Core.Type.ParameterizedType.IntervalCompound.Accept<TContext, TOutput>(Substrait.Core.Type.TypeVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
 override Substrait.Core.Type.ParameterizedType.IntervalCompound.Equals(object? obj) -> bool
 override Substrait.Core.Type.ParameterizedType.IntervalCompound.GetHashCode() -> int
@@ -75,6 +79,13 @@ override Substrait.Core.Type.PrimitiveType.Uuid.Accept<TContext, TOutput>(Substr
 override Substrait.Core.Type.PrimitiveType.Uuid.Equals(object? obj) -> bool
 override Substrait.Core.Type.PrimitiveType.Uuid.GetHashCode() -> int
 override Substrait.Core.Type.PrimitiveType.Uuid.ShortTypeName.get -> string!
+override Substrait.Core.Type.TypeParameter.Equals(object? obj) -> bool
+override Substrait.Core.Type.TypeParameter.GetHashCode() -> int
+override Substrait.Core.Type.TypeParameter.ToString() -> string!
+override Substrait.Core.Type.UserDefinedType.Equals(object? obj) -> bool
+override Substrait.Core.Type.UserDefinedType.GetHashCode() -> int
+static Substrait.Core.Extension.Types.TypeAnchor.operator !=(Substrait.Core.Extension.Types.TypeAnchor? left, Substrait.Core.Extension.Types.TypeAnchor? right) -> bool
+static Substrait.Core.Extension.Types.TypeAnchor.operator ==(Substrait.Core.Extension.Types.TypeAnchor? left, Substrait.Core.Extension.Types.TypeAnchor? right) -> bool
 static Substrait.Core.Metadata.PlanMetadata.Empty.get -> Substrait.Core.Metadata.PlanMetadata!
 static Substrait.Core.Metadata.ReadOnlyAdvancedExtension.FromProto(Substrait.Protobuf.AdvancedExtension! value) -> Substrait.Core.Metadata.ReadOnlyAdvancedExtension!
 static Substrait.Core.Metadata.ReadOnlyAny.FromProto(Google.Protobuf.WellKnownTypes.Any! value) -> Substrait.Core.Metadata.ReadOnlyAny!
@@ -93,6 +104,21 @@ static Substrait.Core.Plan.Plan.FromRelations(Substrait.Core.Metadata.PlanMetada
 static Substrait.Core.Type.PrimitiveType.IntervalDay.Of(int precision, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.IntervalDay!
 static Substrait.Core.Type.PrimitiveType.Time.Of(int precision, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.Time!
 static Substrait.Core.Type.PrimitiveType.Uuid.Of(Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.Uuid!
+Substrait.Core.Extension.ExtensionsCollection.ExtensionsCollection(System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Types.TypeDefinition!>! types, System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Types.TypeVariationImpl!>! typeVariationImpls, System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Functions.ScalarFunctionImpl!>! scalarFunctionImpls, System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Functions.AggregateFunctionImpl!>! aggregateFunctionImpls, System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Functions.WindowFunctionImpl!>! windowFunctionImpls) -> void
+Substrait.Core.Extension.ExtensionsCollection.TryGetType(Substrait.Core.Extension.Types.TypeAnchor! anchor, Substrait.Core.Extension.ExtensionsDictionary.StrictMode strictMode, out Substrait.Core.Extension.Types.TypeDefinition? type) -> bool
+Substrait.Core.Extension.ExtensionsCollection.Types.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Extension.Types.TypeDefinition!>!
+Substrait.Core.Extension.ExtensionsDictionary.GetTypeAnchor(uint reference) -> Substrait.Core.Extension.Types.TypeAnchor!
+Substrait.Core.Extension.ExtensionsDictionary.TryGetType(Substrait.Core.Extension.Types.TypeAnchor! anchor, Substrait.Core.Extension.ExtensionsCollection! extensions, Substrait.Core.Extension.ExtensionsDictionary.StrictMode strictMode, out Substrait.Core.Extension.Types.TypeDefinition? type) -> bool
+Substrait.Core.Extension.ExtensionsDictionary.TryGetTypeAnchor(uint reference, out Substrait.Core.Extension.Types.TypeAnchor? anchor) -> bool
+Substrait.Core.Extension.Types.TypeAnchor
+Substrait.Core.Extension.Types.TypeAnchor.<Clone>$() -> Substrait.Core.Extension.Types.TypeAnchor!
+Substrait.Core.Extension.Types.TypeAnchor.Equals(Substrait.Core.Extension.Types.TypeAnchor? other) -> bool
+Substrait.Core.Extension.Types.TypeAnchor.Key.get -> string!
+Substrait.Core.Extension.Types.TypeAnchor.Namespace.get -> string!
+Substrait.Core.Extension.Types.TypeAnchor.TypeAnchor(string! namespaceStr, string! key) -> void
+Substrait.Core.Extension.Types.TypeDefinition
+Substrait.Core.Extension.Types.TypeDefinition.Anchor.get -> Substrait.Core.Extension.Types.TypeAnchor!
+Substrait.Core.Extension.Types.TypeDefinition.TypeDefinition(Substrait.Core.Extension.Types.TypeAnchor! anchor) -> void
 Substrait.Core.Metadata.PlanMetadata
 Substrait.Core.Metadata.PlanMetadata.AdvancedExtensions.get -> Substrait.Core.Metadata.ReadOnlyAdvancedExtension?
 Substrait.Core.Metadata.PlanMetadata.Equals(Substrait.Core.Metadata.PlanMetadata? other) -> bool
@@ -280,6 +306,40 @@ Substrait.Core.Type.PrimitiveTypeFactory.Uuid_(Substrait.Core.Extension.Types.IT
 Substrait.Core.Type.TypeFactory.IntervalCompound(int precision, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.ParameterizedType.IntervalCompound!
 Substrait.Core.Type.TypeFactory.IntervalDay(int precision, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.IntervalDay!
 Substrait.Core.Type.TypeFactory.PrecisionTime(int precision, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.Time!
+Substrait.Core.Type.TypeFactory.UserDefined(Substrait.Core.Extension.Types.TypeAnchor! anchor, System.Collections.Generic.IEnumerable<Substrait.Core.Type.TypeParameter!>! parameters, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null, Substrait.Core.Extension.Types.TypeDefinition? declaration = null) -> Substrait.Core.Type.UserDefinedType!
+Substrait.Core.Type.TypeParameter
+Substrait.Core.Type.TypeParameter.Boolean
+Substrait.Core.Type.TypeParameter.Boolean.Boolean(bool value) -> void
+Substrait.Core.Type.TypeParameter.Boolean.Value.get -> bool
+Substrait.Core.Type.TypeParameter.DataType
+Substrait.Core.Type.TypeParameter.DataType.DataType(Substrait.Core.Type.IType! value) -> void
+Substrait.Core.Type.TypeParameter.DataType.Value.get -> Substrait.Core.Type.IType!
+Substrait.Core.Type.TypeParameter.Enum
+Substrait.Core.Type.TypeParameter.Enum.Enum(string! value) -> void
+Substrait.Core.Type.TypeParameter.Enum.Value.get -> string!
+Substrait.Core.Type.TypeParameter.Equals(Substrait.Core.Type.TypeParameter? other) -> bool
+Substrait.Core.Type.TypeParameter.Integer
+Substrait.Core.Type.TypeParameter.Integer.Integer(long value) -> void
+Substrait.Core.Type.TypeParameter.Integer.Value.get -> long
+Substrait.Core.Type.TypeParameter.Null
+Substrait.Core.Type.TypeParameter.Null.Null() -> void
+Substrait.Core.Type.TypeParameter.String
+Substrait.Core.Type.TypeParameter.String.String(string! value) -> void
+Substrait.Core.Type.TypeParameter.String.Value.get -> string!
+Substrait.Core.Type.UserDefinedType
+Substrait.Core.Type.UserDefinedType.Accept<TContext, TOutput>(Substrait.Core.Type.TypeVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
+Substrait.Core.Type.UserDefinedType.Anchor.get -> Substrait.Core.Extension.Types.TypeAnchor!
+Substrait.Core.Type.UserDefinedType.Declaration.get -> Substrait.Core.Extension.Types.TypeDefinition?
+Substrait.Core.Type.UserDefinedType.Equals(Substrait.Core.Type.UserDefinedType? other) -> bool
+Substrait.Core.Type.UserDefinedType.InputNodes.get -> System.Collections.Generic.IEnumerable<Substrait.Core.Type.IType!>!
+Substrait.Core.Type.UserDefinedType.NodeEquals(Substrait.Core.Type.IType! other, Substrait.Core.Type.ITypeComparison comparison) -> bool
+Substrait.Core.Type.UserDefinedType.Nullable.get -> Substrait.Core.Type.IType.NullableType
+Substrait.Core.Type.UserDefinedType.Parameters.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Type.TypeParameter!>!
+Substrait.Core.Type.UserDefinedType.ShortTypeName.get -> string!
+Substrait.Core.Type.UserDefinedType.ToTypeString() -> string!
+Substrait.Core.Type.UserDefinedType.TypeName.get -> string!
+Substrait.Core.Type.UserDefinedType.TypeVariation.get -> Substrait.Core.Extension.Types.ITypeVariation?
+Substrait.Core.Type.UserDefinedType.UserDefinedType(Substrait.Core.Extension.Types.TypeAnchor! anchor, System.Collections.Generic.IEnumerable<Substrait.Core.Type.TypeParameter!>! parameters, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null, Substrait.Core.Extension.Types.TypeDefinition? declaration = null) -> void
 virtual Substrait.Core.Relation.Rel.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 virtual Substrait.Core.Relation.Rel.Transmute.get -> Substrait.Core.Relation.Remap?
 virtual Substrait.Core.Relation.RelVisitor<TContext, TOutput>.Visit(Substrait.Core.Relation.ExtensionLeaf! op, TContext context) -> TOutput
@@ -1902,5 +1962,6 @@ virtual Substrait.Core.Type.TypeBottomUpDispatcher<TContext, TOutput>.ShouldBail
 virtual Substrait.Core.Type.TypeTopDownDispatcher<TContext, TOutput>.ShouldBailOut(TOutput result, TContext context) -> bool
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.IntervalCompound! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Uuid! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.UserDefinedType! type, TContext context) -> TOutput
 virtual Substrait.Tools.Visitor.BottomUpTraversal<TNode>.ShouldVisit(TNode node) -> bool
 virtual Substrait.Tools.Visitor.TopDownTraversal<TNode>.ShouldVisit(TNode node) -> bool

@@ -13,11 +13,16 @@ namespace Substrait.Core.Extension;
 /// </summary>
 public sealed class ExtensionsDictionary
 {
+    private readonly IReadOnlyDictionary<uint, TypeAnchor> typeAnchorMap;
     private readonly IReadOnlyDictionary<int, TypeVariationImplAnchor> typeVariationAnchorMap;
     private readonly IReadOnlyDictionary<int, FunctionImplAnchor> functionAnchorMap;
 
-    private ExtensionsDictionary(IEnumerable<KeyValuePair<int, TypeVariationImplAnchor>> typeVariationAnchorMap, IEnumerable<KeyValuePair<int, FunctionImplAnchor>> functionAnchorMap)
+    private ExtensionsDictionary(
+        IEnumerable<KeyValuePair<uint, TypeAnchor>> typeAnchorMap,
+        IEnumerable<KeyValuePair<int, TypeVariationImplAnchor>> typeVariationAnchorMap,
+        IEnumerable<KeyValuePair<int, FunctionImplAnchor>> functionAnchorMap)
     {
+        this.typeAnchorMap = typeAnchorMap.ToImmutableDictionary();
         this.typeVariationAnchorMap = typeVariationAnchorMap.ToImmutableDictionary();
         this.functionAnchorMap = functionAnchorMap.ToImmutableDictionary();
     }
@@ -43,6 +48,19 @@ public sealed class ExtensionsDictionary
         /// <summary>All strict checks.</summary>
         STRICT = FUNCTION | TYPE | TYPE_VARIATION,
     }
+
+    /// <summary>Gets a declared type identity. Zero is a valid reference.</summary>
+    public TypeAnchor GetTypeAnchor(uint reference) =>
+        this.typeAnchorMap.TryGetValue(reference, out TypeAnchor? anchor)
+            ? anchor
+            : throw new ArgumentException($"Invalid type ID: {reference}. Verify that the ID is included in the plan's extensions section.");
+
+    /// <summary>Tries to get a declared type identity.</summary>
+    public bool TryGetTypeAnchor(uint reference, out TypeAnchor? anchor) => this.typeAnchorMap.TryGetValue(reference, out anchor);
+
+    /// <summary>Resolves an extension type definition.</summary>
+    public bool TryGetType(TypeAnchor anchor, ExtensionsCollection extensions, StrictMode strictMode, out TypeDefinition? type) =>
+        extensions.TryGetType(anchor, strictMode, out type);
 
     /// <summary>
     /// Gets a type variation anchor.
@@ -110,6 +128,7 @@ public sealed class ExtensionsDictionary
     /// </summary>
     public sealed class Builder
     {
+        private readonly IDictionary<uint, TypeAnchor> typeMap = new Dictionary<uint, TypeAnchor>();
         private readonly IDictionary<int, TypeVariationImplAnchor> typeVariationMap = new Dictionary<int, TypeVariationImplAnchor>();
         private readonly IDictionary<int, FunctionImplAnchor> functionMap = new Dictionary<int, FunctionImplAnchor>();
 
@@ -139,7 +158,13 @@ public sealed class ExtensionsDictionary
 
             foreach (SimpleExtensionDeclaration extension in extensions)
             {
-                if (extension.ExtensionTypeVariation is not null)
+                if (extension.ExtensionType is not null)
+                {
+                    SimpleExtensionDeclaration.Types.ExtensionType type = extension.ExtensionType;
+                    string namespaceUri = GetNamespace(namespaceMap, (int)type.ExtensionUrnReference);
+                    this.typeMap.Add(type.TypeAnchor, new TypeAnchor(namespaceUri, type.Name));
+                }
+                else if (extension.ExtensionTypeVariation is not null)
                 {
                     SimpleExtensionDeclaration.Types.ExtensionTypeVariation typeVariation = extension.ExtensionTypeVariation;
                     string namespaceUri = GetNamespace(namespaceMap, (int)typeVariation.ExtensionUrnReference);
@@ -158,7 +183,7 @@ public sealed class ExtensionsDictionary
         /// <returns>The extension dictionary.</returns>
         public ExtensionsDictionary Build()
         {
-            return new ExtensionsDictionary(this.typeVariationMap, this.functionMap);
+            return new ExtensionsDictionary(this.typeMap, this.typeVariationMap, this.functionMap);
         }
 
         private static string GetNamespace(IReadOnlyDictionary<int, string> namespaceMap, int reference)

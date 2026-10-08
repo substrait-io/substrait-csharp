@@ -14,6 +14,9 @@ namespace Substrait.Core.Type;
 /// <typeparam name="TOutput">The type of the output produced by the visitation.</typeparam>
 public abstract class TypeVisitor<TContext, TOutput> : IVisitor<IType, TContext, TOutput>
 {
+    /// <summary>Visits an extension-defined type, falling back to the general type handler.</summary>
+    public virtual TOutput Visit(UserDefinedType type, TContext context) => this.Visit((IType)type, context);
+
     /// <summary>
     /// Visits an <see cref="Bool"/> type.
     /// </summary>
