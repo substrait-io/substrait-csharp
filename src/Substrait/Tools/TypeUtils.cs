@@ -4,6 +4,7 @@
 using System.Collections.Immutable;
 using Substrait.Core.Extension.Types;
 using Substrait.Core.Type;
+using Substrait.Tools.Visitor;
 
 namespace Substrait.Tools;
 
@@ -146,8 +147,7 @@ public static class TypeUtils
                 return false;
             }
 
-            // Shortcut: most of types are leaf types so does not require expensive tree traversal.
-            if (x is PrimitiveType || (x is ParameterizedType and not ParameterizedType.Struct))
+            if (IsKnownLeafType(x))
             {
                 return x.NodeEquals(y, comparison);
             }
@@ -156,10 +156,100 @@ public static class TypeUtils
         }
 
         /// <inheritdoc/>
-        // TODO this also should be extended to exclude unspecified comparison mode.
         public override int GetHashCode(IType obj)
         {
-            return obj.GetHashCode();
+            var hash = new HashCode();
+            if (IsKnownLeafType(obj))
+            {
+                this.AddNodeHash(ref hash, obj);
+            }
+            else
+            {
+                foreach (IType type in new TopDownTraversal<IType>().Traverse(obj))
+                {
+                    this.AddNodeHash(ref hash, type);
+                }
+            }
+
+            return hash.ToHashCode();
+        }
+
+        // Only sealed built-in leaves can bypass traversal; custom types may expose children.
+        private static bool IsKnownLeafType(IType type) =>
+            type is PrimitiveType.Bool
+                or PrimitiveType.I8
+                or PrimitiveType.I16
+                or PrimitiveType.I32
+                or PrimitiveType.I64
+                or PrimitiveType.FP32
+                or PrimitiveType.FP64
+                or PrimitiveType.Str
+                or PrimitiveType.Binary
+                or PrimitiveType.Date
+                or PrimitiveType.Uuid
+                or PrimitiveType.Time
+                or PrimitiveType.IntervalYear
+                or PrimitiveType.IntervalDay
+                or ParameterizedType.IntervalCompound
+                or ParameterizedType.PrecisionTimestamp
+                or ParameterizedType.PrecisionTimestampTZ
+                or ParameterizedType.FixedChar
+                or ParameterizedType.VarChar
+                or ParameterizedType.FixedBinary
+                or ParameterizedType.Decimal;
+
+        private void AddNodeHash(ref HashCode hash, IType type)
+        {
+            hash.Add(type.GetType());
+            hash.Add(type.InputNodes.Count());
+            if ((comparison & ITypeComparison.Nullability) != 0)
+            {
+                hash.Add(type.Nullable);
+            }
+
+            if ((comparison & ITypeComparison.TypeVariation) != 0)
+            {
+                // TypeVariationImpl compares its base type name without regard to case.
+                if (type.TypeVariation is TypeVariationImpl variation)
+                {
+                    hash.Add(variation.Namespace);
+                    hash.Add(variation.Name);
+                    hash.Add(variation.BaseTypeName, StringComparer.OrdinalIgnoreCase);
+                }
+                else
+                {
+                    hash.Add(type.TypeVariation);
+                }
+            }
+
+            if (type is UserDefinedType userDefined)
+            {
+                hash.Add(userDefined.Anchor);
+                foreach (TypeParameter parameter in userDefined.Parameters)
+                {
+                    hash.Add(parameter.GetType());
+                    if ((comparison & ITypeComparison.TypeParameter) != 0 && parameter is not TypeParameter.DataType)
+                    {
+                        hash.Add(parameter);
+                    }
+                }
+            }
+            else if ((comparison & ITypeComparison.TypeParameter) != 0)
+            {
+                hash.Add(type switch
+                {
+                    PrimitiveType.Time time => time.Precision,
+                    PrimitiveType.IntervalDay interval => interval.Precision,
+                    ParameterizedType.IntervalCompound interval => interval.Precision,
+                    ParameterizedType.PrecisionTimestamp timestamp => timestamp.Precision,
+                    ParameterizedType.PrecisionTimestampTZ timestamp => timestamp.Precision,
+                    ParameterizedType.FixedChar text => text.Length,
+                    ParameterizedType.VarChar text => text.Length,
+                    ParameterizedType.FixedBinary binary => binary.Length,
+                    ParameterizedType.Decimal number => HashCode.Combine(number.Precision, number.Scale),
+                    _ => 0,
+                });
+            }
         }
 
         /// <summary>
@@ -205,6 +295,7 @@ public static class TypeUtils
                 {
                     return context.MoveNext()
                         && context.Current is not null
+                        && type.InputNodes.Count() == context.Current.InputNodes.Count()
                         && type.NodeEquals(context.Current, comparison);
                 }
             }

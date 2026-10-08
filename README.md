@@ -87,6 +87,12 @@ function references but cannot attach their declarations.
 Converting a plan does not add nondeterministic metadata, so repeated protobuf
 serialization of the same internal plan produces the same bytes.
 
+User-defined types support ordered null, data-type, boolean, signed 64-bit
+integer, enum, and string parameters. Use explicit extension contexts to convert
+them without losing their identity. See [user-defined types](docs/user-defined-types.md)
+for construction, programmatic registration, strict/permissive resolution, and
+the current plan-envelope and YAML-loading boundaries.
+
 `ProtoToPlanConverter.FromBytes`, `FromStream`, and `FromFile` parse binary
 protobuf privately, avoiding redundant metadata copies; `FromJson` explicitly
 parses protobuf JSON and accepts a parser with registered `Any` payload types.

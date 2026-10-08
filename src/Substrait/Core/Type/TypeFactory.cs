@@ -32,6 +32,14 @@ public class TypeFactory : PrimitiveTypeFactory
     {
     }
 
+    /// <summary>Creates an extension-defined type with ordered parameters.</summary>
+    public UserDefinedType UserDefined(
+        TypeAnchor anchor,
+        IEnumerable<TypeParameter> parameters,
+        ITypeVariation? typeVariation = null,
+        TypeDefinition? declaration = null) =>
+        new(anchor, parameters, this.Nullable, typeVariation, declaration);
+
     /// <summary>
     /// Returns the type creator for the specified nullability.
     /// </summary>
@@ -201,6 +209,11 @@ public class TypeFactory : PrimitiveTypeFactory
         if (type.Nullable == this.Nullable && typeVariation.EqualsWithNull(type.TypeVariation))
         {
             return type;
+        }
+
+        if (type is UserDefinedType userDefined)
+        {
+            return this.UserDefined(userDefined.Anchor, userDefined.Parameters, typeVariation, userDefined.Declaration);
         }
 
         // Handle Primitive types
