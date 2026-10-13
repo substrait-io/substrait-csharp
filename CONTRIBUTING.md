@@ -44,6 +44,12 @@ Data sources with mutable arguments return factories to isolate each test run.
 Test projects use C# 13 for TUnit's assertion overload resolution; the library's
 language version is unchanged.
 
+Tests asserting exact allocation counts use `[NotInParallel]` without constraint
+keys to isolate warmup and measurement from other tests in the same process.
+Keep the measured region synchronous and assertions outside it. Ordinary tests
+remain parallel; do not relax allocation thresholds to accommodate transient
+failures during concurrent test execution.
+
 ## Package validation
 
 Continuous integration creates a run-scoped preview package, validates its

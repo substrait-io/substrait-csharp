@@ -102,6 +102,7 @@ public sealed class TypeUtilsTests
 
     [Test]
     [MethodDataSource(nameof(LeafHashCases))]
+    [NotInParallel]
     public async Task HashesLeafTypesWithoutAllocations(IType type)
     {
         for (int mode = 0; mode <= (int)ITypeComparison.Strict; ++mode)
@@ -174,6 +175,7 @@ public sealed class TypeUtilsTests
     [Arguments(1, true)]
     [Arguments(32, false)]
     [Arguments(32, true)]
+    [NotInParallel]
     public async Task ComparesUserDefinedNodesWithoutAllocations(int parameterCount, bool withVariation)
     {
         UserDefinedType first = CreateType();
