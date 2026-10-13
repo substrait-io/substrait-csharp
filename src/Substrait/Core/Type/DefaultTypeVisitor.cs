@@ -15,6 +15,9 @@ namespace Substrait.Core.Type;
 public abstract class DefaultTypeVisitor<TContext, TOutput> : TypeVisitor<TContext, TOutput>
 {
     /// <inheritdoc/>
+    public override TOutput Visit(UserDefinedType type, TContext context) => this.DefaultVisit(type, context);
+
+    /// <inheritdoc/>
     public override TOutput Visit(Bool type, TContext context)
     {
         return this.DefaultVisit(type, context);

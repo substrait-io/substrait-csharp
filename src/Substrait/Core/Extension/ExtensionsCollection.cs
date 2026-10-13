@@ -20,6 +20,8 @@ namespace Substrait.Core.Extension;
 /// </summary>
 public sealed class ExtensionsCollection
 {
+    private readonly IReadOnlyList<TypeDefinition> types;
+    private readonly Lazy<IReadOnlyDictionary<TypeAnchor, TypeDefinition>> typesDictSupplier;
     private readonly IReadOnlyList<TypeVariationImpl> typeVariationImpls;
     private readonly IReadOnlyList<ScalarFunctionImpl> scalarFunctionImpls;
     private readonly IReadOnlyList<AggregateFunctionImpl> aggregateFunctionImpls;
@@ -46,13 +48,28 @@ public sealed class ExtensionsCollection
         IEnumerable<ScalarFunctionImpl> scalarFunctionImpls,
         IEnumerable<AggregateFunctionImpl> aggregateFunctionImpls,
         IEnumerable<WindowFunctionImpl> windowFunctionImpls)
+        : this([], typeVariationImpls, scalarFunctionImpls, aggregateFunctionImpls, windowFunctionImpls)
     {
+    }
+
+    /// <summary>Initializes an extension collection including programmatically registered types.</summary>
+    public ExtensionsCollection(
+        IEnumerable<TypeDefinition> types,
+        IEnumerable<TypeVariationImpl> typeVariationImpls,
+        IEnumerable<ScalarFunctionImpl> scalarFunctionImpls,
+        IEnumerable<AggregateFunctionImpl> aggregateFunctionImpls,
+        IEnumerable<WindowFunctionImpl> windowFunctionImpls)
+    {
+        this.types = types.ToImmutableList();
+        this.typesDictSupplier = new Lazy<IReadOnlyDictionary<TypeAnchor, TypeDefinition>>(
+            () => this.types.ToDictionary(definition => definition.Anchor));
         this.typeVariationImpls = typeVariationImpls.ToImmutableList();
         this.scalarFunctionImpls = scalarFunctionImpls.ToImmutableList();
         this.aggregateFunctionImpls = aggregateFunctionImpls.ToImmutableList();
         this.windowFunctionImpls = windowFunctionImpls.ToImmutableList();
         this.namespaceSupplier = new Lazy<StringReadOnlySet>(() =>
             this.typeVariationImpls.Select(implementation => implementation.Uri)
+                .Concat(this.types.Select(definition => definition.Anchor.Namespace))
                 .Concat(this.scalarFunctionImpls.Select(implementation => implementation.Uri))
                 .Concat(this.aggregateFunctionImpls.Select(implementation => implementation.Uri))
                 .Concat(this.windowFunctionImpls.Select(implementation => implementation.Uri))
@@ -67,6 +84,9 @@ public sealed class ExtensionsCollection
             () => CreateDictionary(this.windowFunctionImpls, implementation => implementation.Anchor));
     }
 
+    /// <summary>Gets known extension type definitions.</summary>
+    public IReadOnlyList<TypeDefinition> Types => this.types;
+
     /// <summary>Gets known type variation declarations.</summary>
     public IReadOnlyList<TypeVariationImpl> TypeVariationImpls => this.typeVariationImpls;
 
@@ -80,7 +100,24 @@ public sealed class ExtensionsCollection
     public IReadOnlyList<WindowFunctionImpl> WindowFunctionImpls => this.windowFunctionImpls;
 
     /// <summary>Gets the total number of extension declarations.</summary>
-    public int Count => this.typeVariationImpls.Count + this.scalarFunctionImpls.Count + this.aggregateFunctionImpls.Count + this.windowFunctionImpls.Count;
+    public int Count => this.types.Count + this.typeVariationImpls.Count + this.scalarFunctionImpls.Count + this.aggregateFunctionImpls.Count + this.windowFunctionImpls.Count;
+
+    /// <summary>Resolves a type definition, throwing on unresolved definitions when TYPE checks are enabled.</summary>
+    public bool TryGetType(TypeAnchor anchor, StrictMode strictMode, out TypeDefinition? type)
+    {
+        if (this.typesDictSupplier.Value.TryGetValue(anchor, out type))
+        {
+            return true;
+        }
+
+        if (strictMode.IsOn(StrictMode.TYPE))
+        {
+            this.CheckNamespace(anchor.Namespace);
+            throw new ArgumentException($"Unexpected type with key {anchor.Key}. The namespace {anchor.Namespace} is loaded but no type with this key was found.");
+        }
+
+        return false;
+    }
 
     /// <summary>Tries to resolve a type variation.</summary>
     public bool TryGetTypeVariation(TypeVariationImplAnchor anchor, StrictMode strictMode, out TypeVariationImpl? typeVariation)
@@ -123,6 +160,7 @@ public sealed class ExtensionsCollection
     public ExtensionsCollection Merge(ExtensionsCollection extensionCollection)
     {
         return new ExtensionsCollection(
+            this.types.Concat(extensionCollection.types),
             this.typeVariationImpls.Concat(extensionCollection.typeVariationImpls),
             this.scalarFunctionImpls.Concat(extensionCollection.scalarFunctionImpls),
             this.aggregateFunctionImpls.Concat(extensionCollection.aggregateFunctionImpls),

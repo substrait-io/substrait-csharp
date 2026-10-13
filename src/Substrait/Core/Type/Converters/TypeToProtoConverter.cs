@@ -98,6 +98,27 @@ public class TypeToProtoConverter
             return new ProtoType { Struct = result };
         }
 
+        public override ProtoType Visit(UserDefinedType type, PlanToProtoConverter.ConverterContext context)
+        {
+            var result = new ProtoType.Types.UserDefined
+            {
+                TypeReference = (uint)context.AddExtension(ExtensionsCollector.ExtensionType.Type, type.Anchor.Namespace, type.Anchor.Key),
+                Nullability = type.Nullable.ToProto(),
+                TypeVariationReference = Variation(type, context),
+            };
+            result.TypeParameters.AddRange(type.Parameters.Select(parameter => parameter switch
+            {
+                TypeParameter.Null => new ProtoType.Types.Parameter { Null = new() },
+                TypeParameter.DataType dataType => new ProtoType.Types.Parameter { DataType = context.GetOutput(dataType.Value) },
+                TypeParameter.Boolean boolean => new ProtoType.Types.Parameter { Boolean = boolean.Value },
+                TypeParameter.Integer integer => new ProtoType.Types.Parameter { Integer = integer.Value },
+                TypeParameter.Enum enumeration => new ProtoType.Types.Parameter { Enum = enumeration.Value },
+                TypeParameter.String text => new ProtoType.Types.Parameter { String = text.Value },
+                _ => throw new NotSupportedException($"Unsupported user-defined type parameter {parameter.GetType().Name}."),
+            }));
+            return new ProtoType { UserDefined = result };
+        }
+
         public override ProtoType Visit(IType other, PlanToProtoConverter.ConverterContext context) =>
             throw new NotImplementedException($"Conversion for {other.GetType().Name} is not implemented.");
 
