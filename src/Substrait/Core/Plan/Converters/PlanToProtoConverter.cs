@@ -101,6 +101,11 @@ public class PlanToProtoConverter
         public ExtensionsCollector ExtensionsCollector => this.extensions.Build();
 
         /// <summary>Collects an extension and returns its anchor.</summary>
+        /// <returns>The extension anchor, from 0 through <see cref="int.MaxValue"/>.</returns>
+        /// <exception cref="OverflowException">
+        /// The extension anchor exceeds <see cref="int.MaxValue"/>.
+        /// </exception>
+        /// <remarks>Full-plan conversion uses unsigned anchors and is not limited by this signed return type.</remarks>
         public int AddExtension(ExtensionsCollector.ExtensionType type, string uri, string name) =>
             this.extensions.Collect(type, uri, name);
 

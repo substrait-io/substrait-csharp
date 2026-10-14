@@ -149,7 +149,11 @@ public class ExtensionsCollector
         /// <param name="type">The extension type.</param>
         /// <param name="uri">The extension URI.</param>
         /// <param name="name">The extension name.</param>
-        /// <returns>The extension anchor.</returns>
+        /// <returns>The extension anchor, from 0 through <see cref="int.MaxValue"/>.</returns>
+        /// <exception cref="OverflowException">
+        /// The extension anchor exceeds <see cref="int.MaxValue"/>.
+        /// </exception>
+        /// <remarks>Full-plan conversion uses unsigned anchors and is not limited by this signed return type.</remarks>
         public int Collect(ExtensionType type, string uri, string name)
         {
             return checked((int)this.CollectReference(type, uri, name));
