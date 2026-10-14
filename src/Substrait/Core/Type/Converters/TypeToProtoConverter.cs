@@ -102,7 +102,7 @@ public class TypeToProtoConverter
         {
             var result = new ProtoType.Types.UserDefined
             {
-                TypeReference = (uint)context.AddExtension(ExtensionsCollector.ExtensionType.Type, type.Anchor.Namespace, type.Anchor.Key),
+                TypeReference = context.AddExtensionReference(ExtensionsCollector.ExtensionType.Type, type.Anchor.Namespace, type.Anchor.Key),
                 Nullability = type.Nullable.ToProto(),
                 TypeVariationReference = Variation(type, context),
             };
@@ -123,11 +123,11 @@ public class TypeToProtoConverter
             throw new NotImplementedException($"Conversion for {other.GetType().Name} is not implemented.");
 
         private static uint Variation(IType type, PlanToProtoConverter.ConverterContext context) =>
-            (uint)(type.TypeVariation is null
+            type.TypeVariation is null
                 ? 0
-                : context.AddExtension(
+                : context.AddExtensionReference(
                     ExtensionsCollector.ExtensionType.TypeVariation,
                     type.TypeVariation.Namespace,
-                    type.TypeVariation.Name));
+                    type.TypeVariation.Name);
     }
 }

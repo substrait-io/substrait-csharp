@@ -77,17 +77,62 @@ IType roundTrip = new ProtoToTypeConverter(lookup, extensions).From(wire);
 bool equivalent = type.Equals(roundTrip); // true
 ```
 
-For incoming plans or extended expressions, construct `ExtensionsDictionary`
-from their actual extension declarations. The outbound context exposes
+When converting a type extracted from a plan or extended expression, construct
+`ExtensionsDictionary` from its actual extension declarations. The outbound context exposes
 `ExtensionsCollector`, including dependencies of every nested type-valued
 parameter. Reuse one context when converting related types.
 
 Type references and type-variation references occupy separate namespaces.
 Type anchor **0 is valid**; variation reference **0 means no variation**.
-The exporter deterministically assigns and deduplicates anchors in its context.
-It preserves extension identity, not arbitrary original numeric anchor values.
+An unseeded export context deterministically assigns and deduplicates anchors.
+Core types preserve semantic identity, not per-reference numeric provenance;
+full-plan conversion separately retains imported declaration tables.
 A standalone protobuf `Type` has no extension declarations: the overload that
 creates its own context cannot provide a self-contained extension-aware result.
+
+## Plan conversion
+
+`PlanToProtoConverter` emits the URNs and type declarations required by the
+plan's user-defined types, including nested DataType parameters. It shares one
+extension context across all root and non-root entries, deduplicating identities
+while keeping type, type-variation, and function anchors independent.
+`ProtoToPlanConverter` reads these declarations automatically; registered type
+definitions still come from the supplied `ExtensionsCollection`.
+
+Using `type` and `extensions` from the construction example above:
+
+```csharp
+using Substrait.Core.Relation;
+using CorePlan = Substrait.Core.Plan.Plan;
+using PlanVersion = Substrait.Core.Plan.Version;
+
+var read = new NamedTableRead(
+    new NamedStruct(["value"], TypeFactory.REQUIRED.Struct([type])),
+    ["shapes"],
+    null);
+var plan = new CorePlan([new CorePlan.Root(read, ["value"])], PlanVersion.Current);
+
+Substrait.Protobuf.Plan wirePlan = new PlanToProtoConverter().From(plan);
+var restoredPlan = new ProtoToPlanConverter(extensions).From(wirePlan);
+bool relationsEquivalent = plan.Relations[0].Equals(restoredPlan.Relations[0]); // true
+```
+
+The exported plan contains its reference declarations; it does not embed the
+external type definitions. The strict/permissive resolution rules below apply
+to full-plan imports as well as standalone type imports.
+
+New plans export only dependencies used by the core plan. Imported plans retain
+their complete URN/declaration tables in `PlanMetadata`, including ordering,
+aliases, unknown fields, and apparently unused entries. Opaque extension
+payloads may reference any of those anchors, so export neither removes nor
+renumbers them. Core references use the smallest existing anchor for their
+identity; new dependencies receive free anchors in the appropriate namespace.
+No per-node anchor provenance or byte-for-byte round-trip guarantee is added.
+
+Retained tables participate in plan metadata equality because their bindings
+can change the meaning of opaque payloads. A newly constructed plan and its
+imported export can therefore have equal relations but different metadata.
+See [plan extension metadata](metadata-facades.md#plan-extension-metadata).
 
 ## Resolution and errors
 
@@ -158,11 +203,10 @@ Existing visitor subclasses do not need another abstract implementation.
   YAML, declare parameter contracts, select default values, or validate enum
   membership. Those features belong to
   [substrait-io/substrait-csharp#46](https://github.com/substrait-io/substrait-csharp/issues/46).
-- Complete plan-level extension declaration retention/emission and original
-  anchor preservation belong to
-  [substrait-io/substrait-csharp#27](https://github.com/substrait-io/substrait-csharp/issues/27).
-  Until that support lands, use the type converters with explicit contexts;
-  the full plan exporter cannot emit a collected extension type declaration.
+- Retaining extension declaration tables does not add the other plan-envelope
+  features tracked in
+  [substrait-io/substrait-csharp#27](https://github.com/substrait-io/substrait-csharp/issues/27),
+  such as type aliases or dynamic parameter bindings.
 - User-defined literal payloads belong to
   [substrait-io/substrait-csharp#40](https://github.com/substrait-io/substrait-csharp/issues/40).
 - DataType parameters support the kinds already supported by the shared type

@@ -2,10 +2,11 @@
 
 `Substrait.Core.Metadata` provides generated, immutable facades over protobuf
 metadata. Core relations retain these facades through `RelationMetadata`, and
-plans retain their advanced extensions through `PlanMetadata`. Converters
+plans retain their advanced extensions and declaration tables through `PlanMetadata`. Converters
 preserve them in both directions.
 
-The supported roots are `ReadOnlyRelCommon` and `ReadOnlyAdvancedExtension`.
+The supported roots are `ReadOnlyRelCommon`, `ReadOnlyAdvancedExtension`,
+`ReadOnlySimpleExtensionURN`, and `ReadOnlySimpleExtensionDeclaration`.
 Their nested message fields use corresponding facades, including `ReadOnlyAny`
 for opaque payloads. Facades are not protobuf messages and cannot be mutated
 through protobuf reflection or merge APIs.
@@ -264,6 +265,10 @@ no payload descriptors; standard protobuf JSON still requires a type registry.
 - `ExpectedTypeUrls`: an immutable, ordered list corresponding to
   `Plan.expected_type_urls`. Duplicates, case, and empty strings are preserved;
   null list elements are rejected because protobuf strings cannot be null.
+- `ExtensionUrns` and `Extensions`: immutable, ordered lists of
+  `ReadOnlySimpleExtensionURN` and `ReadOnlySimpleExtensionDeclaration`.
+  Full-plan import retains all entries, including unused entries, aliases, and
+  unknown fields, because opaque payloads may reference their numeric anchors.
 
 Use the existing `PlanBuilder` to edit extensions while composing a plan; no
 immutable metadata object is required upfront. Callers explicitly choose whether
@@ -319,7 +324,8 @@ Each edit replaces that snapshot, leaving previous snapshots and built plans
 unchanged. An unchanged `Build()` reuses the current metadata rather than
 recopying it. Editing an advanced-extension field preserves the other fields
 and unknown protobuf fields. Expected type URLs are edited independently and
-are never inferred from payloads. Builders are not thread-safe.
+are never inferred from payloads. All these edits also preserve the declaration
+tables. Builders are not thread-safe.
 
 Setting or adding a payload creates the advanced-extension message if absent.
 Removing the last payload leaves a present empty message; only
@@ -337,7 +343,12 @@ for `new PlanBuilder(metadata, version)`. The builder's metadata-first overload
 requires an explicit `version` argument (null selects the current version), so
 the existing `new PlanBuilder(null)` call remains unambiguous.
 
-`PlanMetadata.Empty` has absent advanced extensions and no expected type URLs.
+The four-argument facade constructor additionally accepts `extensionUrns` and
+`extensions`. Null collections mean empty lists; null elements are rejected.
+It snapshots the collections, reusing their immutable elements.
+
+`PlanMetadata.Empty` has absent advanced extensions, no expected type URLs, and
+empty declaration tables.
 Existing plan constructors, factories, and builders use it by default.
 `new PlanMetadata(new AdvancedExtension())` instead preserves a present empty
 message. To explicitly pass an absent facade, use
@@ -345,7 +356,8 @@ message. To explicitly pass an absent facade, use
 rejects null. A null expected-URL collection means an empty list.
 
 Metadata and plan equality/hashing include advanced-extension presence and
-contents, optimization order, and the exact ordered expected type URLs.
+contents, optimization order, the exact ordered expected type URLs, and retained
+URN/declaration tables. Table bindings can affect opaque payload meaning.
 Adding metadata can therefore make two otherwise identical plans unequal.
 Neither construction nor conversion sorts, deduplicates, validates descriptor
 availability, or infers the expected type URLs from payloads. The list may
@@ -363,8 +375,28 @@ still needs the payload descriptors in a type registry; `expected_type_urls`
 does not provide descriptors or populate that registry. Opaque enhancements are
 preserved, not accepted as executable: consumers must understand required
 enhancements or reject them. Function/type extension `StrictMode` does not
-change advanced-extension preservation. Simple extension declarations and URNs
-remain a separate mechanism with unchanged behavior.
+change advanced-extension or declaration-table preservation.
+
+Export preserves all imported table entries and their anchor values. For core
+references, each semantic identity uses the smallest existing anchor in its
+namespace; aliases remain in the tables even when core references no longer use
+them. Added dependencies reuse the smallest matching URN anchor and receive the
+first free declaration anchor. Fresh type/function namespaces start at 0;
+type-variation and newly allocated URN namespaces start at 1. Sparse anchors and
+the full `uint32` range are supported. No opaque payload is inspected or rewritten.
+
+Plan import/export rejects duplicate numeric anchors within a namespace, missing
+URN references, blank URNs/names, unset declaration mappings, and type-variation
+anchor 0 with `ArgumentException`. Multiple anchors for the same identity are
+valid. Retention does not resolve unused definitions or impose stricter
+`StrictMode` resolution on them.
+
+New plans without retained tables export only their used dependencies. Their
+imported exports acquire declaration metadata and can consequently compare
+unequal as plans even when their core relations compare equal. Retained tables
+are serialization bindings, not per-node numeric provenance. This behavior
+does not promise byte-for-byte plan round trips or add type-alias/dynamic-binding
+support.
 
 ## Serialized input entry points
 

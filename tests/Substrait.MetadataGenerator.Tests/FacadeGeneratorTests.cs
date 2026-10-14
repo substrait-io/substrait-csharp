@@ -11,8 +11,8 @@ public sealed class FacadeGeneratorTests
     [Test]
     public async Task GenerationIsDeterministicAndRestrictedToMetadataClosure()
     {
-        var first = FacadeGenerator.Generate([RelCommon.Descriptor, AdvancedExtension.Descriptor]);
-        var second = FacadeGenerator.Generate([AdvancedExtension.Descriptor, RelCommon.Descriptor, RelCommon.Descriptor]);
+        var first = FacadeGenerator.Generate([RelCommon.Descriptor, AdvancedExtension.Descriptor, SimpleExtensionURN.Descriptor, SimpleExtensionDeclaration.Descriptor]);
+        var second = FacadeGenerator.Generate([SimpleExtensionDeclaration.Descriptor, SimpleExtensionURN.Descriptor, AdvancedExtension.Descriptor, RelCommon.Descriptor, RelCommon.Descriptor]);
         string[] expected =
         [
             "ReadOnlyAdvancedExtension.g.cs",
@@ -25,6 +25,11 @@ public sealed class FacadeGeneratorTests
             "ReadOnlyRelCommonHintRuntimeConstraint.g.cs",
             "ReadOnlyRelCommonHintSavedComputation.g.cs",
             "ReadOnlyRelCommonHintStats.g.cs",
+            "ReadOnlySimpleExtensionURN.g.cs",
+            "ReadOnlySimpleExtensionDeclaration.g.cs",
+            "ReadOnlySimpleExtensionDeclarationExtensionType.g.cs",
+            "ReadOnlySimpleExtensionDeclarationExtensionTypeVariation.g.cs",
+            "ReadOnlySimpleExtensionDeclarationExtensionFunction.g.cs",
         ];
 
         await Assert.That(first.Keys.ToArray()).IsEquivalentTo(expected, TUnit.Assertions.Enums.CollectionOrdering.Any);

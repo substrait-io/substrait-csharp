@@ -124,7 +124,7 @@ public class ExpressionToProtoConverter
         {
             var function = new ProtoExpression.Types.ScalarFunction
             {
-                FunctionReference = (uint)context.AddExtension(ExtensionsCollector.ExtensionType.Function, expression.Namespace, expression.Key),
+                FunctionReference = context.AddExtensionReference(ExtensionsCollector.ExtensionType.Function, expression.Namespace, expression.Key),
                 OutputType = this.typeConverter.From(expression.Type, context),
             };
             function.Arguments.AllocateAndAddRange(expression.Arguments.Count, expression.Arguments.Select(argument => argument switch

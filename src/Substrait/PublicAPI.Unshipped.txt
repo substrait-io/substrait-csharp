@@ -24,6 +24,16 @@ override Substrait.Core.Metadata.ReadOnlyRelCommonHintSavedComputation.Equals(ob
 override Substrait.Core.Metadata.ReadOnlyRelCommonHintSavedComputation.GetHashCode() -> int
 override Substrait.Core.Metadata.ReadOnlyRelCommonHintStats.Equals(object? obj) -> bool
 override Substrait.Core.Metadata.ReadOnlyRelCommonHintStats.GetHashCode() -> int
+override Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclaration.Equals(object? obj) -> bool
+override Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclaration.GetHashCode() -> int
+override Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionFunction.Equals(object? obj) -> bool
+override Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionFunction.GetHashCode() -> int
+override Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionType.Equals(object? obj) -> bool
+override Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionType.GetHashCode() -> int
+override Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionTypeVariation.Equals(object? obj) -> bool
+override Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionTypeVariation.GetHashCode() -> int
+override Substrait.Core.Metadata.ReadOnlySimpleExtensionURN.Equals(object? obj) -> bool
+override Substrait.Core.Metadata.ReadOnlySimpleExtensionURN.GetHashCode() -> int
 override Substrait.Core.Metadata.RelationMetadata.Equals(object? obj) -> bool
 override Substrait.Core.Metadata.RelationMetadata.GetHashCode() -> int
 override Substrait.Core.Relation.AbstractJoin.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
@@ -97,6 +107,11 @@ static Substrait.Core.Metadata.ReadOnlyRelCommonHintLoadedComputation.FromProto(
 static Substrait.Core.Metadata.ReadOnlyRelCommonHintRuntimeConstraint.FromProto(Substrait.Protobuf.RelCommon.Types.Hint.Types.RuntimeConstraint! value) -> Substrait.Core.Metadata.ReadOnlyRelCommonHintRuntimeConstraint!
 static Substrait.Core.Metadata.ReadOnlyRelCommonHintSavedComputation.FromProto(Substrait.Protobuf.RelCommon.Types.Hint.Types.SavedComputation! value) -> Substrait.Core.Metadata.ReadOnlyRelCommonHintSavedComputation!
 static Substrait.Core.Metadata.ReadOnlyRelCommonHintStats.FromProto(Substrait.Protobuf.RelCommon.Types.Hint.Types.Stats! value) -> Substrait.Core.Metadata.ReadOnlyRelCommonHintStats!
+static Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclaration.FromProto(Substrait.Protobuf.SimpleExtensionDeclaration! value) -> Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclaration!
+static Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionFunction.FromProto(Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionFunction! value) -> Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionFunction!
+static Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionType.FromProto(Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionType! value) -> Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionType!
+static Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionTypeVariation.FromProto(Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionTypeVariation! value) -> Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionTypeVariation!
+static Substrait.Core.Metadata.ReadOnlySimpleExtensionURN.FromProto(Substrait.Protobuf.SimpleExtensionURN! value) -> Substrait.Core.Metadata.ReadOnlySimpleExtensionURN!
 static Substrait.Core.Metadata.RelationMetadata.Direct.get -> Substrait.Core.Metadata.RelationMetadata!
 static Substrait.Core.Metadata.RelationMetadata.Empty.get -> Substrait.Core.Metadata.RelationMetadata!
 static Substrait.Core.Metadata.RelationMetadata.FromRemap(Substrait.Core.Relation.Remap? transmute) -> Substrait.Core.Metadata.RelationMetadata!
@@ -123,7 +138,10 @@ Substrait.Core.Metadata.PlanMetadata
 Substrait.Core.Metadata.PlanMetadata.AdvancedExtensions.get -> Substrait.Core.Metadata.ReadOnlyAdvancedExtension?
 Substrait.Core.Metadata.PlanMetadata.Equals(Substrait.Core.Metadata.PlanMetadata? other) -> bool
 Substrait.Core.Metadata.PlanMetadata.ExpectedTypeUrls.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Substrait.Core.Metadata.PlanMetadata.Extensions.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclaration!>!
+Substrait.Core.Metadata.PlanMetadata.ExtensionUrns.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Metadata.ReadOnlySimpleExtensionURN!>!
 Substrait.Core.Metadata.PlanMetadata.PlanMetadata(Substrait.Core.Metadata.ReadOnlyAdvancedExtension? advancedExtensions = null, System.Collections.Generic.IEnumerable<string!>? expectedTypeUrls = null) -> void
+Substrait.Core.Metadata.PlanMetadata.PlanMetadata(Substrait.Core.Metadata.ReadOnlyAdvancedExtension? advancedExtensions, System.Collections.Generic.IEnumerable<string!>? expectedTypeUrls, System.Collections.Generic.IEnumerable<Substrait.Core.Metadata.ReadOnlySimpleExtensionURN!>? extensionUrns, System.Collections.Generic.IEnumerable<Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclaration!>? extensions) -> void
 Substrait.Core.Metadata.PlanMetadata.PlanMetadata(Substrait.Protobuf.AdvancedExtension! message, System.Collections.Generic.IEnumerable<string!>? expectedTypeUrls = null) -> void
 Substrait.Core.Metadata.ReadOnlyAdvancedExtension
 Substrait.Core.Metadata.ReadOnlyAdvancedExtension.Enhancement.get -> Substrait.Core.Metadata.ReadOnlyAny?
@@ -183,6 +201,36 @@ Substrait.Core.Metadata.ReadOnlyRelCommonHintStats.Equals(Substrait.Core.Metadat
 Substrait.Core.Metadata.ReadOnlyRelCommonHintStats.RecordSize.get -> double
 Substrait.Core.Metadata.ReadOnlyRelCommonHintStats.RowCount.get -> double
 Substrait.Core.Metadata.ReadOnlyRelCommonHintStats.ToProto() -> Substrait.Protobuf.RelCommon.Types.Hint.Types.Stats!
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclaration
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclaration.Equals(Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclaration? other) -> bool
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclaration.ExtensionFunction.get -> Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionFunction?
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclaration.ExtensionType.get -> Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionType?
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclaration.ExtensionTypeVariation.get -> Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionTypeVariation?
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclaration.MappingTypeCase.get -> Substrait.Protobuf.SimpleExtensionDeclaration.MappingTypeOneofCase
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclaration.ToProto() -> Substrait.Protobuf.SimpleExtensionDeclaration!
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionFunction
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionFunction.Equals(Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionFunction? other) -> bool
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionFunction.ExtensionUrnReference.get -> uint
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionFunction.FunctionAnchor.get -> uint
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionFunction.Name.get -> string!
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionFunction.ToProto() -> Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionFunction!
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionType
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionType.Equals(Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionType? other) -> bool
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionType.ExtensionUrnReference.get -> uint
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionType.Name.get -> string!
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionType.ToProto() -> Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionType!
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionType.TypeAnchor.get -> uint
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionTypeVariation
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionTypeVariation.Equals(Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionTypeVariation? other) -> bool
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionTypeVariation.ExtensionUrnReference.get -> uint
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionTypeVariation.Name.get -> string!
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionTypeVariation.ToProto() -> Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionTypeVariation!
+Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclarationExtensionTypeVariation.TypeVariationAnchor.get -> uint
+Substrait.Core.Metadata.ReadOnlySimpleExtensionURN
+Substrait.Core.Metadata.ReadOnlySimpleExtensionURN.Equals(Substrait.Core.Metadata.ReadOnlySimpleExtensionURN? other) -> bool
+Substrait.Core.Metadata.ReadOnlySimpleExtensionURN.ExtensionUrnAnchor.get -> uint
+Substrait.Core.Metadata.ReadOnlySimpleExtensionURN.ToProto() -> Substrait.Protobuf.SimpleExtensionURN!
+Substrait.Core.Metadata.ReadOnlySimpleExtensionURN.Urn.get -> string!
 Substrait.Core.Metadata.RelationMetadata
 Substrait.Core.Metadata.RelationMetadata.AdvancedExtension.get -> Substrait.Core.Metadata.ReadOnlyAdvancedExtension?
 Substrait.Core.Metadata.RelationMetadata.Common.get -> Substrait.Core.Metadata.ReadOnlyRelCommon?

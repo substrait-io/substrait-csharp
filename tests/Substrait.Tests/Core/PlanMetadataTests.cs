@@ -130,6 +130,8 @@ public sealed class PlanMetadataTests
     public async Task BinaryStreamAndFileImportsPreserveOpaqueDataAndLeaveStreamsOpen()
     {
         ProtoPlan wire = WirePlan();
+        wire.ExtensionUrns.Add(new SimpleExtensionURN { ExtensionUrnAnchor = 100, Urn = "extension:example:opaque" });
+        wire.Extensions.Add(new SimpleExtensionDeclaration { ExtensionFunction = new() { FunctionAnchor = 50, ExtensionUrnReference = 100, Name = "unused-in-core" } });
         wire.AdvancedExtensions = UnknownExtensions();
         wire.ExpectedTypeUrls.AddRange(ExpectedUrls);
         byte[] bytes = wire.ToByteArray();
@@ -156,6 +158,8 @@ public sealed class PlanMetadataTests
     public async Task JsonImportsUseRegisteredPayloadDescriptorsButDoNotResolveExpectedUrls()
     {
         ProtoPlan wire = WirePlan();
+        wire.ExtensionUrns.Add(new SimpleExtensionURN { ExtensionUrnAnchor = 100, Urn = "extension:example:opaque" });
+        wire.Extensions.Add(new SimpleExtensionDeclaration { ExtensionFunction = new() { FunctionAnchor = 50, ExtensionUrnReference = 100, Name = "unused-in-core" } });
         wire.AdvancedExtensions = new()
         {
             Enhancement = Any.Pack(new StringValue { Value = "enhancement" }),

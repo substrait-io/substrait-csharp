@@ -146,7 +146,7 @@ public class RelToProtoConverter
             {
                 var function = new AggregateFunction
                 {
-                    FunctionReference = (uint)context.AddExtension(ExtensionsCollector.ExtensionType.Function, measure.Function.Namespace, measure.Function.Key),
+                    FunctionReference = context.AddExtensionReference(ExtensionsCollector.ExtensionType.Function, measure.Function.Namespace, measure.Function.Key),
                     OutputType = this.typeConverter.From(measure.Function.OutputType, context),
                     Phase = measure.Function.Phase.ToProto(),
                     Invocation = measure.Function.Invocation.ToProto(),
