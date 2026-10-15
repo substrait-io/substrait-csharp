@@ -189,6 +189,22 @@ public abstract class TypeVisitor<TContext, TOutput> : IVisitor<IType, TContext,
     /// <returns>The output as a result of the visit.</returns>
     public abstract TOutput Visit(Struct type, TContext context);
 
+    /// <summary>
+    /// Visits a <see cref="List"/> type.
+    /// </summary>
+    /// <param name="type">List type.</param>
+    /// <param name="context">Input context.</param>
+    /// <returns>The output as a result of the visit.</returns>
+    public abstract TOutput Visit(List type, TContext context);
+
+    /// <summary>
+    /// Visits a <see cref="Map"/> type.
+    /// </summary>
+    /// <param name="type">Map type.</param>
+    /// <param name="context">Input context.</param>
+    /// <returns>The output as a result of the visit.</returns>
+    public abstract TOutput Visit(Map type, TContext context);
+
     /// <inheritdoc/>
     public abstract TOutput Visit(IType other, TContext context);
 }

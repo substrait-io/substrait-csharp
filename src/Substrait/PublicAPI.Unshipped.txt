@@ -1,4 +1,6 @@
 #nullable enable
+abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.List! type, TContext context) -> TOutput
+abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Map! type, TContext context) -> TOutput
 override Substrait.Core.Extension.Types.TypeAnchor.Equals(object? obj) -> bool
 override Substrait.Core.Extension.Types.TypeAnchor.GetHashCode() -> int
 override Substrait.Core.Extension.Types.TypeAnchor.ToString() -> string!
@@ -57,6 +59,8 @@ override Substrait.Core.Relation.Set.Metadata.get -> Substrait.Core.Metadata.Rel
 override Substrait.Core.Relation.Sort.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 override Substrait.Core.Relation.VirtualTableRead.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.IntervalCompound! type, TContext context) -> TOutput
+override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.List! type, TContext context) -> TOutput
+override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Map! type, TContext context) -> TOutput
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Uuid! type, TContext context) -> TOutput
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.UserDefinedType! type, TContext context) -> TOutput
 override Substrait.Core.Type.ParameterizedType.IntervalCompound.Accept<TContext, TOutput>(Substrait.Core.Type.TypeVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
@@ -65,6 +69,20 @@ override Substrait.Core.Type.ParameterizedType.IntervalCompound.GetHashCode() ->
 override Substrait.Core.Type.ParameterizedType.IntervalCompound.ShortTypeName.get -> string!
 override Substrait.Core.Type.ParameterizedType.IntervalCompound.ToTypeString() -> string!
 override Substrait.Core.Type.ParameterizedType.IntervalCompound.TypeName.get -> string!
+override Substrait.Core.Type.ParameterizedType.List.Accept<TContext, TOutput>(Substrait.Core.Type.TypeVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
+override Substrait.Core.Type.ParameterizedType.List.Equals(object? obj) -> bool
+override Substrait.Core.Type.ParameterizedType.List.GetHashCode() -> int
+override Substrait.Core.Type.ParameterizedType.List.InputNodes.get -> System.Collections.Generic.IEnumerable<Substrait.Core.Type.IType!>!
+override Substrait.Core.Type.ParameterizedType.List.ShortTypeName.get -> string!
+override Substrait.Core.Type.ParameterizedType.List.ToTypeString() -> string!
+override Substrait.Core.Type.ParameterizedType.List.TypeName.get -> string!
+override Substrait.Core.Type.ParameterizedType.Map.Accept<TContext, TOutput>(Substrait.Core.Type.TypeVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
+override Substrait.Core.Type.ParameterizedType.Map.Equals(object? obj) -> bool
+override Substrait.Core.Type.ParameterizedType.Map.GetHashCode() -> int
+override Substrait.Core.Type.ParameterizedType.Map.InputNodes.get -> System.Collections.Generic.IEnumerable<Substrait.Core.Type.IType!>!
+override Substrait.Core.Type.ParameterizedType.Map.ShortTypeName.get -> string!
+override Substrait.Core.Type.ParameterizedType.Map.ToTypeString() -> string!
+override Substrait.Core.Type.ParameterizedType.Map.TypeName.get -> string!
 override Substrait.Core.Type.PrimitiveType.IntervalDay.Equals(object? obj) -> bool
 override Substrait.Core.Type.PrimitiveType.IntervalDay.GetHashCode() -> int
 override Substrait.Core.Type.PrimitiveType.IntervalDay.NodeEquals(Substrait.Core.Type.IType! other, Substrait.Core.Type.ITypeComparison comparison) -> bool
@@ -104,6 +122,7 @@ static Substrait.Core.Plan.Plan.FromRelations(Substrait.Core.Metadata.PlanMetada
 static Substrait.Core.Type.PrimitiveType.IntervalDay.Of(int precision, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.IntervalDay!
 static Substrait.Core.Type.PrimitiveType.Time.Of(int precision, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.Time!
 static Substrait.Core.Type.PrimitiveType.Uuid.Of(Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.Uuid!
+static Substrait.Tools.TypeUtils.GetFieldNames(this Substrait.Core.Type.NamedStruct! namedStruct) -> System.Collections.Generic.IEnumerable<(Substrait.Core.Type.IType! Field, string! Name)>!
 Substrait.Core.Extension.ExtensionsCollection.ExtensionsCollection(System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Types.TypeDefinition!>! types, System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Types.TypeVariationImpl!>! typeVariationImpls, System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Functions.ScalarFunctionImpl!>! scalarFunctionImpls, System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Functions.AggregateFunctionImpl!>! aggregateFunctionImpls, System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Functions.WindowFunctionImpl!>! windowFunctionImpls) -> void
 Substrait.Core.Extension.ExtensionsCollection.TryGetType(Substrait.Core.Extension.Types.TypeAnchor! anchor, Substrait.Core.Extension.ExtensionsDictionary.StrictMode strictMode, out Substrait.Core.Extension.Types.TypeDefinition? type) -> bool
 Substrait.Core.Extension.ExtensionsCollection.Types.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Extension.Types.TypeDefinition!>!
@@ -295,6 +314,15 @@ Substrait.Core.Type.ParameterizedType.IntervalCompound
 Substrait.Core.Type.ParameterizedType.IntervalCompound.Equals(Substrait.Core.Type.ParameterizedType.IntervalCompound? other) -> bool
 Substrait.Core.Type.ParameterizedType.IntervalCompound.IntervalCompound(int precision, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation) -> void
 Substrait.Core.Type.ParameterizedType.IntervalCompound.Precision.get -> int
+Substrait.Core.Type.ParameterizedType.List
+Substrait.Core.Type.ParameterizedType.List.ElementType.get -> Substrait.Core.Type.IType!
+Substrait.Core.Type.ParameterizedType.List.Equals(Substrait.Core.Type.ParameterizedType.List? other) -> bool
+Substrait.Core.Type.ParameterizedType.List.List(Substrait.Core.Type.IType! elementType, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> void
+Substrait.Core.Type.ParameterizedType.Map
+Substrait.Core.Type.ParameterizedType.Map.Equals(Substrait.Core.Type.ParameterizedType.Map? other) -> bool
+Substrait.Core.Type.ParameterizedType.Map.KeyType.get -> Substrait.Core.Type.IType!
+Substrait.Core.Type.ParameterizedType.Map.Map(Substrait.Core.Type.IType! keyType, Substrait.Core.Type.IType! valueType, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> void
+Substrait.Core.Type.ParameterizedType.Map.ValueType.get -> Substrait.Core.Type.IType!
 Substrait.Core.Type.PrimitiveType.IntervalDay.Equals(Substrait.Core.Type.PrimitiveType.IntervalDay? other) -> bool
 Substrait.Core.Type.PrimitiveType.IntervalDay.Precision.get -> int
 Substrait.Core.Type.PrimitiveType.Time.Equals(Substrait.Core.Type.PrimitiveType.Time? other) -> bool
@@ -305,6 +333,8 @@ Substrait.Core.Type.PrimitiveTypeFactory.UUID.get -> Substrait.Core.Type.Primiti
 Substrait.Core.Type.PrimitiveTypeFactory.Uuid_(Substrait.Core.Extension.Types.ITypeVariation? typeVariation) -> Substrait.Core.Type.PrimitiveType.Uuid!
 Substrait.Core.Type.TypeFactory.IntervalCompound(int precision, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.ParameterizedType.IntervalCompound!
 Substrait.Core.Type.TypeFactory.IntervalDay(int precision, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.IntervalDay!
+Substrait.Core.Type.TypeFactory.List(Substrait.Core.Type.IType! elementType, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.ParameterizedType.List!
+Substrait.Core.Type.TypeFactory.Map(Substrait.Core.Type.IType! keyType, Substrait.Core.Type.IType! valueType, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.ParameterizedType.Map!
 Substrait.Core.Type.TypeFactory.PrecisionTime(int precision, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.Time!
 Substrait.Core.Type.TypeFactory.UserDefined(Substrait.Core.Extension.Types.TypeAnchor! anchor, System.Collections.Generic.IEnumerable<Substrait.Core.Type.TypeParameter!>! parameters, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null, Substrait.Core.Extension.Types.TypeDefinition? declaration = null) -> Substrait.Core.Type.UserDefinedType!
 Substrait.Core.Type.TypeParameter

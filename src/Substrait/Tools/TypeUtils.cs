@@ -65,6 +65,74 @@ public static class TypeUtils
     }
 
     /// <summary>
+    /// Returns <paramref name="namedStruct"/>'s struct fields paired with their names, in depth-first
+    /// order. Only struct fields consume a name, at any depth: a field reached transparently through
+    /// a list element or a map key/value is still paired with a name if it is itself a struct, and
+    /// map keys are paired before values. List and map containers contribute no pairs of their own.
+    /// </summary>
+    /// <param name="namedStruct">The named struct to traverse.</param>
+    /// <returns>Each struct field's own declared type paired with its name, in depth-first order.</returns>
+    /// <exception cref="ArgumentException"><paramref name="namedStruct"/> does not have exactly as
+    /// many names as it has struct fields at every depth.</exception>
+    public static IEnumerable<(IType Field, string Name)> GetFieldNames(this NamedStruct namedStruct)
+    {
+        using IEnumerator<string> names = namedStruct.Names.GetEnumerator();
+        foreach ((IType field, string name) in GetFieldNames(namedStruct.Struct, names))
+        {
+            yield return (field, name);
+        }
+
+        if (names.MoveNext())
+        {
+            throw new ArgumentException("The named struct has more names than it has struct fields to name.");
+        }
+    }
+
+    private static IEnumerable<(IType Field, string Name)> GetFieldNames(IType type, IEnumerator<string> names)
+    {
+        switch (type)
+        {
+            case ParameterizedType.Struct @struct:
+                foreach (IType field in @struct.Fields)
+                {
+                    if (!names.MoveNext())
+                    {
+                        throw new ArgumentException("The named struct does not have enough names for its struct fields.");
+                    }
+
+                    yield return (field, names.Current);
+                    foreach ((IType nestedField, string nestedName) in GetFieldNames(field, names))
+                    {
+                        yield return (nestedField, nestedName);
+                    }
+                }
+
+                break;
+            case ParameterizedType.List list:
+                foreach ((IType nestedField, string nestedName) in GetFieldNames(list.ElementType, names))
+                {
+                    yield return (nestedField, nestedName);
+                }
+
+                break;
+            case ParameterizedType.Map map:
+                foreach ((IType nestedField, string nestedName) in GetFieldNames(map.KeyType, names))
+                {
+                    yield return (nestedField, nestedName);
+                }
+
+                foreach ((IType nestedField, string nestedName) in GetFieldNames(map.ValueType, names))
+                {
+                    yield return (nestedField, nestedName);
+                }
+
+                break;
+            default:
+                break;
+        }
+    }
+
+    /// <summary>
     /// Returns whether a type is nullable.
     /// </summary>
     /// <param name="type">type to check.</param>

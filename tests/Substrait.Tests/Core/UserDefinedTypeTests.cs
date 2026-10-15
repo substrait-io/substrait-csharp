@@ -292,7 +292,7 @@ public sealed class UserDefinedTypeTests
         {
             PrecisionTime = new() { Precision = 13, Nullability = ProtoType.Types.Nullability.Required },
         }, typeof(ArgumentOutOfRangeException));
-        yield return (() => new ProtoType { List = new() }, typeof(NotImplementedException));
+        yield return (() => new ProtoType { Unbound = new() }, typeof(NotImplementedException));
         yield return (() => CreateProto(17), typeof(ArgumentException));
     }
 
@@ -635,5 +635,9 @@ public sealed class UserDefinedTypeTests
         public override IType Visit(ParameterizedType.Decimal type, object context) => type;
 
         public override IType Visit(ParameterizedType.Struct type, object context) => type;
+
+        public override IType Visit(ParameterizedType.List type, object context) => type;
+
+        public override IType Visit(ParameterizedType.Map type, object context) => type;
     }
 }
