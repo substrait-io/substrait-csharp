@@ -22,6 +22,6 @@ if (root is null)
 }
 
 IReadOnlyDictionary<string, string> files = FacadeGenerator.Generate(
-    [RelCommon.Descriptor, AdvancedExtension.Descriptor]);
+    [RelCommon.Descriptor, AdvancedExtension.Descriptor, SimpleExtensionURN.Descriptor, SimpleExtensionDeclaration.Descriptor]);
 string output = Path.Combine(root.FullName, "src", "Substrait", "Core", "Metadata", "Generated");
 return GeneratedFiles.Synchronize(files, output, args[0] == "--write", Console.Out, Console.Error);

@@ -145,7 +145,8 @@ See [extension schema contracts](metadata-facades.md#custom-extension-relations-
 ## Plan extension metadata
 
 `IPlan.Metadata` exposes immutable `PlanMetadata` containing plan-level advanced
-extensions and expected payload type URLs. Metadata-first plan constructors,
+extensions, expected payload type URLs, and imported extension URN/declaration
+tables. Metadata-first plan constructors,
 `Plan.FromRelations`, and `PlanBuilder` preserve it through composition and
 conversion. Builder editing methods let callers set, add, replace, remove, and
 clear payloads and expected type URLs without constructing immutable metadata
@@ -156,7 +157,12 @@ facades or protobuf messages, packing ordinary messages and copying an existing
 a protobuf `AdvancedExtension`; public imports and exports are detached snapshots.
 Absent/empty messages, unknown payloads and fields, and list order/duplicates
 are preserved and participate in plan equality. No specification or dependency
-update is required. Simple function/type extension declarations are unchanged.
+update is required. Full-plan export emits user-defined type declarations and
+retains imported declarations and their anchors, including aliases and entries
+unused by the core plan that opaque extensions may reference. Core references
+use one existing anchor per identity; new dependencies receive nonconflicting
+anchors. Retained tables participate in metadata equality, without per-node
+numeric-anchor provenance or a byte-for-byte round-trip guarantee.
 
 Custom `IPlan` implementations must provide the new non-null `Metadata` property
 and recompile, using `PlanMetadata.Empty` if appropriate. This is a breaking

@@ -27,6 +27,11 @@ public sealed class MetadataFacadeTests
         (ProtoCommon.Types.Hint.Types.LoadedComputation.Descriptor, typeof(ReadOnlyRelCommonHintLoadedComputation)),
         (ProtoAdvanced.Descriptor, typeof(ReadOnlyAdvancedExtension)),
         (Any.Descriptor, typeof(ReadOnlyAny)),
+        (Substrait.Protobuf.SimpleExtensionURN.Descriptor, typeof(ReadOnlySimpleExtensionURN)),
+        (Substrait.Protobuf.SimpleExtensionDeclaration.Descriptor, typeof(ReadOnlySimpleExtensionDeclaration)),
+        (Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionType.Descriptor, typeof(ReadOnlySimpleExtensionDeclarationExtensionType)),
+        (Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionTypeVariation.Descriptor, typeof(ReadOnlySimpleExtensionDeclarationExtensionTypeVariation)),
+        (Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionFunction.Descriptor, typeof(ReadOnlySimpleExtensionDeclarationExtensionFunction)),
     ];
 
     [Test]

@@ -91,6 +91,8 @@ public class ProtoToPlanConverter
     private IPlan FromCore(Protobuf.Plan plan, ExtensionsDictionary.StrictMode strictMode, bool ownsMetadata)
     {
         _ = plan ?? throw new ArgumentNullException(nameof(plan));
+        var metadata = PlanMetadata.Capture(plan, ownsMetadata);
+        _ = new ExtensionsCollector.Builder(metadata.ExtensionUrns, metadata.Extensions);
         var inputs = new Protobuf.Rel[plan.Relations.Count];
         var dependencies = new List<IReadOnlyList<int>>(plan.Relations.Count);
         var anchors = new Dictionary<uint, string>();
@@ -138,7 +140,7 @@ public class ProtoToPlanConverter
 
         Protobuf.Version version = plan.Version ?? throw new SerializationException("Plan version is required by this converter.");
         return Plan.FromRelations(
-            PlanMetadata.Capture(plan.AdvancedExtensions, plan.ExpectedTypeUrls, ownsMetadata),
+            metadata,
             entries,
             new Version(
                 version.MajorNumber,

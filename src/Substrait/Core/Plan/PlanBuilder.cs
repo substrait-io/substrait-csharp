@@ -46,7 +46,9 @@ public sealed class PlanBuilder
     /// <summary>Replaces all advanced extensions with an immutable snapshot, retaining expected type URLs.</summary>
     /// <param name="extensions">The non-null advanced extensions.</param>
     public void SetAdvancedExtensions(ReadOnlyAdvancedExtension extensions) =>
-        this.metadata = new(extensions ?? throw new ArgumentNullException(nameof(extensions)), this.metadata.ExpectedTypeUrls);
+        this.metadata = new(
+            extensions ?? throw new ArgumentNullException(nameof(extensions)), this.metadata.ExpectedTypeUrls,
+            this.metadata.ExtensionUrns, this.metadata.Extensions);
 
     /// <summary>Copies a protobuf advanced-extension message, retaining expected type URLs.</summary>
     /// <param name="message">The non-null message to copy. Do not mutate concurrently with this call.</param>
@@ -58,7 +60,7 @@ public sealed class PlanBuilder
     {
         if (this.metadata.AdvancedExtensions is not null)
         {
-            this.metadata = new(expectedTypeUrls: this.metadata.ExpectedTypeUrls);
+            this.metadata = new(null, this.metadata.ExpectedTypeUrls, this.metadata.ExtensionUrns, this.metadata.Extensions);
         }
     }
 
@@ -120,7 +122,9 @@ public sealed class PlanBuilder
     /// <summary>Snapshots and replaces the ordered expected type URLs without inferring or deduplicating them.</summary>
     /// <param name="expectedTypeUrls">The non-null sequence, containing no null elements.</param>
     public void SetExpectedTypeUrls(IEnumerable<string> expectedTypeUrls) =>
-        this.metadata = new(this.metadata.AdvancedExtensions, expectedTypeUrls ?? throw new ArgumentNullException(nameof(expectedTypeUrls)));
+        this.metadata = new(
+            this.metadata.AdvancedExtensions, expectedTypeUrls ?? throw new ArgumentNullException(nameof(expectedTypeUrls)),
+            this.metadata.ExtensionUrns, this.metadata.Extensions);
 
     /// <summary>Appends an expected type URL, preserving duplicates and empty strings.</summary>
     /// <param name="typeUrl">The non-null type URL.</param>

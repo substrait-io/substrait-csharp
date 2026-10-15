@@ -92,8 +92,9 @@ data.
 The checked-in files under `src/Substrait/Core/Metadata/Generated` are produced
 by `tools/Substrait.MetadataGenerator`. Do not edit them manually. The generator
 references the same centrally pinned protobuf package as the library and starts
-from the `RelCommon` and `AdvancedExtension` descriptors, following only their
-message-field dependencies. It does not reference the core library or run during
+from the `RelCommon`, `AdvancedExtension`, `SimpleExtensionURN`, and
+`SimpleExtensionDeclaration` descriptors, following only their message-field
+dependencies. It does not reference the core library or run during
 normal library compilation.
 
 ```shell

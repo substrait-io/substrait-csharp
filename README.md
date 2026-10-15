@@ -88,10 +88,11 @@ Converting a plan does not add nondeterministic metadata, so repeated protobuf
 serialization of the same internal plan produces the same bytes.
 
 User-defined types support ordered null, data-type, boolean, signed 64-bit
-integer, enum, and string parameters. Use explicit extension contexts to convert
-them without losing their identity. See [user-defined types](docs/user-defined-types.md)
+integer, enum, and string parameters. Full-plan export emits the required type
+declarations and URNs, including nested dependencies. Standalone type conversion
+requires explicit extension contexts. See [user-defined types](docs/user-defined-types.md)
 for construction, programmatic registration, strict/permissive resolution, and
-the current plan-envelope and YAML-loading boundaries.
+declaration retention, and the remaining YAML-loading boundaries.
 
 `ProtoToPlanConverter.FromBytes`, `FromStream`, and `FromFile` parse binary
 protobuf privately, avoiding redundant metadata copies; `FromJson` explicitly
@@ -108,8 +109,12 @@ one. Unknown schemas remain unresolved rather than being guessed; schema-depende
 operations fail explicitly. See [extension schema contracts](docs/metadata-facades.md#custom-extension-relations-and-schemas)
 for examples, output mapping, and round-trip limitations.
 
-`IPlan.Metadata` preserves plan-level advanced extensions and the ordered
-`expected_type_urls` declarations. Use `PlanBuilder.SetEnhancement`,
+`IPlan.Metadata` preserves plan-level advanced extensions, the ordered
+`expected_type_urls`, and imported extension URN/declaration tables. Export keeps
+all imported anchors, including aliases and apparently unused dependencies that
+opaque payloads may reference. Core references use one existing anchor per
+identity; new dependencies receive nonconflicting anchors.
+Use `PlanBuilder.SetEnhancement`,
 `AddOptimization`, and the related editing methods while composing a plan;
 earlier built plans remain immutable. Payload methods accept protobuf messages
 or read-only facades. Existing `PlanMetadata` can also be passed to the

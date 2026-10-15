@@ -33,7 +33,7 @@ public class PlanToProtoConverter
 
         PlanValidation.Validate(plan.Relations);
         PlanMetadata metadata = plan.Metadata ?? throw new ArgumentException("Plan metadata must not be null.", nameof(plan));
-        var context = new ConverterContext { PlanRelations = plan.Relations };
+        var context = new ConverterContext(metadata) { PlanRelations = plan.Relations };
         var relationConverter = new RelToProtoConverter();
         var result = new Protobuf.Plan
         {
@@ -59,48 +59,7 @@ public class PlanToProtoConverter
             }
             : new Protobuf.PlanRel { Rel = relationConverter.From(entry.Input, context) }));
 
-        ExtensionsCollector collected = context.ExtensionsCollector;
-        result.ExtensionUrns.AddRange(collected.ExtensionUris.Select((uri, index) => new Protobuf.SimpleExtensionURN
-        {
-            Urn = uri,
-            ExtensionUrnAnchor = (uint)index + 1,
-        }));
-
-#if NET5_0_OR_GREATER
-        var nextAnchor = Enum.GetValues<ExtensionsCollector.ExtensionType>()
-            .ToDictionary(type => type, _ => 0U);
-#else
-        var nextAnchor = Enum.GetValues(typeof(ExtensionsCollector.ExtensionType))
-            .Cast<ExtensionsCollector.ExtensionType>()
-            .ToDictionary(type => type, _ => 0U);
-#endif
-        result.Extensions.AddRange(collected.Extensions.Select(extension =>
-        {
-            uint anchor = nextAnchor[extension.Type]++;
-            uint uriReference = (uint)extension.ExtensionUriReference + 1;
-            return extension.Type switch
-            {
-                ExtensionsCollector.ExtensionType.TypeVariation => new Protobuf.SimpleExtensionDeclaration
-                {
-                    ExtensionTypeVariation = new()
-                    {
-                        TypeVariationAnchor = anchor + 1,
-                        ExtensionUrnReference = uriReference,
-                        Name = extension.Name,
-                    },
-                },
-                ExtensionsCollector.ExtensionType.Function => new Protobuf.SimpleExtensionDeclaration
-                {
-                    ExtensionFunction = new()
-                    {
-                        FunctionAnchor = anchor,
-                        ExtensionUrnReference = uriReference,
-                        Name = extension.Name,
-                    },
-                },
-                _ => throw new NotImplementedException($"Extension type {extension.Type} is not supported."),
-            };
-        }));
+        context.ExtensionsCollector.WriteTo(result);
 
         return result;
     }
@@ -110,10 +69,21 @@ public class PlanToProtoConverter
     /// </summary>
     public class ConverterContext : IContext<IRel, ProtoRel>, IContext<IExpression, ProtoExpression>, IContext<IType, ProtoType>
     {
-        private readonly ExtensionsCollector.Builder extensions = new();
+        private readonly ExtensionsCollector.Builder extensions;
         private readonly Context<IExpression, ProtoExpression> expressions = new();
         private readonly Context<IRel, ProtoRel> relations = new();
         private readonly Context<IType, ProtoType> types = new();
+
+        /// <summary>Initializes a context with fresh extension anchor namespaces.</summary>
+        public ConverterContext()
+            : this(PlanMetadata.Empty)
+        {
+        }
+
+        internal ConverterContext(PlanMetadata metadata)
+        {
+            this.extensions = new(metadata.ExtensionUrns, metadata.Extensions);
+        }
 
         internal IReadOnlyList<IPlan.IRelation>? PlanRelations { get; init; }
 
@@ -131,8 +101,16 @@ public class PlanToProtoConverter
         public ExtensionsCollector ExtensionsCollector => this.extensions.Build();
 
         /// <summary>Collects an extension and returns its anchor.</summary>
+        /// <returns>The extension anchor, from 0 through <see cref="int.MaxValue"/>.</returns>
+        /// <exception cref="OverflowException">
+        /// The extension anchor exceeds <see cref="int.MaxValue"/>.
+        /// </exception>
+        /// <remarks>Full-plan conversion uses unsigned anchors and is not limited by this signed return type.</remarks>
         public int AddExtension(ExtensionsCollector.ExtensionType type, string uri, string name) =>
             this.extensions.Collect(type, uri, name);
+
+        internal uint AddExtensionReference(ExtensionsCollector.ExtensionType type, string uri, string name) =>
+            this.extensions.CollectReference(type, uri, name);
 
         /// <inheritdoc/>
         public ProtoRel GetOutput(IRel node) => this.relations.GetOutput(node);
