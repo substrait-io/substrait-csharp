@@ -173,7 +173,7 @@ public class ProtoToTypeConverter
                             stack.Push((current, collectedTypes, childTypes, path));
                             for (int index = current.Struct.Types_.Count - 1; index >= 0; --index)
                             {
-                                stack.Push((current.Struct.Types_[index], childTypes, null, path is null ? null : new TypePath(path, null, index)));
+                                stack.Push((current.Struct.Types_[index], childTypes, null, new TypePath(path, null, index)));
                             }
                         }
 
@@ -192,7 +192,7 @@ public class ProtoToTypeConverter
                         {
                             var childTypes = new List<IType>(1);
                             stack.Push((current, collectedTypes, childTypes, path));
-                            stack.Push((current.List.Type, childTypes, null, path is null ? null : new TypePath(path, null, 0, "list element")));
+                            stack.Push((current.List.Type, childTypes, null, new TypePath(path, null, 0, "list element")));
                         }
 
                         break;
@@ -210,8 +210,8 @@ public class ProtoToTypeConverter
                         {
                             var childTypes = new List<IType>(2);
                             stack.Push((current, collectedTypes, childTypes, path));
-                            stack.Push((current.Map.Value, childTypes, null, path is null ? null : new TypePath(path, null, 1, "map value")));
-                            stack.Push((current.Map.Key, childTypes, null, path is null ? null : new TypePath(path, null, 0, "map key")));
+                            stack.Push((current.Map.Value, childTypes, null, new TypePath(path, null, 1, "map value")));
+                            stack.Push((current.Map.Key, childTypes, null, new TypePath(path, null, 0, "map key")));
                         }
 
                         break;
