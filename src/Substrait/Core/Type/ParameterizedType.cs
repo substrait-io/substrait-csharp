@@ -657,4 +657,120 @@ public abstract class ParameterizedType : IType
             return true;
         }
     }
+
+    /// <summary>
+    /// Immutable implementation of list type.
+    /// </summary>
+    public sealed class List : ParameterizedType, IEquatable<List>
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="List"/> class.
+        /// </summary>
+        /// <param name="elementType">The element type of the list.</param>
+        /// <param name="nullable">Whether it is nullable.</param>
+        /// <param name="typeVariation">Type variation.</param>
+        public List(IType elementType, NullableType nullable, ITypeVariation? typeVariation = null)
+            : base(nullable, typeVariation)
+        {
+            this.ElementType = elementType ?? throw new ArgumentNullException(nameof(elementType));
+        }
+
+        /// <summary>
+        /// Gets the element type.
+        /// </summary>
+        public IType ElementType { get; }
+
+        /// <inheritdoc/>
+        public override IEnumerable<IType> InputNodes => [this.ElementType];
+
+        /// <inheritdoc/>
+        public override string ShortTypeName => "list";
+
+        /// <inheritdoc/>
+        public override string TypeName => "list";
+
+        /// <inheritdoc/>
+        public override string ToTypeString() => $"{this.TypeName}<{this.ElementType.ToTypeString()}>";
+
+        /// <inheritdoc/>
+        public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public bool Equals(List? other) => other is not null && this.Nullable == other.Nullable && this.ElementType.Equals(other.ElementType);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is List other && this.Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.ElementType);
+
+        /// <inheritdoc/>
+        protected override bool NodeEqualTypeParameters(IType other)
+        {
+            // Element type is calculated recursively.
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Immutable implementation of map type.
+    /// </summary>
+    public sealed class Map : ParameterizedType, IEquatable<Map>
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Map"/> class.
+        /// </summary>
+        /// <param name="keyType">The key type of the map.</param>
+        /// <param name="valueType">The value type of the map.</param>
+        /// <param name="nullable">Whether it is nullable.</param>
+        /// <param name="typeVariation">Type variation.</param>
+        public Map(IType keyType, IType valueType, NullableType nullable, ITypeVariation? typeVariation = null)
+            : base(nullable, typeVariation)
+        {
+            this.KeyType = keyType ?? throw new ArgumentNullException(nameof(keyType));
+            this.ValueType = valueType ?? throw new ArgumentNullException(nameof(valueType));
+        }
+
+        /// <summary>
+        /// Gets the key type.
+        /// </summary>
+        public IType KeyType { get; }
+
+        /// <summary>
+        /// Gets the value type.
+        /// </summary>
+        public IType ValueType { get; }
+
+        /// <inheritdoc/>
+        public override IEnumerable<IType> InputNodes => [this.KeyType, this.ValueType];
+
+        /// <inheritdoc/>
+        public override string ShortTypeName => "map";
+
+        /// <inheritdoc/>
+        public override string TypeName => "map";
+
+        /// <inheritdoc/>
+        public override string ToTypeString() => $"{this.TypeName}<{this.KeyType.ToTypeString()},{this.ValueType.ToTypeString()}>";
+
+        /// <inheritdoc/>
+        public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public bool Equals(Map? other) =>
+            other is not null && this.Nullable == other.Nullable && this.KeyType.Equals(other.KeyType) && this.ValueType.Equals(other.ValueType);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is Map other && this.Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.KeyType, this.ValueType);
+
+        /// <inheritdoc/>
+        protected override bool NodeEqualTypeParameters(IType other)
+        {
+            // Key/value types are calculated recursively.
+            return true;
+        }
+    }
 }
