@@ -77,58 +77,51 @@ public static class TypeUtils
     public static IEnumerable<(IType Field, string Name)> GetFieldNames(this NamedStruct namedStruct)
     {
         using IEnumerator<string> names = namedStruct.Names.GetEnumerator();
-        foreach ((IType field, string name) in GetFieldNames(namedStruct.Struct, names))
+
+        // Explicit stack rather than recursion: a struct nested arbitrarily deep inside alternating
+        // list/map containers must not be bounded by the CLR call stack.
+        var stack = new Stack<(IType Type, bool IsField)>();
+        stack.Push((namedStruct.Struct, false));
+
+        while (stack.Count > 0)
         {
-            yield return (field, name);
+            (IType current, bool isField) = stack.Pop();
+            if (isField)
+            {
+                if (!names.MoveNext())
+                {
+                    throw new ArgumentException("The named struct does not have enough names for its struct fields.");
+                }
+
+                yield return (current, names.Current);
+            }
+
+            switch (current)
+            {
+                case ParameterizedType.Struct @struct:
+                    // Push in reverse so fields are visited, and named, in declared order.
+                    for (int index = @struct.Fields.Count - 1; index >= 0; --index)
+                    {
+                        stack.Push((@struct.Fields[index], true));
+                    }
+
+                    break;
+                case ParameterizedType.List list:
+                    stack.Push((list.ElementType, false));
+                    break;
+                case ParameterizedType.Map map:
+                    // Value pushed first so key pops - and is visited/named - first.
+                    stack.Push((map.ValueType, false));
+                    stack.Push((map.KeyType, false));
+                    break;
+                default:
+                    break;
+            }
         }
 
         if (names.MoveNext())
         {
             throw new ArgumentException("The named struct has more names than it has struct fields to name.");
-        }
-    }
-
-    private static IEnumerable<(IType Field, string Name)> GetFieldNames(IType type, IEnumerator<string> names)
-    {
-        switch (type)
-        {
-            case ParameterizedType.Struct @struct:
-                foreach (IType field in @struct.Fields)
-                {
-                    if (!names.MoveNext())
-                    {
-                        throw new ArgumentException("The named struct does not have enough names for its struct fields.");
-                    }
-
-                    yield return (field, names.Current);
-                    foreach ((IType nestedField, string nestedName) in GetFieldNames(field, names))
-                    {
-                        yield return (nestedField, nestedName);
-                    }
-                }
-
-                break;
-            case ParameterizedType.List list:
-                foreach ((IType nestedField, string nestedName) in GetFieldNames(list.ElementType, names))
-                {
-                    yield return (nestedField, nestedName);
-                }
-
-                break;
-            case ParameterizedType.Map map:
-                foreach ((IType nestedField, string nestedName) in GetFieldNames(map.KeyType, names))
-                {
-                    yield return (nestedField, nestedName);
-                }
-
-                foreach ((IType nestedField, string nestedName) in GetFieldNames(map.ValueType, names))
-                {
-                    yield return (nestedField, nestedName);
-                }
-
-                break;
-            default:
-                break;
         }
     }
 
