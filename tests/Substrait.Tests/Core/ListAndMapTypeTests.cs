@@ -104,6 +104,31 @@ public sealed class ListAndMapTypeTests
     }
 
     [Test]
+    public async Task DeeplyAlternatingListAndMapRoundTripsAndNamesWithoutStackOverflow()
+    {
+        // 1,500 alternating list/map levels around a leaf struct: deep enough that a recursive
+        // traversal overflows the CLR call stack on .NET 8, even though each individual level is
+        // trivial. Both the proto round trip and GetFieldNames must use an explicit stack instead.
+        IType deep = TypeFactory.REQUIRED.Struct([TypeFactory.NULLABLE.I64]);
+        for (int depth = 0; depth < 1500; ++depth)
+        {
+            deep = depth % 2 == 0
+                ? TypeFactory.REQUIRED.List(deep)
+                : TypeFactory.NULLABLE.Map(TypeFactory.REQUIRED.STR, deep);
+        }
+
+        var export = new TypeToProtoConverter();
+        var import = new ProtoToTypeConverter();
+        ProtoType proto = export.From(deep);
+        IType actual = import.From(proto);
+        await Assert.That(actual).IsEqualTo(deep);
+
+        var schema = new NamedStruct(["outer", "leaf"], TypeFactory.REQUIRED.Struct([actual]));
+        List<(IType Field, string Name)> fields = schema.GetFieldNames().ToList();
+        await Assert.That(fields.Select(f => f.Name).ToList()).IsEquivalentTo(["outer", "leaf"], CollectionOrdering.Matching);
+    }
+
+    [Test]
     public async Task RejectsListAndMapWithUnsetChildTypes()
     {
         ProtoType listMissingElement = new() { List = new ProtoType.Types.List { Nullability = ProtoType.Types.Nullability.Required } };
@@ -129,13 +154,61 @@ public sealed class ListAndMapTypeTests
         await Assert.That(() => converter.From(mapMissingKey)).ThrowsExactly<SerializationException>();
         await Assert.That(() => converter.From(mapMissingValue)).ThrowsExactly<SerializationException>();
 
-        // Nested under a struct, the error names the path so the failure is locatable.
+        // Nested under a struct, the error names the full path - including the enclosing struct
+        // field - so the failure is locatable even without a user-defined type ancestor.
         ProtoType nested = new()
         {
             Struct = new ProtoType.Types.Struct { Nullability = ProtoType.Types.Nullability.Required, Types_ = { listMissingElement } },
         };
         SerializationException error = await Assert.That(() => converter.From(nested)).ThrowsExactly<SerializationException>().And.IsNotNull();
+        await Assert.That(error.Message).Contains("struct field 0");
         await Assert.That(error.Message).Contains("list element");
+    }
+
+    [Test]
+    public async Task RejectsPresentButEmptyChildTypesWithTheirPath()
+    {
+        // The child message is present (not null) but has no kind set - distinct from an absent
+        // child message, and from a legitimate top-level unset type.
+        ProtoType emptyElement = new() { List = new ProtoType.Types.List { Type = new ProtoType(), Nullability = ProtoType.Types.Nullability.Required } };
+        ProtoType emptyKey = new()
+        {
+            Map = new ProtoType.Types.Map
+            {
+                Nullability = ProtoType.Types.Nullability.Required,
+                Key = new ProtoType(),
+                Value = new ProtoType { I32 = new ProtoType.Types.I32 { Nullability = ProtoType.Types.Nullability.Required } },
+            },
+        };
+        ProtoType emptyValue = new()
+        {
+            Map = new ProtoType.Types.Map
+            {
+                Nullability = ProtoType.Types.Nullability.Required,
+                Key = new ProtoType { I32 = new ProtoType.Types.I32 { Nullability = ProtoType.Types.Nullability.Required } },
+                Value = new ProtoType(),
+            },
+        };
+        ProtoToTypeConverter converter = new();
+
+        await Assert.That(() => converter.From(emptyElement)).ThrowsExactly<SerializationException>();
+        await Assert.That(() => converter.From(emptyKey)).ThrowsExactly<SerializationException>();
+        await Assert.That(() => converter.From(emptyValue)).ThrowsExactly<SerializationException>();
+
+        // Nested under an ordinary struct and list (no user-defined type involved), the error still
+        // names the full enclosing path.
+        ProtoType nested = new()
+        {
+            Struct = new ProtoType.Types.Struct
+            {
+                Nullability = ProtoType.Types.Nullability.Required,
+                Types_ = { new ProtoType { List = new ProtoType.Types.List { Type = emptyKey, Nullability = ProtoType.Types.Nullability.Required } } },
+            },
+        };
+        SerializationException error = await Assert.That(() => converter.From(nested)).ThrowsExactly<SerializationException>().And.IsNotNull();
+        await Assert.That(error.Message).Contains("struct field 0");
+        await Assert.That(error.Message).Contains("list element");
+        await Assert.That(error.Message).Contains("map key");
     }
 
     [Test]

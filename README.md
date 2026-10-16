@@ -93,6 +93,11 @@ them without losing their identity. See [user-defined types](docs/user-defined-t
 for construction, programmatic registration, strict/permissive resolution, and
 the current plan-envelope and YAML-loading boundaries.
 
+`ParameterizedType.List` and `ParameterizedType.Map` model nested collection
+types, including a struct nested arbitrarily deep inside either. See
+[list and map types](docs/list-and-map-types.md) for construction, malformed-
+message error reporting, and depth-first named-struct field traversal.
+
 `ProtoToPlanConverter.FromBytes`, `FromStream`, and `FromFile` parse binary
 protobuf privately, avoiding redundant metadata copies; `FromJson` explicitly
 parses protobuf JSON and accepts a parser with registered `Any` payload types.
