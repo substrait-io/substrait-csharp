@@ -1,6 +1,4 @@
 #nullable enable
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.List! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Map! type, TContext context) -> TOutput
 override Substrait.Core.Extension.Types.TypeAnchor.Equals(object? obj) -> bool
 override Substrait.Core.Extension.Types.TypeAnchor.GetHashCode() -> int
 override Substrait.Core.Extension.Types.TypeAnchor.ToString() -> string!
@@ -1991,6 +1989,8 @@ virtual Substrait.Core.Type.PrimitiveType.TypeName.get -> string!
 virtual Substrait.Core.Type.TypeBottomUpDispatcher<TContext, TOutput>.ShouldBailOut(TOutput result, TContext context) -> bool
 virtual Substrait.Core.Type.TypeTopDownDispatcher<TContext, TOutput>.ShouldBailOut(TOutput result, TContext context) -> bool
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.IntervalCompound! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.List! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Map! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Uuid! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.UserDefinedType! type, TContext context) -> TOutput
 virtual Substrait.Tools.Visitor.BottomUpTraversal<TNode>.ShouldVisit(TNode node) -> bool
