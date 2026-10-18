@@ -68,6 +68,9 @@ are paired before values. List and map containers contribute no pairs of
 their own - matching the upstream rule that only struct fields are named.
 
 ```csharp
+using Substrait.Core.Type;
+using Substrait.Tools;
+
 // struct<list<struct<i64, i64>>>: the one field (the list itself) is paired
 // with its own name; the list contributes no further pair of its own, but the
 // struct it transparently contains still pairs its 2 fields.
