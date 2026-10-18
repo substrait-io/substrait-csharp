@@ -9,7 +9,7 @@ supported type, including another list, map, struct, or user-defined type.
 ## Construction and conversion
 
 ```csharp
-using Substrait.Core.Plan.Converters;
+using Substrait.Tools;
 using Substrait.Core.Type;
 using Substrait.Core.Type.Converters;
 
