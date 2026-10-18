@@ -98,10 +98,8 @@ exactly match the struct's fields at every depth raises `ArgumentException`.
 - Extension YAML type-expression parsing for list/map type-class expressions
   belongs to
   [substrait-io/substrait-csharp#46](https://github.com/substrait-io/substrait-csharp/issues/46).
-- `GetFieldNames` traverses a `NamedStruct`'s own field/name pairing; it is not
-  wired into relation-level proto schema conversion
-  (`RelToProtoConverter`/`ProtoToRelConverter`), which does not yet flatten
-  names for nested structs at all - container or not. That wiring belongs to
-  the relation/plan-envelope work in
-  [substrait-io/substrait-csharp#27](https://github.com/substrait-io/substrait-csharp/issues/27) and
-  [substrait-io/substrait-csharp#29](https://github.com/substrait-io/substrait-csharp/issues/29).
+- `GetFieldNames` traverses a `NamedStruct`'s field/name pairing and checks the
+  name count when fully enumerated. Relation-level schema conversion does not
+  call this helper. `RelToProtoConverter` and `ProtoToRelConverter` preserve
+  the supplied flattened `Names` list and convert nested field types, but do
+  not generate missing names or use this helper to validate the name count.
