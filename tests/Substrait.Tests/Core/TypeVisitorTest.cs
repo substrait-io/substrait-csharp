@@ -97,6 +97,29 @@ public class TypeVisitorTest
         await this.CheckBottomUpTraversal(structType, bottomUpExpected);
     }
 
+    /// <summary>
+    /// Tests exact top-down and bottom-up dispatcher sequences for a struct containing a list and a
+    /// map, each wrapping a struct with distinguishable field types - so an ordering bug shows up as
+    /// the wrong name at the wrong position, not just a difference in count. An InputNodes assertion
+    /// alone would not catch an incorrect dispatcher traversal order.
+    /// </summary>
+    [Test]
+    public async Task TestTypeVisitorWithListAndMap()
+    {
+        var innerListStruct = this.typeFactory.Struct([this.primitiveTypeFactory.BOOL, this.primitiveTypeFactory.I8]);
+        var listType = this.typeFactory.List(innerListStruct);
+        var keyStruct = this.typeFactory.Struct([this.primitiveTypeFactory.I16, this.primitiveTypeFactory.I32]);
+        var valueStruct = this.typeFactory.Struct([this.primitiveTypeFactory.FP32, this.primitiveTypeFactory.FP64, this.primitiveTypeFactory.STR]);
+        var mapType = this.typeFactory.Map(keyStruct, valueStruct);
+        var structType = this.typeFactory.Struct([listType, mapType]);
+
+        string topDownExpected = "Struct|List|Struct|Bool|I8|Map|Struct|I16|I32|Struct|FP32|FP64|Str|";
+        string bottomUpExpected = "Bool|I8|Struct|List|I16|I32|Struct|FP32|FP64|Str|Struct|Map|Struct|";
+
+        await this.CheckTopDownTraversal(structType, topDownExpected);
+        await this.CheckBottomUpTraversal(structType, bottomUpExpected);
+    }
+
     [Test]
     public async Task NewTypeVisitorOverloadsRemainOptional()
     {
