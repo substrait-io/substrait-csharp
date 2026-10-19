@@ -188,6 +188,29 @@ public class TypeFactory : PrimitiveTypeFactory
     }
 
     /// <summary>
+    /// List.
+    /// </summary>
+    /// <param name="elementType">The element type of the list.</param>
+    /// <param name="typeVariation">Type variation.</param>
+    /// <returns>The list type.</returns>
+    public ParameterizedType.List List(IType elementType, ITypeVariation? typeVariation = null)
+    {
+        return new ParameterizedType.List(elementType, this.Nullable, typeVariation);
+    }
+
+    /// <summary>
+    /// Map.
+    /// </summary>
+    /// <param name="keyType">The key type of the map.</param>
+    /// <param name="valueType">The value type of the map.</param>
+    /// <param name="typeVariation">Type variation.</param>
+    /// <returns>The map type.</returns>
+    public ParameterizedType.Map Map(IType keyType, IType valueType, ITypeVariation? typeVariation = null)
+    {
+        return new ParameterizedType.Map(keyType, valueType, this.Nullable, typeVariation);
+    }
+
+    /// <summary>
     /// Returns the input type as nullable.
     /// </summary>
     /// <param name="type">The input type.</param>
@@ -250,6 +273,12 @@ public class TypeFactory : PrimitiveTypeFactory
 
                 case ParameterizedType.Struct str:
                     return this.Struct(str.Fields, typeVariation);
+
+                case ParameterizedType.List list:
+                    return this.List(list.ElementType, typeVariation);
+
+                case ParameterizedType.Map map:
+                    return this.Map(map.KeyType, map.ValueType, typeVariation);
             }
         }
 

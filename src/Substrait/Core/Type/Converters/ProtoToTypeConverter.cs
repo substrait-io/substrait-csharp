@@ -173,8 +173,45 @@ public class ProtoToTypeConverter
                             stack.Push((current, collectedTypes, childTypes, path));
                             for (int index = current.Struct.Types_.Count - 1; index >= 0; --index)
                             {
-                                stack.Push((current.Struct.Types_[index], childTypes, null, path is null ? null : new TypePath(path, null, index)));
+                                stack.Push((current.Struct.Types_[index], childTypes, null, new TypePath(path, null, index)));
                             }
+                        }
+
+                        break;
+                    case ProtoType.KindOneofCase.List:
+                        typeVariation = this.GetTypeVariation(current.List.TypeVariationReference);
+                        if (nestedTypes is not null)
+                        {
+                            collectedTypes.Add(GetFactory(current.List.Nullability).List(nestedTypes[0], typeVariation));
+                        }
+                        else if (current.List.Type is null)
+                        {
+                            throw new SerializationException("The list element type is unset.");
+                        }
+                        else
+                        {
+                            var childTypes = new List<IType>(1);
+                            stack.Push((current, collectedTypes, childTypes, path));
+                            stack.Push((current.List.Type, childTypes, null, new TypePath(path, null, 0, "list element")));
+                        }
+
+                        break;
+                    case ProtoType.KindOneofCase.Map:
+                        typeVariation = this.GetTypeVariation(current.Map.TypeVariationReference);
+                        if (nestedTypes is not null)
+                        {
+                            collectedTypes.Add(GetFactory(current.Map.Nullability).Map(nestedTypes[0], nestedTypes[1], typeVariation));
+                        }
+                        else if (current.Map.Key is null || current.Map.Value is null)
+                        {
+                            throw new SerializationException($"The map {(current.Map.Key is null ? "key" : "value")} type is unset.");
+                        }
+                        else
+                        {
+                            var childTypes = new List<IType>(2);
+                            stack.Push((current, collectedTypes, childTypes, path));
+                            stack.Push((current.Map.Value, childTypes, null, new TypePath(path, null, 1, "map value")));
+                            stack.Push((current.Map.Key, childTypes, null, new TypePath(path, null, 0, "map key")));
                         }
 
                         break;
@@ -205,7 +242,7 @@ public class ProtoToTypeConverter
         {
             if (current.UserDefined is null)
             {
-                segments.Push($"struct field {current.Index}");
+                segments.Push(current.Description ?? $"struct field {current.Index}");
             }
             else
             {
@@ -220,13 +257,15 @@ public class ProtoToTypeConverter
         return string.Join(" -> ", segments);
     }
 
-    private sealed class TypePath(TypePath? parent, ProtoType.Types.UserDefined? userDefined, int index)
+    private sealed class TypePath(TypePath? parent, ProtoType.Types.UserDefined? userDefined, int index, string? description = null)
     {
         public TypePath? Parent { get; } = parent;
 
         public ProtoType.Types.UserDefined? UserDefined { get; } = userDefined;
 
         public int Index { get; } = index;
+
+        public string? Description { get; } = description;
     }
 
     private UserDefinedType FromUserDefined(ProtoType.Types.UserDefined type, IReadOnlyList<IType> nestedTypes)

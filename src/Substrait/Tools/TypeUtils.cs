@@ -65,6 +65,67 @@ public static class TypeUtils
     }
 
     /// <summary>
+    /// Returns <paramref name="namedStruct"/>'s struct fields paired with their names, in depth-first
+    /// order. Only struct fields consume a name, at any depth: a field reached transparently through
+    /// a list element or a map key/value is still paired with a name if it is itself a struct, and
+    /// map keys are paired before values. List and map containers contribute no pairs of their own.
+    /// </summary>
+    /// <param name="namedStruct">The named struct to traverse.</param>
+    /// <returns>Each struct field's own declared type paired with its name, in depth-first order.</returns>
+    /// <exception cref="ArgumentException"><paramref name="namedStruct"/> does not have exactly as
+    /// many names as it has struct fields at every depth.</exception>
+    public static IEnumerable<(IType Field, string Name)> GetFieldNames(this NamedStruct namedStruct)
+    {
+        using IEnumerator<string> names = namedStruct.Names.GetEnumerator();
+
+        // Explicit stack rather than recursion: a struct nested arbitrarily deep inside alternating
+        // list/map containers must not be bounded by the CLR call stack.
+        var stack = new Stack<(IType Type, bool IsField)>();
+        stack.Push((namedStruct.Struct, false));
+
+        while (stack.Count > 0)
+        {
+            (IType current, bool isField) = stack.Pop();
+            if (isField)
+            {
+                if (!names.MoveNext())
+                {
+                    throw new ArgumentException("The named struct does not have enough names for its struct fields.");
+                }
+
+                yield return (current, names.Current);
+            }
+
+            switch (current)
+            {
+                case ParameterizedType.Struct @struct:
+                    // Push in reverse so fields are visited, and named, in declared order.
+                    for (int index = @struct.Fields.Count - 1; index >= 0; --index)
+                    {
+                        stack.Push((@struct.Fields[index], true));
+                    }
+
+                    break;
+                case ParameterizedType.List list:
+                    stack.Push((list.ElementType, false));
+                    break;
+                case ParameterizedType.Map map:
+                    // Value pushed first so key pops - and is visited/named - first.
+                    stack.Push((map.ValueType, false));
+                    stack.Push((map.KeyType, false));
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        if (names.MoveNext())
+        {
+            throw new ArgumentException("The named struct has more names than it has struct fields to name.");
+        }
+    }
+
+    /// <summary>
     /// Returns whether a type is nullable.
     /// </summary>
     /// <param name="type">type to check.</param>

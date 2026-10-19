@@ -98,6 +98,29 @@ public class TypeToProtoConverter
             return new ProtoType { Struct = result };
         }
 
+        public override ProtoType Visit(ParameterizedType.List type, PlanToProtoConverter.ConverterContext context)
+        {
+            var result = new ProtoType.Types.List
+            {
+                Nullability = type.Nullable.ToProto(),
+                TypeVariationReference = Variation(type, context),
+            };
+            result.Type = context.GetOutput(type.ElementType);
+            return new ProtoType { List = result };
+        }
+
+        public override ProtoType Visit(ParameterizedType.Map type, PlanToProtoConverter.ConverterContext context)
+        {
+            var result = new ProtoType.Types.Map
+            {
+                Nullability = type.Nullable.ToProto(),
+                TypeVariationReference = Variation(type, context),
+            };
+            result.Key = context.GetOutput(type.KeyType);
+            result.Value = context.GetOutput(type.ValueType);
+            return new ProtoType { Map = result };
+        }
+
         public override ProtoType Visit(UserDefinedType type, PlanToProtoConverter.ConverterContext context)
         {
             var result = new ProtoType.Types.UserDefined

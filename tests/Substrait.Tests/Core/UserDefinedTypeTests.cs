@@ -292,7 +292,7 @@ public sealed class UserDefinedTypeTests
         {
             PrecisionTime = new() { Precision = 13, Nullability = ProtoType.Types.Nullability.Required },
         }, typeof(ArgumentOutOfRangeException));
-        yield return (() => new ProtoType { List = new() }, typeof(NotImplementedException));
+        yield return (() => new ProtoType { Unbound = new() }, typeof(NotImplementedException));
         yield return (() => CreateProto(17), typeof(ArgumentException));
     }
 
@@ -482,6 +482,26 @@ public sealed class UserDefinedTypeTests
     }
 
     [Test]
+    public async Task ListAndMapVisitorOverloadsAreBackwardCompatible()
+    {
+        var listOverload = typeof(TypeVisitor<object, object>).GetMethod("Visit", [typeof(ParameterizedType.List), typeof(object)])!;
+        await Assert.That(listOverload.IsVirtual).IsTrue();
+        await Assert.That(listOverload.IsAbstract).IsFalse();
+
+        var mapOverload = typeof(TypeVisitor<object, object>).GetMethod("Visit", [typeof(ParameterizedType.Map), typeof(object)])!;
+        await Assert.That(mapOverload.IsVirtual).IsTrue();
+        await Assert.That(mapOverload.IsAbstract).IsFalse();
+
+        // FallbackVisitor predates List/Map and deliberately does not override either: it must keep
+        // compiling and routing both through the general handler unchanged.
+        ParameterizedType.List list = TypeFactory.REQUIRED.List(TypeFactory.REQUIRED.I32);
+        ParameterizedType.Map map = TypeFactory.REQUIRED.Map(TypeFactory.REQUIRED.STR, TypeFactory.REQUIRED.I32);
+        var visitor = new FallbackVisitor();
+        await Assert.That(list.Accept(visitor, new object())).IsSameReferenceAs(list);
+        await Assert.That(map.Accept(visitor, new object())).IsSameReferenceAs(map);
+    }
+
+    [Test]
     public async Task ConvertsDeeplyNestedParametersWithoutRecursiveCalls()
     {
         IType type = TypeFactory.REQUIRED.I64;
@@ -635,5 +655,7 @@ public sealed class UserDefinedTypeTests
         public override IType Visit(ParameterizedType.Decimal type, object context) => type;
 
         public override IType Visit(ParameterizedType.Struct type, object context) => type;
+
+        // No List/Map overrides on purpose - this proves backward compatibility.
     }
 }
