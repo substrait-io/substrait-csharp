@@ -2,7 +2,9 @@
 
 using System.Runtime.Serialization;
 using Google.Protobuf;
+using Substrait.Core.Extension;
 using Substrait.Core.Extension.Types;
+using Substrait.Core.Plan.Converters;
 using Substrait.Core.Type;
 using Substrait.Core.Type.Converters;
 using Substrait.Tools;
@@ -334,6 +336,134 @@ public sealed class ListAndMapTypeTests
 
         var tooMany = new NamedStruct(["a", "b", "c"], struct_);
         await Assert.That(() => tooMany.GetFieldNames().ToList()).ThrowsExactly<ArgumentException>();
+    }
+
+    [Test]
+    [Arguments(NullableType.Required)]
+    [Arguments(NullableType.Nullable)]
+    public async Task RoundTripsMixedNestedVariationsAndNullability(NullableType nullable)
+    {
+        // list<map<struct<string[variation], i64[variation]>[variation], decimal[variation]>>[variation]:
+        // every node - the outer list, the map, the struct forming the map's key, both of that
+        // struct's own fields, and a scalar reached through the map's value - carries its own
+        // distinct, compatible variation, and nullability differs between nodes too.
+        var listVariation = new TypeVariationImpl(Urn, "list", "sparse", string.Empty, FunctionBehavior.INHERITS);
+        var mapVariation = new TypeVariationImpl(Urn, "map", "ordered", string.Empty, FunctionBehavior.INHERITS);
+        var structVariation = new TypeVariationImpl(Urn, "struct", "record", string.Empty, FunctionBehavior.INHERITS);
+        var keyVariation = new TypeVariationImpl(Urn, "string", "ci", string.Empty, FunctionBehavior.INHERITS);
+        var valueVariation = new TypeVariationImpl(Urn, "i64", "packed", string.Empty, FunctionBehavior.INHERITS);
+        var decimalVariation = new TypeVariationImpl(Urn, "decimal", "exact", string.Empty, FunctionBehavior.INHERITS);
+
+        IType firstField = TypeFactory.REQUIRED.String_(keyVariation);
+        IType secondField = TypeFactory.NULLABLE.I64_(valueVariation);
+        ParameterizedType.Struct keyType = TypeFactory.REQUIRED.Struct([firstField, secondField], structVariation);
+        IType decimalType = TypeFactory.NULLABLE.Decimal(10, 2, decimalVariation);
+        ParameterizedType.Map map = TypeFactory.NULLABLE.Map(keyType, decimalType, mapVariation);
+        ParameterizedType.List type = TypeFactory.Of(nullable).List(map, listVariation);
+
+        var context = new PlanToProtoConverter.ConverterContext();
+        var export = new TypeToProtoConverter();
+        ProtoType proto = export.From(type, context);
+
+        var extensions = new ExtensionsCollection([], [listVariation, mapVariation, structVariation, keyVariation, valueVariation, decimalVariation], [], [], []);
+        var import = new ProtoToTypeConverter(LookupFrom(context), extensions);
+        var roundTrip = (ParameterizedType.List)import.From(proto);
+
+        // Strict semantic equality, not direct Equals/GetHashCode, which intentionally ignore
+        // variation for List/Map (see EqualityDistinguishesListAndMapByChildTypesNullabilityAndVariation).
+        await Assert.That(roundTrip.Equals(type, ITypeComparison.Strict)).IsTrue();
+        var comparer = TypeUtils.ITypeEqualityComparer.Of(ITypeComparison.Strict);
+        await Assert.That(comparer.GetHashCode(roundTrip)).IsEqualTo(comparer.GetHashCode(type));
+        await Assert.That(export.From(roundTrip, new PlanToProtoConverter.ConverterContext())).IsEqualTo(proto);
+
+        // Assert the expected metadata at each individual node, not just overall equality.
+        await Assert.That(roundTrip.Nullable).IsEqualTo(nullable);
+        await Assert.That(roundTrip.TypeVariation).IsEqualTo(listVariation);
+        var roundTripMap = (ParameterizedType.Map)roundTrip.ElementType;
+        await Assert.That(roundTripMap.Nullable).IsEqualTo(NullableType.Nullable);
+        await Assert.That(roundTripMap.TypeVariation).IsEqualTo(mapVariation);
+        var roundTripStruct = (ParameterizedType.Struct)roundTripMap.KeyType;
+        await Assert.That(roundTripStruct.Nullable).IsEqualTo(NullableType.Required);
+        await Assert.That(roundTripStruct.TypeVariation).IsEqualTo(structVariation);
+        await Assert.That(roundTripStruct.Fields[0].Nullable).IsEqualTo(NullableType.Required);
+        await Assert.That(roundTripStruct.Fields[0].TypeVariation).IsEqualTo(keyVariation);
+        await Assert.That(roundTripStruct.Fields[1].Nullable).IsEqualTo(NullableType.Nullable);
+        await Assert.That(roundTripStruct.Fields[1].TypeVariation).IsEqualTo(valueVariation);
+        var roundTripDecimal = roundTripMap.ValueType;
+        await Assert.That(roundTripDecimal.Nullable).IsEqualTo(NullableType.Nullable);
+        await Assert.That(roundTripDecimal.TypeVariation).IsEqualTo(decimalVariation);
+    }
+
+    [Test]
+    public async Task RewritingPreservesChildIdentityNullabilityAndVariation()
+    {
+        var listVariation = new TypeVariationImpl(Urn, "list", "sparse", string.Empty, FunctionBehavior.INHERITS);
+        var replacementListVariation = new TypeVariationImpl(Urn, "list", "dense", string.Empty, FunctionBehavior.INHERITS);
+        IType elementType = TypeFactory.NULLABLE.I64;
+        ParameterizedType.List list = TypeFactory.REQUIRED.List(elementType, listVariation);
+
+        // No-op: requesting the same nullability and variation returns the same instance.
+        await Assert.That(TypeFactory.REQUIRED.ResolveTypeWithNullability(list, listVariation)).IsSameReferenceAs(list);
+
+        // Changing only nullability leaves the element type and variation untouched.
+        var nullableList = (ParameterizedType.List)TypeFactory.NULLABLE.ResolveTypeWithNullability(list);
+        await Assert.That(nullableList.Nullable).IsEqualTo(NullableType.Nullable);
+        await Assert.That(nullableList.TypeVariation).IsSameReferenceAs(listVariation);
+        await Assert.That(nullableList.ElementType).IsSameReferenceAs(elementType);
+
+        // Changing only the variation leaves nullability and the element type untouched.
+        var revariantList = (ParameterizedType.List)TypeFactory.REQUIRED.ResolveTypeWithNullability(list, replacementListVariation);
+        await Assert.That(revariantList.Nullable).IsEqualTo(NullableType.Required);
+        await Assert.That(revariantList.TypeVariation).IsSameReferenceAs(replacementListVariation);
+        await Assert.That(revariantList.ElementType).IsSameReferenceAs(elementType);
+
+        // Removing the variation leaves nullability and the element type untouched.
+        var unvariantList = (ParameterizedType.List)TypeFactory.REQUIRED.ResolveTypeWithNullability(list, null);
+        await Assert.That(unvariantList.TypeVariation).IsNull();
+        await Assert.That(unvariantList.ElementType).IsSameReferenceAs(elementType);
+
+        var mapVariation = new TypeVariationImpl(Urn, "map", "ordered", string.Empty, FunctionBehavior.INHERITS);
+        var keyVariation = new TypeVariationImpl(Urn, "string", "ci", string.Empty, FunctionBehavior.INHERITS);
+        IType keyType = TypeFactory.REQUIRED.String_(keyVariation);
+        IType valueType = TypeFactory.NULLABLE.I32;
+        ParameterizedType.Map map = TypeFactory.REQUIRED.Map(keyType, valueType, mapVariation);
+
+        await Assert.That(TypeFactory.REQUIRED.ResolveTypeWithNullability(map, mapVariation)).IsSameReferenceAs(map);
+
+        var nullableMap = (ParameterizedType.Map)TypeFactory.NULLABLE.ResolveTypeWithNullability(map);
+        await Assert.That(nullableMap.Nullable).IsEqualTo(NullableType.Nullable);
+        await Assert.That(nullableMap.TypeVariation).IsSameReferenceAs(mapVariation);
+        await Assert.That(nullableMap.KeyType).IsSameReferenceAs(keyType);
+        await Assert.That(nullableMap.ValueType).IsSameReferenceAs(valueType);
+
+        var unvariantMap = (ParameterizedType.Map)TypeFactory.REQUIRED.ResolveTypeWithNullability(map, null);
+        await Assert.That(unvariantMap.TypeVariation).IsNull();
+        await Assert.That(unvariantMap.KeyType).IsSameReferenceAs(keyType);
+        await Assert.That(unvariantMap.ValueType).IsSameReferenceAs(valueType);
+    }
+
+    private const string Urn = "extension:example:list-and-map";
+
+    private static ExtensionsDictionary LookupFrom(PlanToProtoConverter.ConverterContext context)
+    {
+        var plan = new Protobuf.Plan();
+        ExtensionsCollector collected = context.ExtensionsCollector;
+        plan.ExtensionUrns.AddRange(collected.ExtensionUris.Select((urn, index) =>
+            new Protobuf.SimpleExtensionURN { Urn = urn, ExtensionUrnAnchor = (uint)index + 1 }));
+        int variationAnchor = 0;
+        foreach (var extension in collected.Extensions)
+        {
+            plan.Extensions.Add(extension.Type switch
+            {
+                ExtensionsCollector.ExtensionType.TypeVariation => new Protobuf.SimpleExtensionDeclaration
+                {
+                    ExtensionTypeVariation = new() { TypeVariationAnchor = (uint)++variationAnchor, Name = extension.Name, ExtensionUrnReference = (uint)extension.ExtensionUriReference + 1 },
+                },
+                _ => throw new InvalidOperationException("Unexpected extension kind in list/map type conversion."),
+            });
+        }
+
+        return new ExtensionsDictionary.Builder(plan).Build();
     }
 
     private sealed class RecordingDefaultVisitor : DefaultTypeVisitor<int, int>
