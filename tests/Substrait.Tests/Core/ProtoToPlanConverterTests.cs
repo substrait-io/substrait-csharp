@@ -69,6 +69,80 @@ public sealed class ProtoToPlanConverterTests
     }
 
     [Test]
+    [Arguments("named_lambdas", false)]
+    [Arguments("named_lambdas", true)]
+    [Arguments("detached_expressions", false)]
+    [Arguments("detached_expressions", true)]
+    [Arguments("detached_rels", false)]
+    [Arguments("detached_rels", true)]
+    public async Task RejectsUnsupportedPlanTablesAcrossImportEntryPoints(string field, bool nonRoot)
+    {
+        ProtoPlan plan = CreatePlan();
+        PlanRel entry = nonRoot ? new PlanRel { Rel = CreateRead() } : CreatePlan().Relations[0];
+        plan.Relations.Add(entry);
+        var expression = new Substrait.Protobuf.Expression { Literal = new() { I64 = 1 } };
+        switch (field)
+        {
+            case "named_lambdas":
+                plan.NamedLambdas.Add(new NamedLambda
+                {
+                    LambdaAnchor = 1,
+                    Lambda = new()
+                    {
+                        Parameters = new() { Nullability = Substrait.Protobuf.Type.Types.Nullability.Required },
+                        Body = expression,
+                    },
+                });
+                break;
+            case "detached_expressions":
+                entry.DetachedExpressions.Add(expression);
+                break;
+            case "detached_rels":
+                entry.DetachedRels.Add(CreateRead());
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(field), field, "Unknown plan table.");
+        }
+
+        byte[] bytes = plan.ToByteArray();
+        string json = JsonFormatter.Default.Format(plan);
+        string path = Path.GetTempFileName();
+        try
+        {
+            await File.WriteAllBytesAsync(path, bytes);
+            foreach (var mode in new[] { ExtensionsDictionary.StrictMode.STRICT, ExtensionsDictionary.StrictMode.OFF })
+            {
+                using MemoryStream stream = new(bytes);
+                Func<IPlan>[] imports =
+                [
+                    () => this.converter.From(plan, mode),
+                    () => this.converter.FromBytes(bytes, mode),
+                    () => this.converter.FromStream(stream, mode),
+                    () => this.converter.FromFile(path, mode),
+                    () => this.converter.FromJson(json, mode),
+                ];
+                foreach (var import in imports)
+                {
+                    NotSupportedException error = await Assert.That(import).ThrowsExactly<NotSupportedException>().And.IsNotNull();
+                    await Assert.That(error.Message).Contains(field);
+                    if (field != "named_lambdas")
+                    {
+                        await Assert.That(error.Message).Contains("ordinal 1");
+                    }
+                }
+
+                await Assert.That(stream.CanRead).IsTrue();
+            }
+
+            await Assert.That(plan.ToByteArray().SequenceEqual(bytes)).IsTrue();
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Test]
     public async Task RoundTripsPlanSemantics()
     {
         IPlan original = this.converter.From(CreatePlan(), ExtensionsDictionary.StrictMode.OFF);
