@@ -18,7 +18,7 @@ preview releases may contain breaking API changes.
   consumers use the compatible `net8.0` package asset.
 - Generated protobuf bindings, ANTLR parsers, and embedded extension definitions
   come from `Substrait.Net.Protobuf`, `Substrait.Net.Antlr`, and
-  `Substrait.Net.Extensions` version 0.104.0.
+  `Substrait.Net.Extensions` version 0.107.0.
 - All targets also depend on `Antlr4.Runtime.Standard`, `Google.Protobuf`, and
   `YamlDotNet`. The `netstandard2.0` target also uses `IndexRange`,
   `Microsoft.Bcl.HashCode`, `System.Collections.Immutable`, and `System.Memory`
@@ -26,8 +26,7 @@ preview releases may contain breaking API changes.
 - Runtime dependency minimums include Google.Protobuf 3.36.2 and YamlDotNet
   18.1.0. The YAML collection adapter forwards the root deserializer required
   by YamlDotNet's updated interface while retaining nested read-only
-  collections, polymorphic arguments, and aliases. The Substrait specification
-  packages remain at 0.104.0.
+  collections, polymorphic arguments, and aliases.
 - Product-specific integrations, schemas, and test assets remain outside the
   public package.
 
@@ -255,6 +254,51 @@ entry**. For example, a field one subquery level outward inside an entry's scala
 subquery is supported; a one-level outer field at the entry's top level is not.
 When extracting a shared subplan, keep its correlated enclosing query inside the
 same entry or remove the caller-dependent correlation before registration.
+
+## Upgrading to Substrait 0.107.0
+
+The three specification packages are upgraded together from 0.104.0 to 0.107.0.
+Runtime dependency minimums are unchanged. `Version.Current` reports 0.107.0
+from the protobuf assembly metadata, so newly constructed plans use that version.
+The generated read-only metadata facades are unchanged.
+
+The extension loader accepts the optional file-level `description` introduced
+in 0.105.0 through `ExtensionDefinitions.Description`; unrecognized YAML fields
+still fail rather than being ignored. Existing files without descriptions remain
+valid. The same nine function families are loaded by default.
+
+Consumers must account for the intervening upstream contract changes:
+
+- Decimal `avg` now declares a nullable `DECIMAL?<38,S>` result, including its
+  window form. Plans using this explicitly loaded extension should no longer
+  declare a required result.
+- The date and precision-time `round_calendar` overloads no longer accept a
+  trailing origin value. Keep the origin enum argument and remove the duplicate
+  trailing date/time argument, updating the compound signature accordingly.
+- The deprecated `subtract:ptstz_iyear` overload is removed. Use
+  `subtract:ptstz_iyear_str` with an explicit IANA timezone.
+- Generated `LambdaInvocation.lambda` is now in a oneof. Existing inline-lambda
+  wire encoding is unchanged, but callers using generated APIs should recompile
+  and account for oneof presence.
+
+The newer protobuf packages expose detached expression/relation subtrees and
+named lambdas. This dependency upgrade does not add internal-model conversion
+support for those features. All plan import entry points reject nonempty
+`Plan.named_lambdas`, `PlanRel.detached_expressions`, and `PlanRel.detached_rels`
+tables with `NotSupportedException`, even when unreferenced or when extension
+resolution is non-strict. This prevents silently discarding their contents.
+Detached-table errors identify the offending plan relation ordinal; empty
+tables remain valid. Consumers needing these features must retain the protobuf
+plan rather than convert it to the internal representation.
+
+The extension type-expression parser's existing limitations also remain:
+parameterized precision-time/timestamp signatures are loaded as declarations
+but are not available through function-key lookup. The contract changes above
+do not add support for resolving those signatures.
+
+See the upstream release notes for [0.105.0](https://github.com/substrait-io/substrait/releases/tag/v0.105.0),
+[0.106.0](https://github.com/substrait-io/substrait/releases/tag/v0.106.0), and
+[0.107.0](https://github.com/substrait-io/substrait/releases/tag/v0.107.0).
 
 ## Migration to specification packages
 

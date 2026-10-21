@@ -63,11 +63,11 @@ preview.
 
 The specification is supplied by `Substrait.Net.Protobuf`,
 `Substrait.Net.Antlr`, and `Substrait.Net.Extensions` NuGet packages, currently
-version **0.104.0**. No submodule, protobuf compiler, or Java/ANTLR generation
+version **0.107.0**. No submodule, protobuf compiler, or Java/ANTLR generation
 tool is needed. Versions are pinned in `Directory.Packages.props`; see
 [Updating Substrait](CONTRIBUTING.md#updating-substrait) for upgrade instructions
-and [compatibility notes](docs/preview-package.md#migration-to-specification-packages)
-for changes from the previously bundled v0.73.0 specification.
+and [compatibility notes](docs/preview-package.md#upgrading-to-substrait-01070)
+for changes from 0.104.0 and the previously bundled v0.73.0 specification.
 
 ## Conversion and serialization
 

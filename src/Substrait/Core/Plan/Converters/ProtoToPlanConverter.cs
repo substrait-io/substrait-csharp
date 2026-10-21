@@ -14,6 +14,10 @@ namespace Substrait.Core.Plan.Converters;
 /// <summary>
 /// Converts protobuf plans to the internal representation.
 /// </summary>
+/// <remarks>
+/// All import entry points reject nonempty named-lambda or detached-subtree tables with
+/// <see cref="NotSupportedException"/>, regardless of the extension resolution mode.
+/// </remarks>
 public class ProtoToPlanConverter
 {
     private readonly ExtensionsCollection extensions;
@@ -91,6 +95,11 @@ public class ProtoToPlanConverter
     private IPlan FromCore(Protobuf.Plan plan, ExtensionsDictionary.StrictMode strictMode, bool ownsMetadata)
     {
         _ = plan ?? throw new ArgumentNullException(nameof(plan));
+        if (plan.NamedLambdas.Count > 0)
+        {
+            throw new NotSupportedException("Plan.named_lambdas is not supported by the internal representation.");
+        }
+
         var metadata = PlanMetadata.Capture(plan, ownsMetadata);
         _ = new ExtensionsCollector.Builder(metadata.ExtensionUrns, metadata.Extensions);
         var inputs = new Protobuf.Rel[plan.Relations.Count];
@@ -99,6 +108,16 @@ public class ProtoToPlanConverter
         for (int ordinal = 0; ordinal < plan.Relations.Count; ++ordinal)
         {
             Protobuf.PlanRel entry = plan.Relations[ordinal];
+            if (entry.DetachedExpressions.Count > 0)
+            {
+                throw new NotSupportedException($"Plan relation ordinal {ordinal}: detached_expressions is not supported by the internal representation.");
+            }
+
+            if (entry.DetachedRels.Count > 0)
+            {
+                throw new NotSupportedException($"Plan relation ordinal {ordinal}: detached_rels is not supported by the internal representation.");
+            }
+
             inputs[ordinal] = entry.RelTypeCase switch
             {
                 Protobuf.PlanRel.RelTypeOneofCase.Root when entry.Root.Input is not null => entry.Root.Input,

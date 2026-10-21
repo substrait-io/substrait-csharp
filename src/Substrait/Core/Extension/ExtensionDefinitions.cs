@@ -44,6 +44,9 @@ public sealed class ExtensionDefinitions
     /// <summary>Gets the extension's declared URN.</summary>
     public string Urn { get; init; } = string.Empty;
 
+    /// <summary>Gets the file-level extension description.</summary>
+    public string Description { get; init; } = string.Empty;
+
     /// <summary>
     /// Gets list of type variations.
     /// </summary>
