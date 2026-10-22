@@ -213,9 +213,20 @@ public class ProtoToRelConverter : IProtoConverter
                 if (frame.Phase == ConversionPhase.Inputs)
                 {
                     var schema = context.Relation(frame).RecordType;
+                    var offset = current.Fetch.OffsetExpr ?? new Protobuf.Expression
+                    {
+                        Literal = new() { I64 = 0 },
+                    };
+                    var count = current.Fetch.CountExpr ?? new Protobuf.Expression
+                    {
+                        Literal = new()
+                        {
+                            Null = new() { I64 = new() { Nullability = Protobuf.Type.Types.Nullability.Nullable } },
+                        },
+                    };
                     context.Resume(frame, ConversionPhase.Complete);
-                    context.PushExpression(this.expressionConverter, current.Fetch.OffsetExpr, schema, frame.EnclosingSchemas);
-                    context.PushExpression(this.expressionConverter, current.Fetch.CountExpr, schema, frame.EnclosingSchemas);
+                    context.PushExpression(this.expressionConverter, offset, schema, frame.EnclosingSchemas);
+                    context.PushExpression(this.expressionConverter, count, schema, frame.EnclosingSchemas);
                     return;
                 }
 
