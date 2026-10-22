@@ -37,11 +37,15 @@ public class ProtoToFunctionArgConverter
     public IFunctionArg From(
         FunctionArgument functionArgument,
         Type.ParameterizedType.Struct inputSchema,
-        IReadOnlyList<Type.ParameterizedType.Struct> enclosingSchemas)
+        IReadOnlyList<Type.ParameterizedType.Struct> enclosingSchemas) =>
+        this.FromConverted(functionArgument, functionArgument.ArgTypeCase == FunctionArgument.ArgTypeOneofCase.Value
+            ? this.expressionConverter.From(functionArgument.Value, inputSchema, enclosingSchemas) : null);
+
+    internal IFunctionArg FromConverted(FunctionArgument functionArgument, IExpression? value)
     {
         return functionArgument.ArgTypeCase switch
         {
-            FunctionArgument.ArgTypeOneofCase.Value => this.expressionConverter.From(functionArgument.Value, inputSchema, enclosingSchemas),
+            FunctionArgument.ArgTypeOneofCase.Value => value ?? throw new ArgumentException("A converted value argument is required.", nameof(value)),
             FunctionArgument.ArgTypeOneofCase.Type => this.typeConverter.From(functionArgument.Type),
             _ => throw new NotSupportedException($"Unable to convert FunctionArgument {functionArgument}."),
         };

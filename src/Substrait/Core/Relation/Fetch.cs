@@ -16,7 +16,7 @@ public sealed class Fetch : SingleInput
     /// Initializes a new instance of the <see cref="Fetch"/> class.
     /// </summary>
     /// <param name="input">Input relation.</param>
-    /// <param name="count">Expression representing the number of rows to fetch. -1 represents that all rows should be fetched.</param>
+    /// <param name="count">Expression representing the number of rows to fetch. A value of null means all rows should be fetched.</param>
     /// <param name="offset">Expression representing the offset to start fetching from.</param>
     public Fetch(IRel input, IExpression count, IExpression offset)
     {
@@ -29,7 +29,7 @@ public sealed class Fetch : SingleInput
     /// Initializes a new instance of the <see cref="Fetch"/> class.
     /// </summary>
     /// <param name="input">Input relation.</param>
-    /// <param name="count">Expression representing the number of rows to fetch. -1 represents that all rows should be fetched.</param>
+    /// <param name="count">Expression representing the number of rows to fetch. A value of null means all rows should be fetched.</param>
     /// <param name="offset">Expression representing the offset to start fetching from.</param>
     /// <param name="transmute">The remap to apply on the output.</param>
     public Fetch(IRel input, IExpression count, IExpression offset, Remap? transmute)
@@ -41,7 +41,7 @@ public sealed class Fetch : SingleInput
     /// <summary>Initializes a fetch with explicit metadata.</summary>
     /// <param name="metadata">Immutable metadata, including the output mapping.</param>
     /// <param name="input">Input relation.</param>
-    /// <param name="count">Row count expression.</param>
+    /// <param name="count">Row count expression. A value of null means all rows should be fetched.</param>
     /// <param name="offset">Row offset expression.</param>
     public Fetch(RelationMetadata metadata, IRel input, IExpression count, IExpression offset)
         : this(input, count, offset)
@@ -54,7 +54,7 @@ public sealed class Fetch : SingleInput
 
     /// <summary>
     /// Gets the expression representing the number of rows to fetch.
-    /// -1 represents that all rows should be fetched.
+    /// An expression evaluating to null means all rows should be fetched.
     /// </summary>
     public IExpression Count { get; }
 
