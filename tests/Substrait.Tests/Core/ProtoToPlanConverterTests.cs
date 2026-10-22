@@ -69,40 +69,23 @@ public sealed class ProtoToPlanConverterTests
     }
 
     [Test]
-    [Arguments("named_lambdas", false)]
-    [Arguments("named_lambdas", true)]
-    [Arguments("detached_expressions", false)]
-    [Arguments("detached_expressions", true)]
-    [Arguments("detached_rels", false)]
-    [Arguments("detached_rels", true)]
-    public async Task RejectsUnsupportedPlanTablesAcrossImportEntryPoints(string field, bool nonRoot)
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task RejectsNamedLambdasAcrossImportEntryPoints(bool nonRoot)
     {
         ProtoPlan plan = CreatePlan();
         PlanRel entry = nonRoot ? new PlanRel { Rel = CreateRead() } : CreatePlan().Relations[0];
         plan.Relations.Add(entry);
         var expression = new Substrait.Protobuf.Expression { Literal = new() { I64 = 1 } };
-        switch (field)
+        plan.NamedLambdas.Add(new NamedLambda
         {
-            case "named_lambdas":
-                plan.NamedLambdas.Add(new NamedLambda
-                {
-                    LambdaAnchor = 1,
-                    Lambda = new()
-                    {
-                        Parameters = new() { Nullability = Substrait.Protobuf.Type.Types.Nullability.Required },
-                        Body = expression,
-                    },
-                });
-                break;
-            case "detached_expressions":
-                entry.DetachedExpressions.Add(expression);
-                break;
-            case "detached_rels":
-                entry.DetachedRels.Add(CreateRead());
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(field), field, "Unknown plan table.");
-        }
+            LambdaAnchor = 1,
+            Lambda = new()
+            {
+                Parameters = new() { Nullability = Substrait.Protobuf.Type.Types.Nullability.Required },
+                Body = expression,
+            },
+        });
 
         byte[] bytes = plan.ToByteArray();
         string json = JsonFormatter.Default.Format(plan);
@@ -124,11 +107,7 @@ public sealed class ProtoToPlanConverterTests
                 foreach (var import in imports)
                 {
                     NotSupportedException error = await Assert.That(import).ThrowsExactly<NotSupportedException>().And.IsNotNull();
-                    await Assert.That(error.Message).Contains(field);
-                    if (field != "named_lambdas")
-                    {
-                        await Assert.That(error.Message).Contains("ordinal 1");
-                    }
+                    await Assert.That(error.Message).Contains("named_lambdas");
                 }
 
                 await Assert.That(stream.CanRead).IsTrue();

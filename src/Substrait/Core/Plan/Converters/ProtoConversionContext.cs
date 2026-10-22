@@ -23,6 +23,12 @@ internal sealed class ProtoConversionContext
     private readonly Stack<Frame> pending = new();
     private readonly List<IRel> relations = new();
     private readonly List<IExpression> expressions = new();
+    private readonly DetachedPlanContext? detached;
+
+    internal ProtoConversionContext(DetachedPlanContext? detached = null)
+    {
+        this.detached = detached;
+    }
 
     internal enum Phase
     {
@@ -155,7 +161,12 @@ internal sealed class ProtoConversionContext
             // Offsets are captured when work starts, not when siblings are scheduled.
             if (frame.Phase == Phase.Enter)
             {
-                frame = frame with { RelationStart = this.relations.Count, ExpressionStart = this.expressions.Count };
+                frame = frame with
+                {
+                    Node = this.Resolve(frame.Node),
+                    RelationStart = this.relations.Count,
+                    ExpressionStart = this.expressions.Count,
+                };
             }
 
             try
@@ -175,6 +186,17 @@ internal sealed class ProtoConversionContext
             frame = this.pending.Pop();
         }
     }
+
+    private IMessage Resolve(IMessage node) => node switch
+    {
+        ProtoRel { RelTypeCase: ProtoRel.RelTypeOneofCase.DetachedRelOrdinal } relation =>
+            this.detached?.ResolveRel(relation.DetachedRelOrdinal)
+                ?? throw new SerializationException($"Detached relation ordinal {relation.DetachedRelOrdinal} requires a containing plan entry."),
+        ProtoExpression { RexTypeCase: ProtoExpression.RexTypeOneofCase.DetachedExpressionOrdinal } expression =>
+            this.detached?.ResolveExpression(expression.DetachedExpressionOrdinal)
+                ?? throw new SerializationException($"Detached expression ordinal {expression.DetachedExpressionOrdinal} requires a containing plan entry."),
+        _ => node,
+    };
 
     private void ReleaseInputs(Frame frame)
     {

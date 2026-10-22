@@ -15,7 +15,11 @@ namespace Substrait.Core.Plan.Converters;
 
 internal static class ProtoPlanDependencies
 {
-    internal static IReadOnlyList<int> Find(Protobuf.Rel input, int ordinal, int count, Dictionary<uint, string> anchors)
+    internal static IReadOnlyList<int> Find(Protobuf.Rel input, int ordinal, int count, Dictionary<uint, string> anchors) =>
+        FindDetached(input, ordinal, count, anchors, null);
+
+    internal static IReadOnlyList<int> FindDetached(
+        Protobuf.Rel input, int ordinal, int count, Dictionary<uint, string> anchors, DetachedPlanContext? detached)
     {
         var dependencies = new HashSet<int>();
         var active = new HashSet<IMessage>(ReferenceEqualityComparer.Instance);
@@ -42,6 +46,22 @@ internal static class ProtoPlanDependencies
             }
 
             stack.Push((message, depth, true, occurrence));
+            if (message is Protobuf.Rel { RelTypeCase: Protobuf.Rel.RelTypeOneofCase.DetachedRelOrdinal } detachedRel)
+            {
+                Protobuf.Rel target = detached?.ResolveRel(detachedRel.DetachedRelOrdinal, validateUse: true)
+                    ?? throw new SerializationException($"Plan relation ordinal {ordinal}: detached relation ordinal {detachedRel.DetachedRelOrdinal} requires a containing plan entry.");
+                stack.Push((target, depth, false, occurrence));
+                continue;
+            }
+
+            if (message is ProtoExpression { RexTypeCase: ProtoExpression.RexTypeOneofCase.DetachedExpressionOrdinal } detachedExpression)
+            {
+                ProtoExpression target = detached?.ResolveExpression(detachedExpression.DetachedExpressionOrdinal, validateUse: true)
+                    ?? throw new SerializationException($"Plan relation ordinal {ordinal}: detached expression ordinal {detachedExpression.DetachedExpressionOrdinal} requires a containing plan entry.");
+                stack.Push((target, depth, false, occurrence));
+                continue;
+            }
+
             if (message is Protobuf.RelCommon { HasRelAnchor: true } common)
             {
                 PlanValidation.RegisterAnchor(common.RelAnchor, anchors, $"Plan relation ordinal {ordinal}, relation occurrence {occurrence}", Error);

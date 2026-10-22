@@ -38,8 +38,8 @@ public sealed class Plan : IPlan, IEquatable<Plan>
         this.Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
         PlanValidation.Validate(relations);
         this.Relations = relations.Select(entry => entry is IRoot root
-            ? (IRelation)new Root(root.Input, root.Names)
-            : new Relation(entry.Input)).ToImmutableList();
+            ? (IRelation)new Root(root.Metadata, root.Input, root.Names)
+            : new Relation(entry.Metadata, entry.Input)).ToImmutableList();
         this.Roots = this.Relations.OfType<IRoot>().ToImmutableList();
         this.Version = version ?? throw new ArgumentNullException(nameof(version));
     }
@@ -105,21 +105,33 @@ public sealed class Plan : IPlan, IEquatable<Plan>
         /// <summary>Initializes a non-root entry.</summary>
         /// <param name="input">The relation tree.</param>
         public Relation(IRel input)
+            : this(PlanRelationMetadata.Empty, input)
         {
+        }
+
+        /// <summary>Initializes an entry with retained container-local encoding metadata.</summary>
+        /// <param name="metadata">The encoding metadata, including tables used by opaque payloads.</param>
+        /// <param name="input">The logical relation tree.</param>
+        public Relation(PlanRelationMetadata metadata, IRel input)
+        {
+            this.Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
             this.Input = input ?? throw new ArgumentNullException(nameof(input));
         }
+
+        /// <inheritdoc/>
+        public PlanRelationMetadata Metadata { get; }
 
         /// <inheritdoc/>
         public IRel Input { get; }
 
         /// <inheritdoc/>
-        public bool Equals(Relation? other) => other is not null && this.Input.Equals(other.Input);
+        public bool Equals(Relation? other) => other is not null && this.Input.Equals(other.Input) && this.Metadata.Equals(other.Metadata);
 
         /// <inheritdoc/>
         public override bool Equals(object? obj) => this.Equals(obj as Relation);
 
         /// <inheritdoc/>
-        public override int GetHashCode() => HashCode.Combine(nameof(Relation), this.Input);
+        public override int GetHashCode() => HashCode.Combine(nameof(Relation), this.Input, this.Metadata);
     }
 
     /// <summary>
@@ -133,10 +145,23 @@ public sealed class Plan : IPlan, IEquatable<Plan>
         /// <param name="input">The input relation.</param>
         /// <param name="names">The output names for the relation.</param>
         public Root(IRel input, IEnumerable<string> names)
+            : this(PlanRelationMetadata.Empty, input, names)
         {
+        }
+
+        /// <summary>Initializes a root with retained container-local encoding metadata.</summary>
+        /// <param name="metadata">The encoding metadata, including tables used by opaque payloads.</param>
+        /// <param name="input">The logical relation tree.</param>
+        /// <param name="names">The output names.</param>
+        public Root(PlanRelationMetadata metadata, IRel input, IEnumerable<string> names)
+        {
+            this.Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
             this.Input = input ?? throw new ArgumentNullException(nameof(input));
             this.Names = names.ToImmutableList();
         }
+
+        /// <inheritdoc/>
+        public PlanRelationMetadata Metadata { get; }
 
         /// <inheritdoc />
         public IRel Input { get; }
@@ -152,7 +177,8 @@ public sealed class Plan : IPlan, IEquatable<Plan>
                 return true;
             }
 
-            return other is not null && Enumerable.SequenceEqual(this.Names, other.Names) && this.Input.Equals(other.Input);
+            return other is not null && Enumerable.SequenceEqual(this.Names, other.Names)
+                && this.Input.Equals(other.Input) && this.Metadata.Equals(other.Metadata);
         }
 
         /// <inheritdoc />
@@ -164,7 +190,7 @@ public sealed class Plan : IPlan, IEquatable<Plan>
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            return HashCode.Combine(nameof(Root), this.Names.CombineHashCodes(), this.Input);
+            return HashCode.Combine(nameof(Root), this.Names.CombineHashCodes(), this.Input, this.Metadata);
         }
     }
 }

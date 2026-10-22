@@ -20,6 +20,11 @@ internal static class PlanValidation
                 throw new ArgumentException($"Plan relation ordinal {ordinal} must have an input.");
             }
 
+            if (relations[ordinal].Metadata is null)
+            {
+                throw new ArgumentException($"Plan relation ordinal {ordinal} must have encoding metadata.");
+            }
+
             dependencies.Add(ValidateEntry(input, ordinal, relations, anchors: anchors));
         }
 

@@ -144,8 +144,15 @@ so expressions receive the correct input and enclosing schemas. Do not call
 public relation/expression conversion entry points from within traversal:
 that creates a new context and can reintroduce CLR recursion through subqueries.
 Literal and type conversion retain their independent iterative implementations.
-This infrastructure does not change protobuf parser limits or add detached
-subtree support.
+This infrastructure does not change protobuf parser limits.
+
+Detached subtree validation follows only references reachable from each plan
+entry, before logical conversion. Keep the original tables in
+`PlanRelationMetadata` for opaque payload references. The conversion context
+resolves detached ordinals when a frame enters, before dispatch, so continuations
+use the resolved node without changing its input or enclosing schemas.
+Keep the detached container on the per-conversion context, not on individual
+frames or reusable converters.
 
 ## Public API changes
 
