@@ -8,12 +8,16 @@ using Substrait.Core.Expression;
 using Substrait.Core.Expression.Converters;
 using Substrait.Core.Extension;
 using Substrait.Core.Metadata;
+using Substrait.Core.Plan.Converters;
 using Substrait.Core.Type;
 using Substrait.Core.Type.Converters;
 using Substrait.Protobuf;
 using Substrait.Tools;
+using ConversionFrame = Substrait.Core.Plan.Converters.ProtoConversionContext.Frame;
+using ConversionPhase = Substrait.Core.Plan.Converters.ProtoConversionContext.Phase;
 using ProtoRel = Substrait.Protobuf.Rel;
 using SortField = Substrait.Core.Expression.SortField;
+using Struct = Substrait.Core.Type.ParameterizedType.Struct;
 using StructExpression = Substrait.Core.Expression.Expression.Struct;
 
 namespace Substrait.Core.Relation.Converters;
@@ -21,7 +25,7 @@ namespace Substrait.Core.Relation.Converters;
 /// <summary>
 /// Converts protobuf relations to the internal representation.
 /// </summary>
-public class ProtoToRelConverter
+public class ProtoToRelConverter : IProtoConverter
 {
     private readonly ExtensionsCollection extensions;
     private readonly ProtoToExpressionConverter expressionConverter;
@@ -107,7 +111,7 @@ public class ProtoToRelConverter
     {
         try
         {
-            return this.ToRelCore(protoRel, enclosingSchemas);
+            return new ProtoConversionContext().Convert(this, protoRel, enclosingSchemas);
         }
         catch (ExtensionSchemaUnavailableException error)
         {
@@ -115,147 +119,282 @@ public class ProtoToRelConverter
         }
     }
 
-    private IRel ToRelCore(ProtoRel protoRel, IReadOnlyList<Core.Type.ParameterizedType.Struct> enclosingSchemas)
+    void IProtoConverter.Convert(ConversionFrame frame, ProtoConversionContext context)
     {
-        var stack = new Stack<(ProtoRel Relation, List<IRel> Inputs, List<IRel> Output, int InputCount)>();
-        var output = new List<IRel>();
-        stack.Push((protoRel, new List<IRel>(), output, -1));
-
-        while (stack.Count > 0)
+        ProtoRel current = (ProtoRel)frame.Node;
+        switch (current.RelTypeCase)
         {
-            var (current, inputs, destination, inputCount) = stack.Pop();
-            switch (current.RelTypeCase)
-            {
-                case ProtoRel.RelTypeOneofCase.Reference:
-                    int ordinal = current.Reference.SubtreeOrdinal;
-                    if (this.ReferenceResolver is null)
+            case ProtoRel.RelTypeOneofCase.Reference:
+                int ordinal = current.Reference.SubtreeOrdinal;
+                if (this.ReferenceResolver is null)
+                {
+                    throw new SerializationException($"Reference ordinal {ordinal} requires a plan reference context. Convert the containing plan instead.");
+                }
+
+                context.Complete(frame, new Reference(ordinal, this.ReferenceResolver(ordinal)));
+                break;
+            case ProtoRel.RelTypeOneofCase.Read:
+                if (frame.Phase == ConversionPhase.Enter)
+                {
+                    var schema = this.CreateReadSchema(current.Read);
+                    if (current.Read.Filter is null && (current.Read.VirtualTable?.Expressions.Count ?? 0) == 0)
                     {
-                        throw new SerializationException($"Reference ordinal {ordinal} requires a plan reference context. Convert the containing plan instead.");
+                        context.Complete(frame, this.CreateRead(current.Read, schema, frame, context));
+                        return;
                     }
 
-                    destination.Add(new Reference(ordinal, this.ReferenceResolver(ordinal)));
-                    break;
-                case ProtoRel.RelTypeOneofCase.Aggregate:
-                    ProcessSingleInput(current, current.Aggregate.Input, inputs, destination, inputCount,
-                        input => this.CreateAggregate(current.Aggregate, input, enclosingSchemas), stack);
-                    break;
-                case ProtoRel.RelTypeOneofCase.Read:
-                    destination.Add(this.CreateRead(current.Read, enclosingSchemas));
-                    break;
-                case ProtoRel.RelTypeOneofCase.Filter:
-                    ProcessSingleInput(current, current.Filter.Input, inputs, destination, inputCount,
-                        input => new Filter(this.Metadata(current.Filter.Common, current.Filter.AdvancedExtension), input, this.expressionConverter.From(current.Filter.Condition, input.RecordType, enclosingSchemas)), stack);
-                    break;
-                case ProtoRel.RelTypeOneofCase.Project:
-                    ProcessSingleInput(current, current.Project.Input, inputs, destination, inputCount,
-                        input => new Project(this.Metadata(current.Project.Common, current.Project.AdvancedExtension), input, current.Project.Expressions.Select(expression => this.expressionConverter.From(expression, input.RecordType, enclosingSchemas))), stack);
-                    break;
-                case ProtoRel.RelTypeOneofCase.Fetch:
-                    ProcessSingleInput(current, current.Fetch.Input, inputs, destination, inputCount,
-                        input => new Fetch(
-                            this.Metadata(current.Fetch.Common, current.Fetch.AdvancedExtension),
-                            input,
-                            this.expressionConverter.From(current.Fetch.CountExpr, input.RecordType, enclosingSchemas),
-                            this.expressionConverter.From(current.Fetch.OffsetExpr, input.RecordType, enclosingSchemas)), stack);
-                    break;
-                case ProtoRel.RelTypeOneofCase.Sort:
-                    ProcessSingleInput(current, current.Sort.Input, inputs, destination, inputCount,
-                        input => new Sort(
-                            this.Metadata(current.Sort.Common, current.Sort.AdvancedExtension),
-                            input,
-                            current.Sort.Sorts.Select(field => new SortField(
-                                this.expressionConverter.From(field.Expr, input.RecordType, enclosingSchemas),
-                                field.Direction.FromProto()))), stack);
-                    break;
-                case ProtoRel.RelTypeOneofCase.Cross:
-                    ProcessInputs(current, [current.Cross.Left, current.Cross.Right], inputs, destination, inputCount,
-                        relations => new Cross(this.Metadata(current.Cross.Common, current.Cross.AdvancedExtension), relations[0], relations[1]), stack);
-                    break;
-                case ProtoRel.RelTypeOneofCase.Join:
-                    ProcessInputs(current, [current.Join.Left, current.Join.Right], inputs, destination, inputCount,
-                        relations => this.CreateJoin(current.Join, relations[0], relations[1], enclosingSchemas), stack);
-                    break;
-                case ProtoRel.RelTypeOneofCase.HashJoin:
-                    ProcessInputs(current, [current.HashJoin.Left, current.HashJoin.Right], inputs, destination, inputCount,
-                        relations => this.CreateHashJoin(current.HashJoin, relations[0], relations[1], enclosingSchemas), stack);
-                    break;
-                case ProtoRel.RelTypeOneofCase.Set:
-                    ProcessInputs(current, current.Set.Inputs, inputs, destination, inputCount,
-                        relations => new Set(this.Metadata(current.Set.Common, current.Set.AdvancedExtension), current.Set.Op.FromProto(), relations), stack);
-                    break;
-                case ProtoRel.RelTypeOneofCase.Exchange:
-                    ProcessSingleInput(current, current.Exchange.Input, inputs, destination, inputCount,
-                        input => this.CreateExchange(current.Exchange, input, enclosingSchemas), stack);
-                    break;
-                case ProtoRel.RelTypeOneofCase.ExtensionLeaf:
-                    destination.Add(this.CreateExtension(ExtensionRelationKind.Leaf,
-                        current.ExtensionLeaf.Common, current.ExtensionLeaf.Detail, []));
-                    break;
-                case ProtoRel.RelTypeOneofCase.ExtensionSingle:
-                    ProcessSingleInput(current,
-                        current.ExtensionSingle.Input ?? throw new SerializationException("ExtensionSingle requires an input relation."),
-                        inputs, destination, inputCount,
-                        input => this.CreateExtension(ExtensionRelationKind.Single,
-                            current.ExtensionSingle.Common, current.ExtensionSingle.Detail, [input]), stack);
-                    break;
-                case ProtoRel.RelTypeOneofCase.ExtensionMulti:
-                    ProcessInputs(current, current.ExtensionMulti.Inputs, inputs, destination, inputCount,
-                        relations => this.CreateExtension(ExtensionRelationKind.Multi,
-                            current.ExtensionMulti.Common, current.ExtensionMulti.Detail, relations), stack);
-                    break;
-                default:
-                    throw new NotImplementedException(current.RelTypeCase.ToString());
-            }
-        }
+                    context.Resume(frame, ConversionPhase.Complete, schema);
+                    if (current.Read.VirtualTable is { } table)
+                    {
+                        for (int row = table.Expressions.Count - 1; row >= 0; --row)
+                        {
+                            for (int field = table.Expressions[row].Fields.Count - 1; field >= 0; --field)
+                            {
+                                context.PushExpression(this.expressionConverter, table.Expressions[row].Fields[field],
+                                    Struct.Empty, ImmutableList<Struct>.Empty);
+                            }
+                        }
+                    }
 
-        if (output.Count != 1)
-        {
-            throw new SerializationException($"Deserialization error: Expected one relation for '{protoRel}', but found {output.Count}.");
-        }
+                    if (current.Read.Filter is not null)
+                    {
+                        context.PushExpression(this.expressionConverter, current.Read.Filter, schema, frame.EnclosingSchemas);
+                    }
 
-        return output[0];
-    }
+                    return;
+                }
 
-    private static void ProcessSingleInput(
-        ProtoRel current,
-        ProtoRel input,
-        List<IRel> inputs,
-        List<IRel> destination,
-        int inputCount,
-        Func<IRel, IRel> create,
-        Stack<(ProtoRel Relation, List<IRel> Inputs, List<IRel> Output, int InputCount)> stack)
-    {
-        if (inputs.Count == inputCount)
-        {
-            destination.Add(create(inputs[0]));
-        }
-        else
-        {
-            stack.Push((current, inputs, destination, 1));
-            stack.Push((input, new List<IRel>(), inputs, -1));
-        }
-    }
+                context.Complete(frame, this.CreateRead(current.Read, frame.InputSchema!, frame, context));
+                break;
+            case ProtoRel.RelTypeOneofCase.Filter:
+                if (context.ScheduleInputs(frame, current.Filter.Input))
+                {
+                    return;
+                }
 
-    private static void ProcessInputs(
-        ProtoRel current,
-        IReadOnlyList<ProtoRel> protoInputs,
-        List<IRel> inputs,
-        List<IRel> destination,
-        int inputCount,
-        Func<IReadOnlyList<IRel>, IRel> create,
-        Stack<(ProtoRel Relation, List<IRel> Inputs, List<IRel> Output, int InputCount)> stack)
-    {
-        if (inputs.Count == inputCount)
-        {
-            destination.Add(create(inputs));
-        }
-        else
-        {
-            stack.Push((current, inputs, destination, protoInputs.Count));
-            for (int index = protoInputs.Count - 1; index >= 0; index--)
-            {
-                stack.Push((protoInputs[index], new List<IRel>(), inputs, -1));
-            }
+                if (frame.Phase == ConversionPhase.Inputs)
+                {
+                    var schema = context.Relation(frame).RecordType;
+                    context.Resume(frame, ConversionPhase.Complete);
+                    context.PushExpression(this.expressionConverter, current.Filter.Condition, schema, frame.EnclosingSchemas);
+                    return;
+                }
+
+                context.Complete(frame, new Filter(this.Metadata(current.Filter.Common, current.Filter.AdvancedExtension),
+                    context.Relation(frame), context.Expression(frame)));
+                break;
+            case ProtoRel.RelTypeOneofCase.Project:
+                if (context.ScheduleInputs(frame, current.Project.Input))
+                {
+                    return;
+                }
+
+                if (frame.Phase == ConversionPhase.Inputs && current.Project.Expressions.Count > 0)
+                {
+                    var schema = context.Relation(frame).RecordType;
+                    context.Resume(frame, ConversionPhase.Complete);
+                    for (int index = current.Project.Expressions.Count - 1; index >= 0; --index)
+                    {
+                        context.PushExpression(this.expressionConverter, current.Project.Expressions[index], schema, frame.EnclosingSchemas);
+                    }
+
+                    return;
+                }
+
+                context.Complete(frame, new Project(this.Metadata(current.Project.Common, current.Project.AdvancedExtension),
+                    context.Relation(frame), context.CopyExpressions(frame, current.Project.Expressions.Count)));
+                break;
+            case ProtoRel.RelTypeOneofCase.Fetch:
+                if (context.ScheduleInputs(frame, current.Fetch.Input))
+                {
+                    return;
+                }
+
+                if (frame.Phase == ConversionPhase.Inputs)
+                {
+                    var schema = context.Relation(frame).RecordType;
+                    context.Resume(frame, ConversionPhase.Complete);
+                    context.PushExpression(this.expressionConverter, current.Fetch.OffsetExpr, schema, frame.EnclosingSchemas);
+                    context.PushExpression(this.expressionConverter, current.Fetch.CountExpr, schema, frame.EnclosingSchemas);
+                    return;
+                }
+
+                context.Complete(frame, new Fetch(this.Metadata(current.Fetch.Common, current.Fetch.AdvancedExtension),
+                    context.Relation(frame), context.Expression(frame), context.Expression(frame, 1)));
+                break;
+            case ProtoRel.RelTypeOneofCase.Sort:
+                if (context.ScheduleInputs(frame, current.Sort.Input))
+                {
+                    return;
+                }
+
+                if (frame.Phase == ConversionPhase.Inputs && current.Sort.Sorts.Count > 0)
+                {
+                    var schema = context.Relation(frame).RecordType;
+                    context.Resume(frame, ConversionPhase.Complete);
+                    for (int index = current.Sort.Sorts.Count - 1; index >= 0; --index)
+                    {
+                        context.PushExpression(this.expressionConverter, current.Sort.Sorts[index].Expr, schema, frame.EnclosingSchemas);
+                    }
+
+                    return;
+                }
+
+                context.Complete(frame, new Sort(this.Metadata(current.Sort.Common, current.Sort.AdvancedExtension),
+                    context.Relation(frame), current.Sort.Sorts.Select((field, index) =>
+                        new SortField(context.Expression(frame, index), field.Direction.FromProto()))));
+                break;
+            case ProtoRel.RelTypeOneofCase.Aggregate:
+                if (context.ScheduleInputs(frame, current.Aggregate.Input))
+                {
+                    return;
+                }
+
+                if (frame.Phase == ConversionPhase.Inputs)
+                {
+                    ValidateAggregate(current.Aggregate);
+                    bool needsSchema = current.Aggregate.GroupingExpressions.Count > 0
+                        || current.Aggregate.Measures.Any(measure => measure.Measure_.Arguments.Count > 0 || measure.Filter is not null);
+                    var schema = needsSchema ? context.Relation(frame).RecordType : Struct.Empty;
+                    context.Resume(frame, ConversionPhase.Complete);
+                    for (int index = current.Aggregate.Measures.Count - 1; index >= 0; --index)
+                    {
+                        var measure = current.Aggregate.Measures[index];
+                        if (measure.Filter is not null)
+                        {
+                            context.PushExpression(this.expressionConverter, measure.Filter, schema, frame.EnclosingSchemas);
+                        }
+
+                        for (int argument = measure.Measure_.Arguments.Count - 1; argument >= 0; --argument)
+                        {
+                            if (measure.Measure_.Arguments[argument].Value is { } value)
+                            {
+                                context.PushExpression(this.expressionConverter, value, schema, frame.EnclosingSchemas);
+                            }
+                        }
+                    }
+
+                    for (int index = current.Aggregate.GroupingExpressions.Count - 1; index >= 0; --index)
+                    {
+                        context.PushExpression(this.expressionConverter, current.Aggregate.GroupingExpressions[index], schema, frame.EnclosingSchemas);
+                    }
+
+                    return;
+                }
+
+                context.Complete(frame, this.CreateAggregate(current.Aggregate, frame, context));
+                break;
+            case ProtoRel.RelTypeOneofCase.Cross:
+                if (context.ScheduleInputs(frame, current.Cross.Left, current.Cross.Right))
+                {
+                    return;
+                }
+
+                context.Complete(frame, new Cross(this.Metadata(current.Cross.Common, current.Cross.AdvancedExtension),
+                    context.Relation(frame), context.Relation(frame, 1)));
+                break;
+            case ProtoRel.RelTypeOneofCase.Join:
+                if (context.ScheduleInputs(frame, current.Join.Left, current.Join.Right))
+                {
+                    return;
+                }
+
+                if (frame.Phase == ConversionPhase.Inputs)
+                {
+                    var schema = TypeFactory.REQUIRED.Struct(context.Relation(frame).RecordType.Fields, context.Relation(frame, 1).RecordType.Fields);
+                    context.Resume(frame, ConversionPhase.Complete);
+                    if (current.Join.PostJoinFilter is not null)
+                    {
+                        context.PushExpression(this.expressionConverter, current.Join.PostJoinFilter, schema, frame.EnclosingSchemas);
+                    }
+
+                    if (current.Join.Expression is not null)
+                    {
+                        context.PushExpression(this.expressionConverter, current.Join.Expression, schema, frame.EnclosingSchemas);
+                    }
+
+                    return;
+                }
+
+                context.Complete(frame, new Join(this.Metadata(current.Join.Common, current.Join.AdvancedExtension),
+                    context.Relation(frame), context.Relation(frame, 1), current.Join.Type.FromProto(),
+                    current.Join.Expression is null ? null : context.Expression(frame),
+                    current.Join.PostJoinFilter is null ? null : context.Expression(frame, current.Join.Expression is null ? 0 : 1)));
+                break;
+            case ProtoRel.RelTypeOneofCase.HashJoin:
+                if (context.ScheduleInputs(frame, current.HashJoin.Left, current.HashJoin.Right))
+                {
+                    return;
+                }
+
+                if (frame.Phase == ConversionPhase.Inputs)
+                {
+                    var schema = TypeFactory.REQUIRED.Struct(context.Relation(frame).RecordType.Fields, context.Relation(frame, 1).RecordType.Fields);
+                    context.Resume(frame, ConversionPhase.Complete, schema);
+                    if (current.HashJoin.PostJoinFilter is not null)
+                    {
+                        context.PushExpression(this.expressionConverter, current.HashJoin.PostJoinFilter, schema, frame.EnclosingSchemas);
+                    }
+
+                    return;
+                }
+
+                context.Complete(frame, this.CreateHashJoin(current.HashJoin, frame, context));
+                break;
+            case ProtoRel.RelTypeOneofCase.Set:
+                if (context.ScheduleInputs(frame, current.Set.Inputs))
+                {
+                    return;
+                }
+
+                context.Complete(frame, new Set(this.Metadata(current.Set.Common, current.Set.AdvancedExtension),
+                    current.Set.Op.FromProto(), context.CopyRelations(frame, current.Set.Inputs.Count)));
+                break;
+            case ProtoRel.RelTypeOneofCase.Exchange:
+                if (context.ScheduleInputs(frame, current.Exchange.Input))
+                {
+                    return;
+                }
+
+                if (current.Exchange.Targets.Count != 0)
+                {
+                    throw new NotImplementedException("Exchange targets are not supported.");
+                }
+
+                if (frame.Phase == ConversionPhase.Inputs && current.Exchange.ExchangeKindCase == ExchangeRel.ExchangeKindOneofCase.SingleTarget)
+                {
+                    var schema = context.Relation(frame).RecordType;
+                    context.Resume(frame, ConversionPhase.Complete);
+                    context.PushExpression(this.expressionConverter, current.Exchange.SingleTarget.Expression, schema, frame.EnclosingSchemas);
+                    return;
+                }
+
+                context.Complete(frame, this.CreateExchange(current.Exchange, frame, context));
+                break;
+            case ProtoRel.RelTypeOneofCase.ExtensionLeaf:
+                context.Complete(frame, this.CreateExtension(ExtensionRelationKind.Leaf,
+                    current.ExtensionLeaf.Common, current.ExtensionLeaf.Detail, []));
+                break;
+            case ProtoRel.RelTypeOneofCase.ExtensionSingle:
+                if (context.ScheduleInputs(frame, current.ExtensionSingle.Input ?? throw new SerializationException("ExtensionSingle requires an input relation.")))
+                {
+                    return;
+                }
+
+                context.Complete(frame, this.CreateExtension(ExtensionRelationKind.Single,
+                    current.ExtensionSingle.Common, current.ExtensionSingle.Detail, context.CopyRelations(frame, 1)));
+                break;
+            case ProtoRel.RelTypeOneofCase.ExtensionMulti:
+                if (context.ScheduleInputs(frame, current.ExtensionMulti.Inputs))
+                {
+                    return;
+                }
+
+                context.Complete(frame, this.CreateExtension(ExtensionRelationKind.Multi,
+                    current.ExtensionMulti.Common, current.ExtensionMulti.Detail, context.CopyRelations(frame, current.ExtensionMulti.Inputs.Count)));
+                break;
+            default:
+                throw new NotImplementedException(current.RelTypeCase.ToString());
         }
     }
 
@@ -289,10 +428,7 @@ public class ProtoToRelConverter
         };
     }
 
-    private Aggregate CreateAggregate(
-        AggregateRel aggregate,
-        IRel input,
-        IReadOnlyList<Core.Type.ParameterizedType.Struct> enclosingSchemas)
+    private static void ValidateAggregate(AggregateRel aggregate)
     {
         if (aggregate.Groupings.Count > 1)
         {
@@ -317,8 +453,12 @@ public class ProtoToRelConverter
                 throw new SerializationException("Deserialization error: unused grouping expressions.");
             }
         }
+    }
 
+    private Aggregate CreateAggregate(AggregateRel aggregate, ConversionFrame frame, ProtoConversionContext context)
+    {
         var functionArgConverter = new ProtoToFunctionArgConverter(this.expressionConverter, this.typeConverter);
+        int valueIndex = aggregate.GroupingExpressions.Count;
         var measures = aggregate.Measures.Select(measure =>
         {
             Protobuf.AggregateFunction function = measure.Measure_;
@@ -329,92 +469,65 @@ public class ProtoToRelConverter
                 new AggregateFunctionInvocation(
                     anchor.Namespace,
                     anchor.Key,
-                    function.Arguments.Select(argument => functionArgConverter.From(argument, input.RecordType, enclosingSchemas)),
+                    function.Arguments.Select(argument => functionArgConverter.FromConverted(argument,
+                        argument.ArgTypeCase == FunctionArgument.ArgTypeOneofCase.Value ? context.Expression(frame, valueIndex++) : null)),
                     this.typeConverter.From(function.OutputType),
                     function.Phase.FromProto(),
                     function.Invocation.FromProto(),
                     declaration),
-                measure.Filter is null ? null : this.expressionConverter.From(measure.Filter, input.RecordType, enclosingSchemas));
+                measure.Filter is null ? null : context.Expression(frame, valueIndex++));
         });
 
         return new Aggregate(
             this.Metadata(aggregate.Common, aggregate.AdvancedExtension),
-            input,
-            aggregate.GroupingExpressions.Select(expression => this.expressionConverter.From(expression, input.RecordType, enclosingSchemas)),
+            context.Relation(frame),
+            context.CopyExpressions(frame, aggregate.GroupingExpressions.Count),
             aggregate.Groupings.Select(grouping => new Aggregate.Grouping(grouping.ExpressionReferences.Select(reference => (int)reference))),
             measures);
     }
 
-    private Join CreateJoin(
-        JoinRel join,
-        IRel left,
-        IRel right,
-        IReadOnlyList<Core.Type.ParameterizedType.Struct> enclosingSchemas)
+    private HashJoin CreateHashJoin(HashJoinRel hashJoin, ConversionFrame frame, ProtoConversionContext context)
     {
-        var schema = TypeFactory.REQUIRED.Struct(left.RecordType.Fields, right.RecordType.Fields);
-        return new Join(
-            this.Metadata(join.Common, join.AdvancedExtension),
-            left,
-            right,
-            join.Type.FromProto(),
-            join.Expression is null ? null : this.expressionConverter.From(join.Expression, schema, enclosingSchemas),
-            join.PostJoinFilter is null ? null : this.expressionConverter.From(join.PostJoinFilter, schema, enclosingSchemas));
-    }
-
-    private HashJoin CreateHashJoin(
-        HashJoinRel hashJoin,
-        IRel left,
-        IRel right,
-        IReadOnlyList<Core.Type.ParameterizedType.Struct> enclosingSchemas)
-    {
-        var schema = TypeFactory.REQUIRED.Struct(left.RecordType.Fields, right.RecordType.Fields);
         return new HashJoin(
             this.Metadata(hashJoin.Common, hashJoin.AdvancedExtension),
-            left,
-            right,
+            context.Relation(frame),
+            context.Relation(frame, 1),
             hashJoin.Type.FromProto(),
             hashJoin.Keys.Select(key => new PhysicalJoin.ComparisonJoinKey(
-                this.expressionConverter.CreateReference(key.Left, schema, enclosingSchemas),
-                this.expressionConverter.CreateReference(key.Right, schema, enclosingSchemas),
+                this.expressionConverter.CreateReference(key.Left, frame.InputSchema!, frame.EnclosingSchemas),
+                this.expressionConverter.CreateReference(key.Right, frame.InputSchema!, frame.EnclosingSchemas),
                 key.Comparison.HasSimple
                     ? new PhysicalJoin.ComparisonJoinKey.ComparisonType(key.Comparison.Simple.FromProto())
                     : new PhysicalJoin.ComparisonJoinKey.ComparisonType(key.Comparison.CustomFunctionReference))),
-            hashJoin.PostJoinFilter is null ? null : this.expressionConverter.From(hashJoin.PostJoinFilter, schema, enclosingSchemas),
+            hashJoin.PostJoinFilter is null ? null : context.Expression(frame),
             EnumUtils.Cast<HashJoinRel.Types.BuildInput, HashJoin.BuildInput>(hashJoin.BuildInput));
     }
 
-    private Exchange CreateExchange(
-        ExchangeRel exchange,
-        IRel input,
-        IReadOnlyList<Core.Type.ParameterizedType.Struct> enclosingSchemas)
+    private Exchange CreateExchange(ExchangeRel exchange, ConversionFrame frame, ProtoConversionContext context)
     {
-        if (exchange.Targets.Count != 0)
-        {
-            throw new NotImplementedException("Exchange targets are not supported.");
-        }
-
+        IRel input = context.Relation(frame);
         return exchange.ExchangeKindCase switch
         {
             ExchangeRel.ExchangeKindOneofCase.ScatterByFields => new ScatterExchange(
                 this.Metadata(exchange.Common, exchange.AdvancedExtension),
                 input,
                 exchange.PartitionCount,
-                exchange.ScatterByFields.Fields.Select(field => this.expressionConverter.CreateReference(field, input.RecordType, enclosingSchemas))),
+                exchange.ScatterByFields.Fields.Select(field => this.expressionConverter.CreateReference(field, input.RecordType, frame.EnclosingSchemas))),
             ExchangeRel.ExchangeKindOneofCase.SingleTarget => new SingleBucketExchange(
                 this.Metadata(exchange.Common, exchange.AdvancedExtension),
                 input,
                 exchange.PartitionCount,
-                this.expressionConverter.From(exchange.SingleTarget.Expression, input.RecordType, enclosingSchemas)),
+                context.Expression(frame)),
             _ => throw new NotImplementedException(exchange.ExchangeKindCase.ToString()),
         };
     }
 
-    private IRel CreateRead(ReadRel read, IReadOnlyList<Core.Type.ParameterizedType.Struct> enclosingSchemas)
+    private IRel CreateRead(ReadRel read, Struct recordType, ConversionFrame frame, ProtoConversionContext context)
     {
-        Core.Type.NamedStruct schema = this.CreateNamedStruct(read);
+        var schema = new Core.Type.NamedStruct(read.BaseSchema.Names.ToImmutableList(), recordType);
         IExpression? filter = read.Filter is null
             ? null
-            : this.expressionConverter.From(read.Filter, schema.Struct, enclosingSchemas);
+            : context.Expression(frame);
 
         return read.ReadTypeCase switch
         {
@@ -424,19 +537,27 @@ public class ProtoToRelConverter
             ReadRel.ReadTypeOneofCase.VirtualTable => new VirtualTableRead(
                 this.Metadata(read.Common, read.AdvancedExtension),
                 schema,
-                read.VirtualTable.Expressions.Select(row => new StructExpression(row.Fields.Select(this.expressionConverter.From))),
+                CreateRows(read, frame, context),
                 filter),
             ReadRel.ReadTypeOneofCase.None => new EmptyRead(this.Metadata(read.Common, read.AdvancedExtension), schema, filter),
             _ => throw new NotImplementedException(read.ReadTypeCase.ToString()),
         };
     }
 
-    private Core.Type.NamedStruct CreateNamedStruct(ReadRel read)
+    private static IEnumerable<StructExpression> CreateRows(ReadRel read, ConversionFrame frame, ProtoConversionContext context)
     {
-        return new Core.Type.NamedStruct(
-            read.BaseSchema.Names.ToImmutableList(),
-            new Core.Type.ParameterizedType.Struct(
-                read.BaseSchema.Struct.Types_.Select(this.typeConverter.From).ToImmutableList(),
-                read.BaseSchema.Struct.Nullability.FromProto()));
+        int offset = read.Filter is null ? 0 : 1;
+        foreach (var row in read.VirtualTable.Expressions)
+        {
+            yield return new StructExpression(context.CopyExpressions(frame, row.Fields.Count, offset));
+            offset += row.Fields.Count;
+        }
+    }
+
+    private Struct CreateReadSchema(ReadRel read)
+    {
+        return new Struct(
+            read.BaseSchema.Struct.Types_.Select(this.typeConverter.From).ToImmutableList(),
+            read.BaseSchema.Struct.Nullability.FromProto());
     }
 }
