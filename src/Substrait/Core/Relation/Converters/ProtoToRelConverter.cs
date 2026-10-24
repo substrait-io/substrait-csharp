@@ -107,11 +107,17 @@ public class ProtoToRelConverter : IProtoConverter
     /// <param name="protoRel">The protobuf relation.</param>
     /// <param name="enclosingSchemas">Schemas for enclosing contexts.</param>
     /// <returns>The internal relation.</returns>
-    public IRel ToRel(ProtoRel protoRel, IReadOnlyList<Core.Type.ParameterizedType.Struct> enclosingSchemas)
+    public IRel ToRel(ProtoRel protoRel, IReadOnlyList<Core.Type.ParameterizedType.Struct> enclosingSchemas) =>
+        this.ToRelCore(protoRel, enclosingSchemas, detached: null);
+
+    internal IRel ToRel(ProtoRel protoRel, DetachedPlanContext detached) =>
+        this.ToRelCore(protoRel, ImmutableList<Struct>.Empty, detached);
+
+    private IRel ToRelCore(ProtoRel protoRel, IReadOnlyList<Struct> enclosingSchemas, DetachedPlanContext? detached)
     {
         try
         {
-            return new ProtoConversionContext().Convert(this, protoRel, enclosingSchemas);
+            return new ProtoConversionContext(detached).Convert(this, protoRel, enclosingSchemas);
         }
         catch (ExtensionSchemaUnavailableException error)
         {

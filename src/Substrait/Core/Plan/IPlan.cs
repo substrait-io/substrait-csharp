@@ -20,6 +20,9 @@ public interface IPlan
         /// Gets the input relation.
         /// </summary>
         public IRel Input { get; }
+
+        /// <summary>Gets container-local encoding metadata. Preserve it when copying an imported entry.</summary>
+        public PlanRelationMetadata Metadata { get; }
     }
 
     /// <summary>

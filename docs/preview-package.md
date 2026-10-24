@@ -282,14 +282,10 @@ Consumers must account for the intervening upstream contract changes:
   and account for oneof presence.
 
 The newer protobuf packages expose detached expression/relation subtrees and
-named lambdas. This dependency upgrade does not add internal-model conversion
-support for those features. All plan import entry points reject nonempty
-`Plan.named_lambdas`, `PlanRel.detached_expressions`, and `PlanRel.detached_rels`
-tables with `NotSupportedException`, even when unreferenced or when extension
-resolution is non-strict. This prevents silently discarding their contents.
-Detached-table errors identify the offending plan relation ordinal; empty
-tables remain valid. Consumers needing these features must retain the protobuf
-plan rather than convert it to the internal representation.
+named lambdas. Detached tables are supported as described in
+[detached plan imports](#detached-plan-imports). All plan import entry points
+still reject nonempty `Plan.named_lambdas` tables with `NotSupportedException`,
+even when unreferenced or when extension resolution is non-strict.
 
 The extension type-expression parser's existing limitations also remain:
 parameterized precision-time/timestamp signatures are loaded as declarations
@@ -299,6 +295,71 @@ do not add support for resolving those signatures.
 See the upstream release notes for [0.105.0](https://github.com/substrait-io/substrait/releases/tag/v0.105.0),
 [0.106.0](https://github.com/substrait-io/substrait/releases/tag/v0.106.0), and
 [0.107.0](https://github.com/substrait-io/substrait/releases/tag/v0.107.0).
+
+## Detached plan imports
+
+`ProtoToPlanConverter.From`, `FromBytes`, `FromStream`, `FromFile`, and
+`FromJson` resolve `detached_expression_ordinal` and `detached_rel_ordinal`
+references using the tables of the containing `PlanRel`. Root and non-root
+entries have separate namespaces, even when one refers to another through
+`ReferenceRel`. Detachment is encoding-only, not computation sharing: core
+relations and expressions contain the resolved logical trees.
+
+Import validates the reachable portion of each entry. Detached ordinals must
+be in range, each entry may be referenced at most once, and references must be
+acyclic, including cycles through subqueries. Each referenced table entry must
+have a concrete non-ordinal variant; its children may be detached ordinals.
+Violations produce `SerializationException` identifying the plan entry.
+Existing correlation, plan-reference, and relation-anchor checks apply after
+resolution, in the original use-site scope. Unreachable table entries are not
+execution roots and are not semantically validated.
+
+Detached relation, expression, and mixed subquery chains are converted through
+one shared work stack, with container-local resolution at frame entry. Binary
+and JSON parsers retain their existing limits:
+detachment does not make excessively nested individual chunks, types, literals,
+or field-reference paths parseable. Standalone relation/expression converters
+cannot resolve detached ordinals without their containing plan entry and
+report `SerializationException`; convert the containing plan instead.
+
+### Encoding metadata and opaque payloads
+
+`IPlan.IRelation.Metadata` is a non-null `PlanRelationMetadata` snapshot of the
+original detached tables, including unused entries. This is separate from
+`IRel.Metadata` (operator metadata) and `IPlan.Metadata` (plan-level metadata).
+The tables are retained in their original order because opaque `Any` payloads
+may reference them. The library does not interpret or validate ordinals inside
+opaque payloads; consumers that interpret them must apply the same
+container-local validation rules.
+
+`PlanRelationMetadata.FromProto(entry)` copies only the detached tables, not the
+entry's root or relation. `ToProto()` returns an independent mutable copy of
+those tables in a `PlanRel` with no relation variant set. Public object imports
+copy retained messages; private binary/JSON imports can retain privately owned
+messages. Exported tables can be mutated without changing the core plan.
+Entry equality and hashing include the retained encoding metadata.
+
+When copying an imported entry, pass its metadata to the metadata-first
+`Plan.Root`/`Plan.Relation` constructors, or to the corresponding
+`PlanBuilder.AddRoot`/`RegisterSubplan` overloads. `Plan.FromRelations` retains
+each entry's metadata. Preserve plan-level extension declarations and relevant
+plan entry ordinals as well: detached tables and opaque payloads may reference
+them. Changing logical trees does not rewrite opaque payloads or retained
+tables; applications making such edits are responsible for their consistency.
+
+This adds a required `Metadata` property to custom `IPlan.IRelation`/`IRoot`
+implementations. Return `PlanRelationMetadata.Empty` for entries without
+retained encoding metadata. Existing concrete constructors and builder
+overloads use this empty value automatically.
+
+### Export scope
+
+`PlanToProtoConverter` preserves retained detached tables and their ordinals
+while emitting the resolved logical tree inline. This preserves references
+inside opaque payloads but is not a bounded-depth writer: re-exporting a deep
+import may exceed parser limits. Existing plans without encoding metadata keep
+their prior output shape. Opt-in bounded-depth generation and standalone
+`ExtendedExpression` conversion are not included in this change.
 
 ## Migration to specification packages
 

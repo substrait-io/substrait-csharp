@@ -48,16 +48,24 @@ public class PlanToProtoConverter
             },
         };
         result.ExpectedTypeUrls.AddRange(metadata.ExpectedTypeUrls);
-        result.Relations.AddRange(plan.Relations.Select(entry => entry is IPlan.IRoot root
-            ? new Protobuf.PlanRel
+        result.Relations.AddRange(plan.Relations.Select(entry =>
+        {
+            Protobuf.PlanRel output = entry.Metadata.ToProto();
+            if (entry is IPlan.IRoot root)
             {
-                Root = new Protobuf.RelRoot
+                output.Root = new Protobuf.RelRoot
                 {
                     Input = relationConverter.From(root.Input, context),
                     Names = { root.Names },
-                },
+                };
             }
-            : new Protobuf.PlanRel { Rel = relationConverter.From(entry.Input, context) }));
+            else
+            {
+                output.Rel = relationConverter.From(entry.Input, context);
+            }
+
+            return output;
+        }));
 
         context.ExtensionsCollector.WriteTo(result);
 
