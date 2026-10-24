@@ -111,10 +111,15 @@ All plan import entry points resolve detached expression and relation subtrees,
 including those inside subqueries, without increasing protobuf parser limits.
 `IPlan.IRelation.Metadata` retains the original container-local tables so opaque
 extension payloads keep valid ordinal references. Preserve this metadata when
-copying an imported entry. Export preserves the tables but writes the logical
-tree inline; it does not yet generate bounded-depth encodings. See
+copying an imported entry. Export preserves the tables and writes the logical
+tree inline by default. Use
+`PlanToProtoConverter.From(plan, maxInlineRelExpressionDepth: 8)` to generate
+detached subtrees with a combined inline relation/expression depth bound.
+Retained tables are unchanged and exempt from the bound; it is not a protobuf
+parser recursion limit. See
 [detached plan imports](docs/preview-package.md#detached-plan-imports) for
-validation, ownership, and compatibility details.
+validation and ownership, and [bounded export](docs/preview-package.md#bounded-plan-export)
+for the depth contract and compatibility details.
 
 Custom `ExtensionLeaf`, `ExtensionSingle`, and `ExtensionMulti` relations preserve
 opaque detail payloads and common metadata. Supply an unmapped schema when

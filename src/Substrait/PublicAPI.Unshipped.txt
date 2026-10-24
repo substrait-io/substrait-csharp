@@ -2035,6 +2035,7 @@ Substrait.Core.Plan.Converters.PlanToProtoConverter.ConverterContext.RemoveOutpu
 Substrait.Core.Plan.Converters.PlanToProtoConverter.ConverterContext.RemoveOutput(Substrait.Core.Relation.IRel! node) -> void
 Substrait.Core.Plan.Converters.PlanToProtoConverter.ConverterContext.RemoveOutput(Substrait.Core.Type.IType! node) -> void
 Substrait.Core.Plan.Converters.PlanToProtoConverter.From(Substrait.Core.Plan.IPlan! plan) -> Substrait.Protobuf.Plan!
+Substrait.Core.Plan.Converters.PlanToProtoConverter.From(Substrait.Core.Plan.IPlan! plan, int maxInlineRelExpressionDepth) -> Substrait.Protobuf.Plan!
 Substrait.Core.Plan.Converters.PlanToProtoConverter.PlanToProtoConverter() -> void
 Substrait.Core.Type.Converters.TypeToProtoConverter
 Substrait.Core.Type.Converters.TypeToProtoConverter.From(Substrait.Core.Type.IType! type, Substrait.Core.Plan.Converters.PlanToProtoConverter.ConverterContext! context) -> Substrait.Protobuf.Type!
