@@ -774,7 +774,9 @@ public abstract class ParameterizedType : IType
         }
     }
 
-    /// <summary>Immutable, lossless reference to a plan-local type-alias anchor; does not follow or validate the referenced definition.</summary>
+    /// <summary>
+    /// Immutable, lossless reference to a plan-local type-alias anchor.
+    /// </summary>
     public sealed class AliasReference : ParameterizedType, IEquatable<AliasReference>
     {
         /// <summary>
