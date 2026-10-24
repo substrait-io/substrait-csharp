@@ -19,13 +19,16 @@ namespace Substrait.Core.Relation.Converters;
 public class RelToProtoConverter
 {
     private readonly RelBottomUpDispatcher<PlanToProtoConverter.ConverterContext, ProtoRel> dispatcher;
+    private readonly RelToProtoVisitor visitor;
+    private readonly ExpressionToProtoConverter expressionConverter;
 
     /// <summary>Initializes a relation converter.</summary>
     public RelToProtoConverter()
     {
         var typeConverter = new TypeToProtoConverter();
-        var expressionConverter = new ExpressionToProtoConverter(typeConverter, this);
-        this.dispatcher = new(new RelToProtoVisitor(expressionConverter, typeConverter));
+        this.expressionConverter = new ExpressionToProtoConverter(typeConverter, this);
+        this.visitor = new(this.expressionConverter, typeConverter);
+        this.dispatcher = new(this.visitor);
     }
 
     /// <summary>Converts a relation using a new context.</summary>
@@ -33,7 +36,13 @@ public class RelToProtoConverter
 
     /// <summary>Converts a relation using a shared context.</summary>
     public ProtoRel From(IRel relation, PlanToProtoConverter.ConverterContext context) =>
-        this.dispatcher.Dispatch(relation, context);
+        context.Export is null ? this.dispatcher.Dispatch(relation, context) : context.GetOutput(relation);
+
+    internal ProtoRel ConvertSingle(IRel relation, PlanToProtoConverter.ConverterContext context) =>
+        relation.Accept(this.visitor, context);
+
+    internal ProtoExpression ConvertSingle(Core.Expression.IExpression expression, PlanToProtoConverter.ConverterContext context) =>
+        this.expressionConverter.ConvertSingle(expression, context);
 
     private sealed class RelToProtoVisitor : RelVisitor<PlanToProtoConverter.ConverterContext, ProtoRel>
     {

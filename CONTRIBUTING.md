@@ -154,6 +154,17 @@ use the resolved node without changing its input or enclosing schemas.
 Keep the detached container on the per-conversion context, not on individual
 frames or reusable converters.
 
+Bounded export uses `ProtoExportContext` with one stack and shared child-result
+buffers. It reuses the existing node serializer visitors. Keep
+`RelationExpressions` in the same consumption order as those visitors; explicit
+checks reject missing, reordered, or unconsumed children. Virtual row wrappers,
+literal internals, and physical field-reference wrappers are not concrete
+`Expression` messages and must not consume the depth budget or be detached.
+Expression children otherwise follow `InputNodes`; subquery relations use the
+same depth budget. Never memoize bounded query results by node identity:
+two occurrences of a shared core node need independently encoded subtrees.
+Retained tables are exempt and new entries must only be appended.
+
 ## Public API changes
 
 The Public API analyzer tracks the package surface in
