@@ -216,9 +216,6 @@ public class ProtoToTypeConverter
 
                         break;
                     case ProtoType.KindOneofCase.Func:
-                        // No TypeVariationReference to resolve: the pinned Type.func message has no
-                        // type-variation field, and ParameterizedType.Func's constructor rejects a
-                        // non-null variation, so there is never one to attach here.
                         if (nestedTypes is not null)
                         {
                             int returnIndex = nestedTypes.Count - 1;

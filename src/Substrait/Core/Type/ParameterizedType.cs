@@ -775,8 +775,7 @@ public abstract class ParameterizedType : IType
     }
 
     /// <summary>
-    /// Immutable implementation of function type: an ordered parameter signature and return type,
-    /// used to type lambda expressions. Distinct from a function declaration or invocation.
+    /// Immutable function type: an ordered parameter signature and return type.
     /// </summary>
     public sealed class Func : ParameterizedType, IEquatable<Func>
     {

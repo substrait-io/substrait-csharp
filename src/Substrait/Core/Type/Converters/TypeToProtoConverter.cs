@@ -121,20 +121,6 @@ public class TypeToProtoConverter
             return new ProtoType { Map = result };
         }
 
-        public override ProtoType Visit(ParameterizedType.Func type, PlanToProtoConverter.ConverterContext context)
-        {
-            // No TypeVariationReference: the pinned Type.func message has no type-variation field, and
-            // ParameterizedType.Func's own constructor already rejects a non-null variation, so there is
-            // never one to emit here.
-            var result = new ProtoType.Types.Func
-            {
-                Nullability = type.Nullable.ToProto(),
-            };
-            result.ParameterTypes.AddRange(type.Parameters.Select(context.GetOutput));
-            result.ReturnType = context.GetOutput(type.ReturnType);
-            return new ProtoType { Func = result };
-        }
-
         public override ProtoType Visit(UserDefinedType type, PlanToProtoConverter.ConverterContext context)
         {
             var result = new ProtoType.Types.UserDefined
@@ -154,6 +140,17 @@ public class TypeToProtoConverter
                 _ => throw new NotSupportedException($"Unsupported user-defined type parameter {parameter.GetType().Name}."),
             }));
             return new ProtoType { UserDefined = result };
+        }
+
+        public override ProtoType Visit(ParameterizedType.Func type, PlanToProtoConverter.ConverterContext context)
+        {
+            var result = new ProtoType.Types.Func
+            {
+                Nullability = type.Nullable.ToProto(),
+            };
+            result.ParameterTypes.AddRange(type.Parameters.Select(context.GetOutput));
+            result.ReturnType = context.GetOutput(type.ReturnType);
+            return new ProtoType { Func = result };
         }
 
         public override ProtoType Visit(IType other, PlanToProtoConverter.ConverterContext context) =>
