@@ -11,13 +11,13 @@
     <PackageVersion Include="IsExternalInit" Version="1.0.3" />
     <PackageVersion Include="Microsoft.Bcl.HashCode" Version="6.0.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0" />
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.401" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.402" />
     <PackageVersion Include="Substrait.Net.Antlr" Version="0.107.0" />
     <PackageVersion Include="Substrait.Net.Extensions" Version="0.107.0" />
     <PackageVersion Include="Substrait.Net.Protobuf" Version="0.107.0" />
-    <PackageVersion Include="System.Collections.Immutable" Version="10.0.12" />
+    <PackageVersion Include="System.Collections.Immutable" Version="10.0.13" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />
-    <PackageVersion Include="TUnit" Version="1.72.4" />
+    <PackageVersion Include="TUnit" Version="1.75.0" />
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
   </ItemGroup>
 </Project>
