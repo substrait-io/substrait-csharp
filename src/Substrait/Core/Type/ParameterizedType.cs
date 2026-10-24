@@ -773,4 +773,69 @@ public abstract class ParameterizedType : IType
             return true;
         }
     }
+
+    /// <summary>Immutable, lossless reference to a plan-local type-alias anchor; does not follow or validate the referenced definition.</summary>
+    public sealed class AliasReference : ParameterizedType, IEquatable<AliasReference>
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AliasReference"/> class.
+        /// </summary>
+        /// <param name="anchor">The plan-local alias anchor. 0 is a valid anchor.</param>
+        /// <param name="nullable">Whether the reference site requires a non-null value.</param>
+        /// <param name="typeVariation">Must be null: the pinned <c>Type.alias</c> message has no
+        /// type-variation field, so an alias reference cannot carry one.</param>
+        /// <exception cref="ArgumentException"><paramref name="typeVariation"/> is not null.</exception>
+        public AliasReference(uint anchor, NullableType nullable, ITypeVariation? typeVariation = null)
+            : base(nullable, RejectVariation(typeVariation))
+        {
+            this.Anchor = anchor;
+        }
+
+        /// <summary>
+        /// Gets the plan-local alias anchor.
+        /// </summary>
+        public uint Anchor { get; }
+
+        /// <inheritdoc/>
+        public override string ShortTypeName => "alias";
+
+        /// <inheritdoc/>
+        public override string TypeName => "alias";
+
+        /// <inheritdoc/>
+        public override string ToTypeString() => $"{this.TypeName}<{this.Anchor}>";
+
+        /// <inheritdoc/>
+        public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public bool Equals(AliasReference? other)
+        {
+            if (ReferenceEquals(this, other))
+            {
+                return true;
+            }
+
+            return this.Anchor == other?.Anchor && this.Nullable == other?.Nullable;
+        }
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => this.Equals(obj as AliasReference);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.Anchor);
+
+        /// <inheritdoc/>
+        protected override bool NodeEqualTypeParameters(IType other) => other is AliasReference a && this.Anchor == a.Anchor;
+
+        private static ITypeVariation? RejectVariation(ITypeVariation? typeVariation)
+        {
+            if (typeVariation is not null)
+            {
+                throw new ArgumentException("An alias reference cannot carry a type variation: the pinned Type.alias message has no such field.", nameof(typeVariation));
+            }
+
+            return null;
+        }
+    }
 }

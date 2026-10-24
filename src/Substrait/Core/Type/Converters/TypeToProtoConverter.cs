@@ -142,6 +142,9 @@ public class TypeToProtoConverter
             return new ProtoType { UserDefined = result };
         }
 
+        public override ProtoType Visit(ParameterizedType.AliasReference type, PlanToProtoConverter.ConverterContext context) =>
+            new() { Alias = new() { TypeAliasReference_ = type.Anchor, Nullability = type.Nullable.ToProto() } };
+
         public override ProtoType Visit(IType other, PlanToProtoConverter.ConverterContext context) =>
             throw new NotImplementedException($"Conversion for {other.GetType().Name} is not implemented.");
 
