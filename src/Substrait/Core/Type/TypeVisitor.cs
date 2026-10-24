@@ -17,6 +17,9 @@ public abstract class TypeVisitor<TContext, TOutput> : IVisitor<IType, TContext,
     /// <summary>Visits an extension-defined type, falling back to the general type handler.</summary>
     public virtual TOutput Visit(UserDefinedType type, TContext context) => this.Visit((IType)type, context);
 
+    /// <summary>Visits the unbound placeholder type, falling back to the general type handler.</summary>
+    public virtual TOutput Visit(UnboundType type, TContext context) => this.Visit((IType)type, context);
+
     /// <summary>
     /// Visits an <see cref="Bool"/> type.
     /// </summary>

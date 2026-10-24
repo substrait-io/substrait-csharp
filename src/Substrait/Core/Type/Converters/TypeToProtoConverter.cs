@@ -142,6 +142,11 @@ public class TypeToProtoConverter
             return new ProtoType { UserDefined = result };
         }
 
+        public override ProtoType Visit(UnboundType type, PlanToProtoConverter.ConverterContext context)
+        {
+            return new ProtoType { Unbound = new ProtoType.Types.Unbound() };
+        }
+
         public override ProtoType Visit(IType other, PlanToProtoConverter.ConverterContext context) =>
             throw new NotImplementedException($"Conversion for {other.GetType().Name} is not implemented.");
 

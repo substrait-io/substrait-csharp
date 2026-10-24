@@ -120,6 +120,23 @@ public class TypeVisitorTest
         await this.CheckBottomUpTraversal(structType, bottomUpExpected);
     }
 
+    /// <summary>
+    /// Tests exact top-down and bottom-up dispatcher sequences for the unbound placeholder nested
+    /// inside a struct alongside an ordinary type, confirming it is visited exactly once, as a leaf,
+    /// without the dispatcher touching its (throwing) nullability.
+    /// </summary>
+    [Test]
+    public async Task TestTypeVisitorWithUnbound()
+    {
+        var structType = this.typeFactory.Struct([this.primitiveTypeFactory.I64, UnboundType.Instance]);
+
+        string topDownExpected = "Struct|I64|UnboundType|";
+        string bottomUpExpected = "I64|UnboundType|Struct|";
+
+        await this.CheckTopDownTraversal(structType, topDownExpected);
+        await this.CheckBottomUpTraversal(structType, bottomUpExpected);
+    }
+
     [Test]
     public async Task NewTypeVisitorOverloadsRemainOptional()
     {

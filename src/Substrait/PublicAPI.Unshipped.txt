@@ -72,6 +72,7 @@ override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substra
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.List! type, TContext context) -> TOutput
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Map! type, TContext context) -> TOutput
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Uuid! type, TContext context) -> TOutput
+override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.UnboundType! type, TContext context) -> TOutput
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.UserDefinedType! type, TContext context) -> TOutput
 override Substrait.Core.Type.ParameterizedType.IntervalCompound.Accept<TContext, TOutput>(Substrait.Core.Type.TypeVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
 override Substrait.Core.Type.ParameterizedType.IntervalCompound.Equals(object? obj) -> bool
@@ -110,8 +111,11 @@ override Substrait.Core.Type.PrimitiveType.Uuid.ShortTypeName.get -> string!
 override Substrait.Core.Type.TypeParameter.Equals(object? obj) -> bool
 override Substrait.Core.Type.TypeParameter.GetHashCode() -> int
 override Substrait.Core.Type.TypeParameter.ToString() -> string!
+override Substrait.Core.Type.UnboundType.Equals(object? obj) -> bool
+override Substrait.Core.Type.UnboundType.GetHashCode() -> int
 override Substrait.Core.Type.UserDefinedType.Equals(object? obj) -> bool
 override Substrait.Core.Type.UserDefinedType.GetHashCode() -> int
+static readonly Substrait.Core.Type.UnboundType.Instance -> Substrait.Core.Type.UnboundType!
 static Substrait.Core.Extension.Types.TypeAnchor.operator !=(Substrait.Core.Extension.Types.TypeAnchor? left, Substrait.Core.Extension.Types.TypeAnchor? right) -> bool
 static Substrait.Core.Extension.Types.TypeAnchor.operator ==(Substrait.Core.Extension.Types.TypeAnchor? left, Substrait.Core.Extension.Types.TypeAnchor? right) -> bool
 static Substrait.Core.Metadata.PlanMetadata.Empty.get -> Substrait.Core.Metadata.PlanMetadata!
@@ -420,6 +424,16 @@ Substrait.Core.Type.TypeParameter.Null.Null() -> void
 Substrait.Core.Type.TypeParameter.String
 Substrait.Core.Type.TypeParameter.String.String(string! value) -> void
 Substrait.Core.Type.TypeParameter.String.Value.get -> string!
+Substrait.Core.Type.UnboundType
+Substrait.Core.Type.UnboundType.Accept<TContext, TOutput>(Substrait.Core.Type.TypeVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
+Substrait.Core.Type.UnboundType.Equals(Substrait.Core.Type.UnboundType? other) -> bool
+Substrait.Core.Type.UnboundType.InputNodes.get -> System.Collections.Generic.IEnumerable<Substrait.Core.Type.IType!>!
+Substrait.Core.Type.UnboundType.NodeEquals(Substrait.Core.Type.IType! other, Substrait.Core.Type.ITypeComparison comparison) -> bool
+Substrait.Core.Type.UnboundType.Nullable.get -> Substrait.Core.Type.IType.NullableType
+Substrait.Core.Type.UnboundType.ShortTypeName.get -> string!
+Substrait.Core.Type.UnboundType.ToTypeString() -> string!
+Substrait.Core.Type.UnboundType.TypeName.get -> string!
+Substrait.Core.Type.UnboundType.TypeVariation.get -> Substrait.Core.Extension.Types.ITypeVariation?
 Substrait.Core.Type.UserDefinedType
 Substrait.Core.Type.UserDefinedType.Accept<TContext, TOutput>(Substrait.Core.Type.TypeVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
 Substrait.Core.Type.UserDefinedType.Anchor.get -> Substrait.Core.Extension.Types.TypeAnchor!
@@ -2058,6 +2072,7 @@ virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.List! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Map! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Uuid! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.UnboundType! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.UserDefinedType! type, TContext context) -> TOutput
 virtual Substrait.Tools.Visitor.BottomUpTraversal<TNode>.ShouldVisit(TNode node) -> bool
 virtual Substrait.Tools.Visitor.TopDownTraversal<TNode>.ShouldVisit(TNode node) -> bool
