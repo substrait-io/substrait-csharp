@@ -68,11 +68,19 @@ override Substrait.Core.Relation.Reference.Metadata.get -> Substrait.Core.Metada
 override Substrait.Core.Relation.Set.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 override Substrait.Core.Relation.Sort.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 override Substrait.Core.Relation.VirtualTableRead.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
+override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Func! type, TContext context) -> TOutput
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.IntervalCompound! type, TContext context) -> TOutput
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.List! type, TContext context) -> TOutput
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Map! type, TContext context) -> TOutput
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Uuid! type, TContext context) -> TOutput
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.UserDefinedType! type, TContext context) -> TOutput
+override Substrait.Core.Type.ParameterizedType.Func.Accept<TContext, TOutput>(Substrait.Core.Type.TypeVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
+override Substrait.Core.Type.ParameterizedType.Func.Equals(object? obj) -> bool
+override Substrait.Core.Type.ParameterizedType.Func.GetHashCode() -> int
+override Substrait.Core.Type.ParameterizedType.Func.InputNodes.get -> System.Collections.Generic.IEnumerable<Substrait.Core.Type.IType!>!
+override Substrait.Core.Type.ParameterizedType.Func.ShortTypeName.get -> string!
+override Substrait.Core.Type.ParameterizedType.Func.ToTypeString() -> string!
+override Substrait.Core.Type.ParameterizedType.Func.TypeName.get -> string!
 override Substrait.Core.Type.ParameterizedType.IntervalCompound.Accept<TContext, TOutput>(Substrait.Core.Type.TypeVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
 override Substrait.Core.Type.ParameterizedType.IntervalCompound.Equals(object? obj) -> bool
 override Substrait.Core.Type.ParameterizedType.IntervalCompound.GetHashCode() -> int
@@ -374,6 +382,11 @@ Substrait.Core.Relation.Set.Set(Substrait.Core.Metadata.RelationMetadata! metada
 Substrait.Core.Relation.SingleBucketExchange.SingleBucketExchange(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! input, int partitionCount, Substrait.Core.Expression.IExpression! expression) -> void
 Substrait.Core.Relation.Sort.Sort(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! input, System.Collections.Generic.IEnumerable<Substrait.Core.Expression.SortField!>! sortFields) -> void
 Substrait.Core.Relation.VirtualTableRead.VirtualTableRead(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Type.NamedStruct! initialSchema, System.Collections.Generic.IEnumerable<Substrait.Core.Expression.Expression.Struct!>! rows, Substrait.Core.Expression.IExpression? filter) -> void
+Substrait.Core.Type.ParameterizedType.Func
+Substrait.Core.Type.ParameterizedType.Func.Equals(Substrait.Core.Type.ParameterizedType.Func? other) -> bool
+Substrait.Core.Type.ParameterizedType.Func.Func(System.Collections.Generic.IEnumerable<Substrait.Core.Type.IType!>! parameters, Substrait.Core.Type.IType! returnType, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> void
+Substrait.Core.Type.ParameterizedType.Func.Parameters.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Type.IType!>!
+Substrait.Core.Type.ParameterizedType.Func.ReturnType.get -> Substrait.Core.Type.IType!
 Substrait.Core.Type.ParameterizedType.IntervalCompound
 Substrait.Core.Type.ParameterizedType.IntervalCompound.Equals(Substrait.Core.Type.ParameterizedType.IntervalCompound? other) -> bool
 Substrait.Core.Type.ParameterizedType.IntervalCompound.IntervalCompound(int precision, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation) -> void
@@ -395,6 +408,7 @@ Substrait.Core.Type.PrimitiveType.Uuid
 Substrait.Core.Type.PrimitiveType.Uuid.Equals(Substrait.Core.Type.PrimitiveType.Uuid? other) -> bool
 Substrait.Core.Type.PrimitiveTypeFactory.UUID.get -> Substrait.Core.Type.PrimitiveType.Uuid!
 Substrait.Core.Type.PrimitiveTypeFactory.Uuid_(Substrait.Core.Extension.Types.ITypeVariation? typeVariation) -> Substrait.Core.Type.PrimitiveType.Uuid!
+Substrait.Core.Type.TypeFactory.Func(System.Collections.Generic.IEnumerable<Substrait.Core.Type.IType!>! parameters, Substrait.Core.Type.IType! returnType, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.ParameterizedType.Func!
 Substrait.Core.Type.TypeFactory.IntervalCompound(int precision, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.ParameterizedType.IntervalCompound!
 Substrait.Core.Type.TypeFactory.IntervalDay(int precision, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.IntervalDay!
 Substrait.Core.Type.TypeFactory.List(Substrait.Core.Type.IType! elementType, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.ParameterizedType.List!
@@ -2054,6 +2068,7 @@ virtual Substrait.Core.Type.PrimitiveType.ToTypeString() -> string!
 virtual Substrait.Core.Type.PrimitiveType.TypeName.get -> string!
 virtual Substrait.Core.Type.TypeBottomUpDispatcher<TContext, TOutput>.ShouldBailOut(TOutput result, TContext context) -> bool
 virtual Substrait.Core.Type.TypeTopDownDispatcher<TContext, TOutput>.ShouldBailOut(TOutput result, TContext context) -> bool
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Func! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.IntervalCompound! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.List! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Map! type, TContext context) -> TOutput

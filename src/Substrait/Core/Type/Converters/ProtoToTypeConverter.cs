@@ -215,6 +215,31 @@ public class ProtoToTypeConverter
                         }
 
                         break;
+                    case ProtoType.KindOneofCase.Func:
+                        // No TypeVariationReference to resolve: the pinned Type.func message has no
+                        // type-variation field, and ParameterizedType.Func's constructor rejects a
+                        // non-null variation, so there is never one to attach here.
+                        if (nestedTypes is not null)
+                        {
+                            int returnIndex = nestedTypes.Count - 1;
+                            collectedTypes.Add(GetFactory(current.Func.Nullability).Func(nestedTypes.Take(returnIndex), nestedTypes[returnIndex]));
+                        }
+                        else if (current.Func.ReturnType is null)
+                        {
+                            throw new SerializationException("The function return type is unset.");
+                        }
+                        else
+                        {
+                            var childTypes = new List<IType>(current.Func.ParameterTypes.Count + 1);
+                            stack.Push((current, collectedTypes, childTypes, path));
+                            stack.Push((current.Func.ReturnType, childTypes, null, new TypePath(path, null, current.Func.ParameterTypes.Count, "function return type")));
+                            for (int index = current.Func.ParameterTypes.Count - 1; index >= 0; --index)
+                            {
+                                stack.Push((current.Func.ParameterTypes[index], childTypes, null, new TypePath(path, null, index, $"function parameter {index}")));
+                            }
+                        }
+
+                        break;
                     case ProtoType.KindOneofCase.None when path is not null:
                         throw new SerializationException("The data type is unset.");
                     default:
