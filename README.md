@@ -99,6 +99,11 @@ types, including a struct nested arbitrarily deep inside either. See
 [list and map types](docs/list-and-map-types.md) for construction, malformed-
 message error reporting, and depth-first named-struct field traversal.
 
+`ParameterizedType.Func` models a function's parameter and return types; it
+is the one parameterized type that cannot carry a type variation. See
+[function types](docs/function-types.md) for construction, malformed-message
+error reporting, and the variation-rejection behavior.
+
 `ProtoToPlanConverter.FromBytes`, `FromStream`, and `FromFile` parse binary
 protobuf privately, avoiding redundant metadata copies; `FromJson` explicitly
 parses protobuf JSON and accepts a parser with registered `Any` payload types.
