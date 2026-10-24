@@ -18,9 +18,6 @@ public abstract class DefaultTypeVisitor<TContext, TOutput> : TypeVisitor<TConte
     public override TOutput Visit(UserDefinedType type, TContext context) => this.DefaultVisit(type, context);
 
     /// <inheritdoc/>
-    public override TOutput Visit(UnboundType type, TContext context) => this.DefaultVisit(type, context);
-
-    /// <inheritdoc/>
     public override TOutput Visit(Bool type, TContext context)
     {
         return this.DefaultVisit(type, context);
@@ -157,6 +154,9 @@ public abstract class DefaultTypeVisitor<TContext, TOutput> : TypeVisitor<TConte
     {
         return this.DefaultVisit(type, context);
     }
+
+    /// <inheritdoc/>
+    public override TOutput Visit(UnboundType type, TContext context) => this.DefaultVisit(type, context);
 
     /// <inheritdoc/>
     public override TOutput Visit(IType other, TContext context)
