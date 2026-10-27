@@ -99,6 +99,12 @@ types, including a struct nested arbitrarily deep inside either. See
 [list and map types](docs/list-and-map-types.md) for construction, malformed-
 message error reporting, and depth-first named-struct field traversal.
 
+`ParameterizedType.AliasReference` models a plan-local type-alias reference
+as a lossless anchor value; it does not resolve or follow the alias it
+points to. See [type-alias references](docs/alias-references.md) for
+construction, the distinction from alias-table resolution, and the
+variation-rejection behavior.
+
 `ProtoToPlanConverter.FromBytes`, `FromStream`, and `FromFile` parse binary
 protobuf privately, avoiding redundant metadata copies; `FromJson` explicitly
 parses protobuf JSON and accepts a parser with registered `Any` payload types.

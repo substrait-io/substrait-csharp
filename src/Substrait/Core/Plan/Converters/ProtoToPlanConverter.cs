@@ -16,7 +16,7 @@ namespace Substrait.Core.Plan.Converters;
 /// </summary>
 /// <remarks>
 /// All import entry points resolve reachable detached subtrees and retain their container-local
-/// tables for opaque payloads. Nonempty named-lambda tables remain unsupported.
+/// tables for opaque payloads. Nonempty named-lambda and type-alias tables remain unsupported.
 /// </remarks>
 public class ProtoToPlanConverter
 {
@@ -99,6 +99,12 @@ public class ProtoToPlanConverter
         {
             throw new NotSupportedException("Plan.named_lambdas is not supported by the internal representation.");
         }
+
+        if (plan.TypeAliases.Count > 0)
+        {
+            throw new NotSupportedException("Plan.type_aliases is not supported by the internal representation.");
+        }
+
 
         var metadata = PlanMetadata.Capture(plan, ownsMetadata);
         _ = new ExtensionsCollector.Builder(metadata.ExtensionUrns, metadata.Extensions);

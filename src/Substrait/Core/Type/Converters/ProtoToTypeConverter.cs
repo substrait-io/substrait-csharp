@@ -215,6 +215,9 @@ public class ProtoToTypeConverter
                         }
 
                         break;
+                    case ProtoType.KindOneofCase.Alias:
+                        collectedTypes.Add(GetFactory(current.Alias.Nullability).AliasReference(current.Alias.TypeAliasReference_));
+                        break;
                     case ProtoType.KindOneofCase.None when path is not null:
                         throw new SerializationException("The data type is unset.");
                     default:

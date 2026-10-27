@@ -201,6 +201,12 @@ public abstract class TypeVisitor<TContext, TOutput> : IVisitor<IType, TContext,
     /// <returns>The result of the visit.</returns>
     public virtual TOutput Visit(Map type, TContext context) => this.Visit((IType)type, context);
 
+    /// <summary>Visits an alias reference type, falling back to the general type handler.</summary>
+    /// <param name="type">Alias reference type.</param>
+    /// <param name="context">Input context.</param>
+    /// <returns>The result of the visit.</returns>
+    public virtual TOutput Visit(AliasReference type, TContext context) => this.Visit((IType)type, context);
+
     /// <inheritdoc/>
     public abstract TOutput Visit(IType other, TContext context);
 }
