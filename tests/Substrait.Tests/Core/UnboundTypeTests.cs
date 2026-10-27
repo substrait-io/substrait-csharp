@@ -85,6 +85,24 @@ public sealed class UnboundTypeTests
     }
 
     [Test]
+    public async Task SharedComparerHashesUnboundWithoutReadingNullability()
+    {
+        // TypeUtils.ITypeEqualityComparer's hashing must not read Nullable for the unbound marker,
+        // standalone or nested, even when the comparison mode includes nullability.
+        foreach (ITypeComparison comparison in new[] { ITypeComparison.Strict, ITypeComparison.IgnoreNullability })
+        {
+            var comparer = TypeUtils.ITypeEqualityComparer.Of(comparison);
+
+            var standalone = new HashSet<IType>(comparer) { UnboundType.Instance };
+            await Assert.That(standalone.Contains(UnboundType.Instance)).IsTrue();
+
+            IType nested = TypeFactory.REQUIRED.Struct([UnboundType.Instance]);
+            var nestedSet = new HashSet<IType>(comparer) { nested };
+            await Assert.That(nestedSet.Contains(nested)).IsTrue();
+        }
+    }
+
+    [Test]
     public async Task HasNoInputNodes()
     {
         await Assert.That(UnboundType.Instance.InputNodes).IsEmpty();
