@@ -8,6 +8,7 @@ using Substrait.Core.Plan.Converters;
 using Substrait.Core.Type;
 using Substrait.Core.Type.Converters;
 using Substrait.Tools;
+using TUnit.Assertions.Enums;
 using NullableType = Substrait.Core.Type.IType.NullableType;
 using ProtoType = Substrait.Protobuf.Type;
 
@@ -249,6 +250,26 @@ public sealed class FuncTypeTests
         IType actual = import.From(proto);
 
         await Assert.That(actual).IsEqualTo(deep);
+    }
+
+    [Test]
+    public async Task GetFieldNamesDescendsThroughParametersThenReturnTypeButPairsNoNameForEitherSlot()
+    {
+        // struct<func(struct<i64> -> struct<bool>)>: the one outer field (the function itself) is
+        // paired with its own name ("a"); the function contributes no pair of its own, but the
+        // structs it transparently contains - the parameter first, then the return type - still pair
+        // their fields with names. Parameter and return type use distinct leaf types (i64 vs bool) so
+        // a traversal-order bug would show up as the wrong type at the wrong name, not just the wrong
+        // count.
+        IType parameterField = TypeFactory.REQUIRED.I64;
+        IType returnField = TypeFactory.REQUIRED.BOOL;
+        IType parameterStruct = TypeFactory.REQUIRED.Struct([parameterField]);
+        IType returnStruct = TypeFactory.REQUIRED.Struct([returnField]);
+        IType function = TypeFactory.REQUIRED.Func([parameterStruct], returnStruct);
+        var schema = new NamedStruct(["a", "b", "c"], TypeFactory.REQUIRED.Struct([function]));
+
+        await Assert.That(schema.GetFieldNames().ToList()).IsEquivalentTo(
+            [(function, "a"), (parameterField, "b"), (returnField, "c")], CollectionOrdering.Matching);
     }
 
     private static ExtensionsDictionary LookupFrom(PlanToProtoConverter.ConverterContext context)
