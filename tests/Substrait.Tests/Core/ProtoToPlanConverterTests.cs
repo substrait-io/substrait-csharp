@@ -122,6 +122,28 @@ public sealed class ProtoToPlanConverterTests
     }
 
     [Test]
+    public async Task RejectsPlanWithTypeAliasesRatherThanSilentlyDroppingTheTable()
+    {
+        // A plan declaring alias anchor 7 as required i64, referenced by a required alias in the
+        // read's schema: round-tripping this through the plan converters today would silently drop
+        // Plan.type_aliases and export a dangling reference, since PlanMetadata does not retain it.
+        ProtoPlan plan = CreatePlan();
+        plan.TypeAliases.Add(new Substrait.Protobuf.TypeAlias { TypeAliasAnchor = 7, Type = RequiredI64() });
+        plan.Relations[0].Root.Input.Read.BaseSchema.Struct.Types_[0] = new Substrait.Protobuf.Type
+        {
+            Alias = new Substrait.Protobuf.Type.Types.TypeAliasReference
+            {
+                TypeAliasReference_ = 7,
+                Nullability = Substrait.Protobuf.Type.Types.Nullability.Required,
+            },
+        };
+
+        NotSupportedException error = await Assert.That(() => this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF))
+            .ThrowsExactly<NotSupportedException>().And.IsNotNull();
+        await Assert.That(error.Message).Contains("type_aliases");
+    }
+
+    [Test]
     public async Task RoundTripsPlanSemantics()
     {
         IPlan original = this.converter.From(CreatePlan(), ExtensionsDictionary.StrictMode.OFF);
