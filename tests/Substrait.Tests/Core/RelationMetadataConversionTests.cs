@@ -209,7 +209,7 @@ public sealed class RelationMetadataConversionTests
         return plan;
     }
 
-    private static IEnumerable<IRel> Operators(RelationMetadata metadata)
+    internal static IEnumerable<IRel> Operators(RelationMetadata metadata)
     {
         NamedTableRead input = Read();
         FieldReference field = new(TypeFactory.REQUIRED.I64, 0);
