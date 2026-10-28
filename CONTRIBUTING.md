@@ -2,8 +2,10 @@
 
 ## Prerequisites
 
-Install the .NET 10 SDK and Git. The repository's
-`global.json` pins the required SDK feature band.
+Install .NET SDK 10.0.403 or a newer stable .NET 10 SDK and Git. The repository's
+`global.json` sets the minimum SDK version. Install .NET 8.0.33 or later to run
+the .NET 8 tests; package smoke tests also require .NET 9.0.22 or later.
+These runtime minimums include the October 2026 Brotli security fix.
 
 Clone the repository:
 

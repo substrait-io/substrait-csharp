@@ -23,6 +23,12 @@ preview releases may contain breaking API changes.
   `YamlDotNet`. The `netstandard2.0` target also uses `IndexRange`,
   `Microsoft.Bcl.HashCode`, `System.Collections.Immutable`, and `System.Memory`
   compatibility packages.
+- Applications must deploy patched .NET runtimes: .NET 8.0.33, 9.0.22,
+  10.0.14, or later servicing releases of those versions include the
+  [Brotli security fix (CVE-2026-111497)](https://github.com/dotnet/announcements/issues/494).
+  Updating this library's NuGet dependencies does not update a consumer's shared
+  runtime or a self-contained application's bundled runtime. .NET Framework is
+  not affected by this advisory.
 - Runtime dependency minimums include Google.Protobuf 3.36.2 and YamlDotNet
   18.1.0. The YAML collection adapter forwards the root deserializer required
   by YamlDotNet's updated interface while retaining nested read-only

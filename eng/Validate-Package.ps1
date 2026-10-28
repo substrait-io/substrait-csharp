@@ -188,7 +188,7 @@ $expectedDependencyGroups = [ordered]@{
         'Substrait.Net.Protobuf' = '0.107.0'
         'IndexRange' = '1.1.1'
         'Microsoft.Bcl.HashCode' = '6.0.0'
-        'System.Collections.Immutable' = '10.0.12'
+        'System.Collections.Immutable' = '10.0.14'
         'System.Memory' = '4.6.3'
         'YamlDotNet' = '18.1.0'
     }

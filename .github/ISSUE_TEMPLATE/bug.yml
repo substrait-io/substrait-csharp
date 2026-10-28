@@ -38,7 +38,7 @@ body:
     id: runtime
     attributes:
       label: .NET SDK and runtime
-      placeholder: ".NET SDK 10.0.400, .NET 10, Ubuntu 24.04"
+      placeholder: ".NET SDK 10.0.403, .NET 10, Ubuntu 24.04"
     validations:
       required: true
 
