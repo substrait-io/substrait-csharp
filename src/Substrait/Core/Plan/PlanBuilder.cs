@@ -150,11 +150,25 @@ public sealed class PlanBuilder
     /// <returns>A reusable reference to the new entry.</returns>
     public Reference RegisterSubplan(IRel subtree) => this.Add(new Plan.Relation(subtree));
 
+    /// <summary>Registers a subplan while retaining its container-local encoding metadata.</summary>
+    /// <param name="metadata">The metadata whose tables must remain local to this entry.</param>
+    /// <param name="subtree">The logical relation tree.</param>
+    /// <returns>A reference to the new entry.</returns>
+    public Reference RegisterSubplan(PlanRelationMetadata metadata, IRel subtree) => this.Add(new Plan.Relation(metadata, subtree));
+
     /// <summary>Registers a separate output root and returns a reference to its input.</summary>
     /// <param name="input">The root input.</param>
     /// <param name="names">The root's output names.</param>
     /// <returns>A reusable reference to the root entry.</returns>
     public Reference AddRoot(IRel input, IEnumerable<string> names) => this.Add(new Plan.Root(input, names));
+
+    /// <summary>Registers a root while retaining its container-local encoding metadata.</summary>
+    /// <param name="metadata">The metadata whose tables must remain local to this entry.</param>
+    /// <param name="input">The logical relation tree.</param>
+    /// <param name="names">The output names.</param>
+    /// <returns>A reference to the new root entry.</returns>
+    public Reference AddRoot(PlanRelationMetadata metadata, IRel input, IEnumerable<string> names) =>
+        this.Add(new Plan.Root(metadata, input, names));
 
     /// <summary>Validates the graph and creates an immutable snapshot.</summary>
     /// <returns>A plan unaffected by subsequent registrations or metadata edits.</returns>

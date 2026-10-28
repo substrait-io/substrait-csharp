@@ -211,6 +211,18 @@ public class TypeFactory : PrimitiveTypeFactory
     }
 
     /// <summary>
+    /// AliasReference.
+    /// </summary>
+    /// <param name="anchor">The plan-local alias anchor. 0 is a valid anchor.</param>
+    /// <param name="typeVariation">Must be null: the pinned <c>Type.alias</c> message has no
+    /// type-variation field, so an alias reference cannot carry one.</param>
+    /// <returns>The alias reference type.</returns>
+    public ParameterizedType.AliasReference AliasReference(uint anchor, ITypeVariation? typeVariation = null)
+    {
+        return new ParameterizedType.AliasReference(anchor, this.Nullable, typeVariation);
+    }
+
+    /// <summary>
     /// Function.
     /// </summary>
     /// <param name="parameters">The ordered parameter types.</param>
@@ -292,6 +304,14 @@ public class TypeFactory : PrimitiveTypeFactory
 
                 case ParameterizedType.Map map:
                     return this.Map(map.KeyType, map.ValueType, typeVariation);
+
+                case ParameterizedType.AliasReference alias:
+                    if (typeVariation is not null)
+                    {
+                        throw new ArgumentException("An alias reference cannot carry a type variation: the pinned Type.alias message has no such field.", nameof(typeVariation));
+                    }
+
+                    return this.AliasReference(alias.Anchor);
 
                 case ParameterizedType.Func func:
                     if (typeVariation is not null)

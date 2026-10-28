@@ -4,6 +4,8 @@ override Substrait.Core.Extension.Types.TypeAnchor.GetHashCode() -> int
 override Substrait.Core.Extension.Types.TypeAnchor.ToString() -> string!
 override Substrait.Core.Metadata.PlanMetadata.Equals(object? obj) -> bool
 override Substrait.Core.Metadata.PlanMetadata.GetHashCode() -> int
+override Substrait.Core.Metadata.PlanRelationMetadata.Equals(object? obj) -> bool
+override Substrait.Core.Metadata.PlanRelationMetadata.GetHashCode() -> int
 override Substrait.Core.Metadata.ReadOnlyAdvancedExtension.Equals(object? obj) -> bool
 override Substrait.Core.Metadata.ReadOnlyAdvancedExtension.GetHashCode() -> int
 override Substrait.Core.Metadata.ReadOnlyAny.Equals(object? obj) -> bool
@@ -66,12 +68,19 @@ override Substrait.Core.Relation.Reference.Metadata.get -> Substrait.Core.Metada
 override Substrait.Core.Relation.Set.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 override Substrait.Core.Relation.Sort.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 override Substrait.Core.Relation.VirtualTableRead.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
+override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.AliasReference! type, TContext context) -> TOutput
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Func! type, TContext context) -> TOutput
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.IntervalCompound! type, TContext context) -> TOutput
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.List! type, TContext context) -> TOutput
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Map! type, TContext context) -> TOutput
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Uuid! type, TContext context) -> TOutput
 override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.UserDefinedType! type, TContext context) -> TOutput
+override Substrait.Core.Type.ParameterizedType.AliasReference.Accept<TContext, TOutput>(Substrait.Core.Type.TypeVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
+override Substrait.Core.Type.ParameterizedType.AliasReference.Equals(object? obj) -> bool
+override Substrait.Core.Type.ParameterizedType.AliasReference.GetHashCode() -> int
+override Substrait.Core.Type.ParameterizedType.AliasReference.ShortTypeName.get -> string!
+override Substrait.Core.Type.ParameterizedType.AliasReference.ToTypeString() -> string!
+override Substrait.Core.Type.ParameterizedType.AliasReference.TypeName.get -> string!
 override Substrait.Core.Type.ParameterizedType.Func.Accept<TContext, TOutput>(Substrait.Core.Type.TypeVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
 override Substrait.Core.Type.ParameterizedType.Func.Equals(object? obj) -> bool
 override Substrait.Core.Type.ParameterizedType.Func.GetHashCode() -> int
@@ -121,6 +130,8 @@ override Substrait.Core.Type.UserDefinedType.GetHashCode() -> int
 static Substrait.Core.Extension.Types.TypeAnchor.operator !=(Substrait.Core.Extension.Types.TypeAnchor? left, Substrait.Core.Extension.Types.TypeAnchor? right) -> bool
 static Substrait.Core.Extension.Types.TypeAnchor.operator ==(Substrait.Core.Extension.Types.TypeAnchor? left, Substrait.Core.Extension.Types.TypeAnchor? right) -> bool
 static Substrait.Core.Metadata.PlanMetadata.Empty.get -> Substrait.Core.Metadata.PlanMetadata!
+static Substrait.Core.Metadata.PlanRelationMetadata.Empty.get -> Substrait.Core.Metadata.PlanRelationMetadata!
+static Substrait.Core.Metadata.PlanRelationMetadata.FromProto(Substrait.Protobuf.PlanRel! entry) -> Substrait.Core.Metadata.PlanRelationMetadata!
 static Substrait.Core.Metadata.ReadOnlyAdvancedExtension.FromProto(Substrait.Protobuf.AdvancedExtension! value) -> Substrait.Core.Metadata.ReadOnlyAdvancedExtension!
 static Substrait.Core.Metadata.ReadOnlyAny.FromProto(Google.Protobuf.WellKnownTypes.Any! value) -> Substrait.Core.Metadata.ReadOnlyAny!
 static Substrait.Core.Metadata.ReadOnlyRelCommon.FromProto(Substrait.Protobuf.RelCommon! value) -> Substrait.Core.Metadata.ReadOnlyRelCommon!
@@ -144,6 +155,8 @@ static Substrait.Core.Type.PrimitiveType.IntervalDay.Of(int precision, Substrait
 static Substrait.Core.Type.PrimitiveType.Time.Of(int precision, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.Time!
 static Substrait.Core.Type.PrimitiveType.Uuid.Of(Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.Uuid!
 static Substrait.Tools.TypeUtils.GetFieldNames(this Substrait.Core.Type.NamedStruct! namedStruct) -> System.Collections.Generic.IEnumerable<(Substrait.Core.Type.IType! Field, string! Name)>!
+Substrait.Core.Extension.ExtensionDefinitions.Description.get -> string!
+Substrait.Core.Extension.ExtensionDefinitions.Description.init -> void
 Substrait.Core.Extension.ExtensionsCollection.ExtensionsCollection(System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Types.TypeDefinition!>! types, System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Types.TypeVariationImpl!>! typeVariationImpls, System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Functions.ScalarFunctionImpl!>! scalarFunctionImpls, System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Functions.AggregateFunctionImpl!>! aggregateFunctionImpls, System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Functions.WindowFunctionImpl!>! windowFunctionImpls) -> void
 Substrait.Core.Extension.ExtensionsCollection.TryGetType(Substrait.Core.Extension.Types.TypeAnchor! anchor, Substrait.Core.Extension.ExtensionsDictionary.StrictMode strictMode, out Substrait.Core.Extension.Types.TypeDefinition? type) -> bool
 Substrait.Core.Extension.ExtensionsCollection.Types.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Extension.Types.TypeDefinition!>!
@@ -168,6 +181,11 @@ Substrait.Core.Metadata.PlanMetadata.ExtensionUrns.get -> System.Collections.Gen
 Substrait.Core.Metadata.PlanMetadata.PlanMetadata(Substrait.Core.Metadata.ReadOnlyAdvancedExtension? advancedExtensions = null, System.Collections.Generic.IEnumerable<string!>? expectedTypeUrls = null) -> void
 Substrait.Core.Metadata.PlanMetadata.PlanMetadata(Substrait.Core.Metadata.ReadOnlyAdvancedExtension? advancedExtensions, System.Collections.Generic.IEnumerable<string!>? expectedTypeUrls, System.Collections.Generic.IEnumerable<Substrait.Core.Metadata.ReadOnlySimpleExtensionURN!>? extensionUrns, System.Collections.Generic.IEnumerable<Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclaration!>? extensions) -> void
 Substrait.Core.Metadata.PlanMetadata.PlanMetadata(Substrait.Protobuf.AdvancedExtension! message, System.Collections.Generic.IEnumerable<string!>? expectedTypeUrls = null) -> void
+Substrait.Core.Metadata.PlanRelationMetadata
+Substrait.Core.Metadata.PlanRelationMetadata.DetachedExpressionCount.get -> int
+Substrait.Core.Metadata.PlanRelationMetadata.DetachedRelCount.get -> int
+Substrait.Core.Metadata.PlanRelationMetadata.Equals(Substrait.Core.Metadata.PlanRelationMetadata? other) -> bool
+Substrait.Core.Metadata.PlanRelationMetadata.ToProto() -> Substrait.Protobuf.PlanRel!
 Substrait.Core.Metadata.ReadOnlyAdvancedExtension
 Substrait.Core.Metadata.ReadOnlyAdvancedExtension.Enhancement.get -> Substrait.Core.Metadata.ReadOnlyAny?
 Substrait.Core.Metadata.ReadOnlyAdvancedExtension.Equals(Substrait.Core.Metadata.ReadOnlyAdvancedExtension? other) -> bool
@@ -269,10 +287,13 @@ Substrait.Core.Plan.Converters.ProtoToPlanConverter.FromStream(System.IO.Stream!
 Substrait.Core.Plan.Converters.ProtoToPlanConverter.ProtoToPlanConverter(Substrait.Core.Extension.ExtensionsCollection! extensions, Substrait.Core.Relation.IExtensionRelationSchemaResolver? extensionSchemaResolver) -> void
 Substrait.Core.Plan.IPlan.IRelation
 Substrait.Core.Plan.IPlan.IRelation.Input.get -> Substrait.Core.Relation.IRel!
+Substrait.Core.Plan.IPlan.IRelation.Metadata.get -> Substrait.Core.Metadata.PlanRelationMetadata!
 Substrait.Core.Plan.IPlan.Metadata.get -> Substrait.Core.Metadata.PlanMetadata!
 Substrait.Core.Plan.IPlan.Relations.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Plan.IPlan.IRelation!>!
 Substrait.Core.Plan.Plan.Metadata.get -> Substrait.Core.Metadata.PlanMetadata!
 Substrait.Core.Plan.Plan.Plan(Substrait.Core.Metadata.PlanMetadata! metadata, System.Collections.Generic.IEnumerable<Substrait.Core.Plan.IPlan.IRoot!>! roots, Substrait.Core.Plan.IVersion! version) -> void
+Substrait.Core.Plan.Plan.Relation.Metadata.get -> Substrait.Core.Metadata.PlanRelationMetadata!
+Substrait.Core.Plan.Plan.Relation.Relation(Substrait.Core.Metadata.PlanRelationMetadata! metadata, Substrait.Core.Relation.IRel! input) -> void
 Substrait.Core.Plan.Plan.Relations.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Plan.IPlan.IRelation!>!
 static Substrait.Core.Plan.Plan.FromRelations(System.Collections.Generic.IEnumerable<Substrait.Core.Plan.IPlan.IRelation!>! relations, Substrait.Core.Plan.IVersion! version) -> Substrait.Core.Plan.Plan!
 Substrait.Core.Plan.Plan.Relation
@@ -281,10 +302,13 @@ Substrait.Core.Plan.Plan.Relation.Input.get -> Substrait.Core.Relation.IRel!
 Substrait.Core.Plan.Plan.Relation.Equals(Substrait.Core.Plan.Plan.Relation? other) -> bool
 override Substrait.Core.Plan.Plan.Relation.Equals(object? obj) -> bool
 override Substrait.Core.Plan.Plan.Relation.GetHashCode() -> int
+Substrait.Core.Plan.Plan.Root.Metadata.get -> Substrait.Core.Metadata.PlanRelationMetadata!
+Substrait.Core.Plan.Plan.Root.Root(Substrait.Core.Metadata.PlanRelationMetadata! metadata, Substrait.Core.Relation.IRel! input, System.Collections.Generic.IEnumerable<string!>! names) -> void
 Substrait.Core.Plan.PlanBuilder
 Substrait.Core.Plan.PlanBuilder.AddExpectedTypeUrl(string! typeUrl) -> void
 Substrait.Core.Plan.PlanBuilder.AddOptimization(Google.Protobuf.IMessage! message) -> void
 Substrait.Core.Plan.PlanBuilder.AddOptimization(Substrait.Core.Metadata.ReadOnlyAny! detail) -> void
+Substrait.Core.Plan.PlanBuilder.AddRoot(Substrait.Core.Metadata.PlanRelationMetadata! metadata, Substrait.Core.Relation.IRel! input, System.Collections.Generic.IEnumerable<string!>! names) -> Substrait.Core.Relation.Reference!
 Substrait.Core.Plan.PlanBuilder.ClearAdvancedExtensions() -> void
 Substrait.Core.Plan.PlanBuilder.ClearEnhancement() -> void
 Substrait.Core.Plan.PlanBuilder.ClearExpectedTypeUrls() -> void
@@ -292,6 +316,7 @@ Substrait.Core.Plan.PlanBuilder.ClearOptimizations() -> void
 Substrait.Core.Plan.PlanBuilder.Metadata.get -> Substrait.Core.Metadata.PlanMetadata!
 Substrait.Core.Plan.PlanBuilder.PlanBuilder(Substrait.Core.Metadata.PlanMetadata! metadata, Substrait.Core.Plan.IVersion? version) -> void
 Substrait.Core.Plan.PlanBuilder.PlanBuilder(Substrait.Core.Plan.IVersion? version = null) -> void
+Substrait.Core.Plan.PlanBuilder.RegisterSubplan(Substrait.Core.Metadata.PlanRelationMetadata! metadata, Substrait.Core.Relation.IRel! subtree) -> Substrait.Core.Relation.Reference!
 Substrait.Core.Plan.PlanBuilder.RegisterSubplan(Substrait.Core.Relation.IRel! subtree) -> Substrait.Core.Relation.Reference!
 Substrait.Core.Plan.PlanBuilder.AddRoot(Substrait.Core.Relation.IRel! input, System.Collections.Generic.IEnumerable<string!>! names) -> Substrait.Core.Relation.Reference!
 Substrait.Core.Plan.PlanBuilder.Build() -> Substrait.Core.Plan.Plan!
@@ -364,6 +389,10 @@ Substrait.Core.Relation.Set.Set(Substrait.Core.Metadata.RelationMetadata! metada
 Substrait.Core.Relation.SingleBucketExchange.SingleBucketExchange(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! input, int partitionCount, Substrait.Core.Expression.IExpression! expression) -> void
 Substrait.Core.Relation.Sort.Sort(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! input, System.Collections.Generic.IEnumerable<Substrait.Core.Expression.SortField!>! sortFields) -> void
 Substrait.Core.Relation.VirtualTableRead.VirtualTableRead(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Type.NamedStruct! initialSchema, System.Collections.Generic.IEnumerable<Substrait.Core.Expression.Expression.Struct!>! rows, Substrait.Core.Expression.IExpression? filter) -> void
+Substrait.Core.Type.ParameterizedType.AliasReference
+Substrait.Core.Type.ParameterizedType.AliasReference.AliasReference(uint anchor, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> void
+Substrait.Core.Type.ParameterizedType.AliasReference.Anchor.get -> uint
+Substrait.Core.Type.ParameterizedType.AliasReference.Equals(Substrait.Core.Type.ParameterizedType.AliasReference? other) -> bool
 Substrait.Core.Type.ParameterizedType.Func
 Substrait.Core.Type.ParameterizedType.Func.Equals(Substrait.Core.Type.ParameterizedType.Func? other) -> bool
 Substrait.Core.Type.ParameterizedType.Func.Func(System.Collections.Generic.IEnumerable<Substrait.Core.Type.IType!>! parameters, Substrait.Core.Type.IType! returnType, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> void
@@ -390,6 +419,7 @@ Substrait.Core.Type.PrimitiveType.Uuid
 Substrait.Core.Type.PrimitiveType.Uuid.Equals(Substrait.Core.Type.PrimitiveType.Uuid? other) -> bool
 Substrait.Core.Type.PrimitiveTypeFactory.UUID.get -> Substrait.Core.Type.PrimitiveType.Uuid!
 Substrait.Core.Type.PrimitiveTypeFactory.Uuid_(Substrait.Core.Extension.Types.ITypeVariation? typeVariation) -> Substrait.Core.Type.PrimitiveType.Uuid!
+Substrait.Core.Type.TypeFactory.AliasReference(uint anchor, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.ParameterizedType.AliasReference!
 Substrait.Core.Type.TypeFactory.Func(System.Collections.Generic.IEnumerable<Substrait.Core.Type.IType!>! parameters, Substrait.Core.Type.IType! returnType, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.ParameterizedType.Func!
 Substrait.Core.Type.TypeFactory.IntervalCompound(int precision, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.ParameterizedType.IntervalCompound!
 Substrait.Core.Type.TypeFactory.IntervalDay(int precision, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.IntervalDay!
@@ -2031,6 +2061,7 @@ Substrait.Core.Plan.Converters.PlanToProtoConverter.ConverterContext.RemoveOutpu
 Substrait.Core.Plan.Converters.PlanToProtoConverter.ConverterContext.RemoveOutput(Substrait.Core.Relation.IRel! node) -> void
 Substrait.Core.Plan.Converters.PlanToProtoConverter.ConverterContext.RemoveOutput(Substrait.Core.Type.IType! node) -> void
 Substrait.Core.Plan.Converters.PlanToProtoConverter.From(Substrait.Core.Plan.IPlan! plan) -> Substrait.Protobuf.Plan!
+Substrait.Core.Plan.Converters.PlanToProtoConverter.From(Substrait.Core.Plan.IPlan! plan, int maxInlineRelExpressionDepth) -> Substrait.Protobuf.Plan!
 Substrait.Core.Plan.Converters.PlanToProtoConverter.PlanToProtoConverter() -> void
 Substrait.Core.Type.Converters.TypeToProtoConverter
 Substrait.Core.Type.Converters.TypeToProtoConverter.From(Substrait.Core.Type.IType! type, Substrait.Core.Plan.Converters.PlanToProtoConverter.ConverterContext! context) -> Substrait.Protobuf.Type!
@@ -2050,6 +2081,7 @@ virtual Substrait.Core.Type.PrimitiveType.ToTypeString() -> string!
 virtual Substrait.Core.Type.PrimitiveType.TypeName.get -> string!
 virtual Substrait.Core.Type.TypeBottomUpDispatcher<TContext, TOutput>.ShouldBailOut(TOutput result, TContext context) -> bool
 virtual Substrait.Core.Type.TypeTopDownDispatcher<TContext, TOutput>.ShouldBailOut(TOutput result, TContext context) -> bool
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.AliasReference! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Func! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.IntervalCompound! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.List! type, TContext context) -> TOutput

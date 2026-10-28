@@ -6,11 +6,14 @@ using System.Diagnostics;
 using System.Runtime.Serialization;
 using Substrait.Core.Extension;
 using Substrait.Core.Extension.Functions;
+using Substrait.Core.Plan.Converters;
 using Substrait.Core.Relation.Converters;
 using Substrait.Core.Type;
 using Substrait.Core.Type.Converters;
 using Substrait.Tools;
 using static Substrait.Core.Type.IType;
+using ConversionFrame = Substrait.Core.Plan.Converters.ProtoConversionContext.Frame;
+using ConversionPhase = Substrait.Core.Plan.Converters.ProtoConversionContext.Phase;
 using ProtoExpression = Substrait.Protobuf.Expression;
 using ProtoFieldReference = Substrait.Protobuf.Expression.Types.FieldReference;
 using ProtoFunctionArgument = Substrait.Protobuf.FunctionArgument;
@@ -22,7 +25,7 @@ namespace Substrait.Core.Expression.Converters;
 /// <summary>
 /// Converts protobuf expressions to the internal representation.
 /// </summary>
-public class ProtoToExpressionConverter
+public class ProtoToExpressionConverter : IProtoConverter
 {
     private readonly ExtensionsDictionary lookup;
     private readonly ExtensionsDictionary.StrictMode strictMode;
@@ -86,90 +89,78 @@ public class ProtoToExpressionConverter
     public IExpression From(
         ProtoExpression protoExpression,
         ParameterizedType.Struct inputSchema,
-        IReadOnlyList<ParameterizedType.Struct> enclosingSchemas)
+        IReadOnlyList<ParameterizedType.Struct> enclosingSchemas) =>
+        new ProtoConversionContext().Convert(this, protoExpression, inputSchema, enclosingSchemas);
+
+    void IProtoConverter.Convert(ConversionFrame frame, ProtoConversionContext context)
     {
-        var stack = new Stack<(ProtoExpression Expression, List<IExpression> Inputs, List<IExpression> Output, int InputCount)>();
-        var output = new List<IExpression>();
-        stack.Push((protoExpression, new List<IExpression>(), output, -1));
-
-        while (stack.Count > 0)
+        ProtoExpression current = (ProtoExpression)frame.Node;
+        ParameterizedType.Struct inputSchema = frame.InputSchema!;
+        switch (current.RexTypeCase)
         {
-            var (current, inputs, destination, inputCount) = stack.Pop();
-            switch (current.RexTypeCase)
-            {
-                case ProtoExpression.RexTypeOneofCase.Selection:
-                    destination.Add(this.CreateReference(current.Selection, inputSchema, enclosingSchemas));
-                    break;
-                case ProtoExpression.RexTypeOneofCase.Literal:
-                    destination.Add(this.CreateLiteral(current.Literal));
-                    break;
-                case ProtoExpression.RexTypeOneofCase.ScalarFunction:
-                    if (inputs.Count == inputCount)
+            case ProtoExpression.RexTypeOneofCase.Selection:
+                context.Complete(frame, this.CreateReference(current.Selection, inputSchema, frame.EnclosingSchemas));
+                break;
+            case ProtoExpression.RexTypeOneofCase.Literal:
+                context.Complete(frame, this.CreateLiteral(current.Literal));
+                break;
+            case ProtoExpression.RexTypeOneofCase.ScalarFunction:
+                if (frame.Phase == ConversionPhase.Enter)
+                {
+                    context.Resume(frame, ConversionPhase.Complete);
+                    for (int index = current.ScalarFunction.Arguments.Count - 1; index >= 0; --index)
                     {
-                        destination.Add(this.CreateScalarFunction(current, inputs));
-                    }
-                    else
-                    {
-                        int valueCount = current.ScalarFunction.Arguments.Count(argument => argument.ArgTypeCase == ProtoFunctionArgument.ArgTypeOneofCase.Value);
-                        stack.Push((current, inputs, destination, valueCount));
-                        for (int index = current.ScalarFunction.Arguments.Count - 1; index >= 0; index--)
+                        ProtoFunctionArgument argument = current.ScalarFunction.Arguments[index];
+                        if (argument.ArgTypeCase == ProtoFunctionArgument.ArgTypeOneofCase.Value)
                         {
-                            ProtoFunctionArgument argument = current.ScalarFunction.Arguments[index];
-                            if (argument.ArgTypeCase == ProtoFunctionArgument.ArgTypeOneofCase.Value)
-                            {
-                                stack.Push((argument.Value, new List<IExpression>(), inputs, -1));
-                            }
+                            context.PushExpression(this, argument.Value, inputSchema, frame.EnclosingSchemas);
                         }
                     }
 
-                    break;
-                case ProtoExpression.RexTypeOneofCase.Cast:
-                    if (inputs.Count == inputCount)
+                    return;
+                }
+
+                context.Complete(frame, this.CreateScalarFunction(current, frame, context));
+                break;
+            case ProtoExpression.RexTypeOneofCase.Cast:
+                if (frame.Phase == ConversionPhase.Enter)
+                {
+                    context.Resume(frame, ConversionPhase.Complete);
+                    context.PushExpression(this, current.Cast.Input, inputSchema, frame.EnclosingSchemas);
+                    return;
+                }
+
+                context.Complete(frame, new Expression.Cast(
+                    this.protoTypeConverter.From(current.Cast.Type), context.Expression(frame), current.Cast.FailureBehavior.FromProto()));
+                break;
+            case ProtoExpression.RexTypeOneofCase.IfThen:
+                if (frame.Phase == ConversionPhase.Enter)
+                {
+                    context.Resume(frame, ConversionPhase.Complete);
+                    context.PushExpression(this, current.IfThen.Else, inputSchema, frame.EnclosingSchemas);
+                    for (int index = current.IfThen.Ifs.Count - 1; index >= 0; --index)
                     {
-                        destination.Add(new Expression.Cast(
-                            this.protoTypeConverter.From(current.Cast.Type),
-                            inputs[0],
-                            current.Cast.FailureBehavior.FromProto()));
-                    }
-                    else
-                    {
-                        stack.Push((current, inputs, destination, 1));
-                        stack.Push((current.Cast.Input, new List<IExpression>(), inputs, -1));
+                        context.PushExpression(this, current.IfThen.Ifs[index].Then, inputSchema, frame.EnclosingSchemas);
+                        context.PushExpression(this, current.IfThen.Ifs[index].If, inputSchema, frame.EnclosingSchemas);
                     }
 
-                    break;
-                case ProtoExpression.RexTypeOneofCase.IfThen:
-                    if (inputs.Count == inputCount)
-                    {
-                        var clauses = new List<(IExpression Condition, IExpression Then)>((inputs.Count - 1) / 2);
-                        for (int index = 0; index < inputs.Count - 1; index += 2)
-                        {
-                            clauses.Add((inputs[index], inputs[index + 1]));
-                        }
+                    return;
+                }
 
-                        destination.Add(new Expression.IfThen(clauses, inputs[^1]));
-                    }
-                    else
-                    {
-                        stack.Push((current, inputs, destination, (current.IfThen.Ifs.Count * 2) + 1));
-                        stack.Push((current.IfThen.Else, new List<IExpression>(), inputs, -1));
-                        for (int index = current.IfThen.Ifs.Count - 1; index >= 0; index--)
-                        {
-                            stack.Push((current.IfThen.Ifs[index].Then, new List<IExpression>(), inputs, -1));
-                            stack.Push((current.IfThen.Ifs[index].If, new List<IExpression>(), inputs, -1));
-                        }
-                    }
+                var clauses = new List<(IExpression Condition, IExpression Then)>(current.IfThen.Ifs.Count);
+                for (int index = 0; index < current.IfThen.Ifs.Count; ++index)
+                {
+                    clauses.Add((context.Expression(frame, index * 2), context.Expression(frame, (index * 2) + 1)));
+                }
 
-                    break;
-                case ProtoExpression.RexTypeOneofCase.Subquery:
-                    destination.Add(this.CreateSubquery(current.Subquery, inputSchema, enclosingSchemas));
-                    break;
-                default:
-                    throw new NotImplementedException(current.RexTypeCase.ToString());
-            }
+                context.Complete(frame, new Expression.IfThen(clauses, context.Expression(frame, current.IfThen.Ifs.Count * 2)));
+                break;
+            case ProtoExpression.RexTypeOneofCase.Subquery:
+                this.ConvertSubquery(current.Subquery, frame, context);
+                break;
+            default:
+                throw new NotImplementedException(current.RexTypeCase.ToString());
         }
-
-        return GetSingleOutput(output, protoExpression, "expressions");
     }
 
     /// <summary>
@@ -320,7 +311,7 @@ public class ProtoToExpressionConverter
         return new FieldReference(schema.Fields[fieldIndex], fieldIndex, (int)stepsOut);
     }
 
-    private IExpression CreateScalarFunction(ProtoExpression expression, IReadOnlyList<IExpression> valueArguments)
+    private IExpression CreateScalarFunction(ProtoExpression expression, ConversionFrame frame, ProtoConversionContext context)
     {
         var scalarFunction = expression.ScalarFunction;
         var anchor = this.lookup.GetFunctionAnchor((int)scalarFunction.FunctionReference);
@@ -338,7 +329,7 @@ public class ProtoToExpressionConverter
                     arguments.Add(this.protoTypeConverter.From(argument.Type));
                     break;
                 case ProtoFunctionArgument.ArgTypeOneofCase.Value:
-                    arguments.Add(valueArguments[valueIndex++]);
+                    arguments.Add(context.Expression(frame, valueIndex++));
                     break;
                 case ProtoFunctionArgument.ArgTypeOneofCase.Enum when declaration is not null:
                     arguments.Add(new EnumArgumentValue((EnumArgument)declaration.Args[index], argument.Enum));
@@ -358,45 +349,68 @@ public class ProtoToExpressionConverter
             declaration);
     }
 
-    private IExpression CreateSubquery(
-        ProtoSubquery subquery,
-        ParameterizedType.Struct inputSchema,
-        IReadOnlyList<ParameterizedType.Struct> enclosingSchemas)
+    private void ConvertSubquery(ProtoSubquery subquery, ConversionFrame frame, ProtoConversionContext context)
     {
         if (this.protoRelConverter is null)
         {
             throw new InvalidOperationException("Subquery conversion requires a relation converter.");
         }
 
-        IReadOnlyList<ParameterizedType.Struct> nestedSchemas = enclosingSchemas.Append(inputSchema).ToImmutableList();
-        return subquery.SubqueryTypeCase switch
+        if (frame.Phase == ConversionPhase.Enter)
         {
-            ProtoSubquery.SubqueryTypeOneofCase.Scalar => this.CreateScalarSubquery(subquery, nestedSchemas),
-            ProtoSubquery.SubqueryTypeOneofCase.InPredicate => new Expression.InPredicateSubquery(
-                this.protoRelConverter.ToRel(subquery.InPredicate.Haystack, nestedSchemas),
-                subquery.InPredicate.Needles.Select(needle => this.From(needle, inputSchema, enclosingSchemas)).ToImmutableList()),
-            ProtoSubquery.SubqueryTypeOneofCase.SetPredicate => new Expression.SetPredicateSubquery(
-                this.protoRelConverter.ToRel(subquery.SetPredicate.Tuples, nestedSchemas),
-                subquery.SetPredicate.PredicateOp.FromProto()),
-            ProtoSubquery.SubqueryTypeOneofCase.SetComparison => new Expression.SetComparisonSubquery(
-                this.From(subquery.SetComparison.Left, inputSchema, enclosingSchemas),
-                subquery.SetComparison.ComparisonOp.FromProto(),
-                subquery.SetComparison.ReductionOp.FromProto(),
-                this.protoRelConverter.ToRel(subquery.SetComparison.Right, nestedSchemas)),
-            _ => throw new NotImplementedException(subquery.SubqueryTypeCase.ToString()),
-        };
-    }
+            var enclosing = frame.EnclosingSchemas as ImmutableList<ParameterizedType.Struct> ?? frame.EnclosingSchemas.ToImmutableList();
+            var nested = enclosing.Add(frame.InputSchema!);
+            context.Resume(frame, ConversionPhase.Complete);
+            switch (subquery.SubqueryTypeCase)
+            {
+                case ProtoSubquery.SubqueryTypeOneofCase.Scalar:
+                    context.PushRelation(this.protoRelConverter, subquery.Scalar.Input, nested);
+                    break;
+                case ProtoSubquery.SubqueryTypeOneofCase.InPredicate:
+                    for (int index = subquery.InPredicate.Needles.Count - 1; index >= 0; --index)
+                    {
+                        context.PushExpression(this, subquery.InPredicate.Needles[index], frame.InputSchema!, frame.EnclosingSchemas);
+                    }
 
-    private IExpression CreateScalarSubquery(
-        ProtoSubquery subquery,
-        IReadOnlyList<ParameterizedType.Struct> enclosingSchemas)
-    {
-        var relation = this.protoRelConverter!.ToRel(subquery.Scalar.Input, enclosingSchemas);
-        if (relation.RecordType.Fields.Count != 1)
-        {
-            throw new InvalidOperationException($"Subquery must yield exactly 1 column but {relation.RecordType.Fields.Count} columns.");
+                    context.PushRelation(this.protoRelConverter, subquery.InPredicate.Haystack, nested);
+                    break;
+                case ProtoSubquery.SubqueryTypeOneofCase.SetPredicate:
+                    context.PushRelation(this.protoRelConverter, subquery.SetPredicate.Tuples, nested);
+                    break;
+                case ProtoSubquery.SubqueryTypeOneofCase.SetComparison:
+                    context.PushRelation(this.protoRelConverter, subquery.SetComparison.Right, nested);
+                    context.PushExpression(this, subquery.SetComparison.Left, frame.InputSchema!, frame.EnclosingSchemas);
+                    break;
+                default:
+                    throw new NotImplementedException(subquery.SubqueryTypeCase.ToString());
+            }
+
+            return;
         }
 
-        return new Expression.ScalarSubquery(relation, relation.RecordType.Fields[0]);
+        var relation = context.Relation(frame);
+        switch (subquery.SubqueryTypeCase)
+        {
+            case ProtoSubquery.SubqueryTypeOneofCase.Scalar:
+                if (relation.RecordType.Fields.Count != 1)
+                {
+                    throw new InvalidOperationException($"Subquery must yield exactly 1 column but {relation.RecordType.Fields.Count} columns.");
+                }
+
+                context.Complete(frame, new Expression.ScalarSubquery(relation, relation.RecordType.Fields[0]));
+                break;
+            case ProtoSubquery.SubqueryTypeOneofCase.InPredicate:
+                context.Complete(frame, new Expression.InPredicateSubquery(relation, context.CopyExpressions(frame, subquery.InPredicate.Needles.Count)));
+                break;
+            case ProtoSubquery.SubqueryTypeOneofCase.SetPredicate:
+                context.Complete(frame, new Expression.SetPredicateSubquery(relation, subquery.SetPredicate.PredicateOp.FromProto()));
+                break;
+            case ProtoSubquery.SubqueryTypeOneofCase.SetComparison:
+                context.Complete(frame, new Expression.SetComparisonSubquery(context.Expression(frame), subquery.SetComparison.ComparisonOp.FromProto(),
+                    subquery.SetComparison.ReductionOp.FromProto(), relation));
+                break;
+            default:
+                throw new NotImplementedException(subquery.SubqueryTypeCase.ToString());
+        }
     }
 }

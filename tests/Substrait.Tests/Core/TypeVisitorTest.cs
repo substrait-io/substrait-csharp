@@ -121,6 +121,24 @@ public class TypeVisitorTest
     }
 
     /// <summary>
+    /// Tests exact top-down and bottom-up dispatcher sequences for an alias reference nested inside
+    /// a struct alongside an ordinary type, confirming it is visited exactly once, as a leaf, without
+    /// being expanded or followed.
+    /// </summary>
+    [Test]
+    public async Task TestTypeVisitorWithAliasReference()
+    {
+        var reference = this.typeFactory.AliasReference(3);
+        var structType = this.typeFactory.Struct([this.primitiveTypeFactory.I64, reference]);
+
+        string topDownExpected = "Struct|I64|AliasReference|";
+        string bottomUpExpected = "I64|AliasReference|Struct|";
+
+        await this.CheckTopDownTraversal(structType, topDownExpected);
+        await this.CheckBottomUpTraversal(structType, bottomUpExpected);
+    }
+
+    /// <summary>
     /// Tests exact top-down and bottom-up dispatcher sequences for a func wrapping distinguishable
     /// parameter and return types, so an ordering bug shows up as the wrong name at the wrong
     /// position rather than just a difference in count.

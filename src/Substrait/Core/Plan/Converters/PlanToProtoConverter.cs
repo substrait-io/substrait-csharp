@@ -24,7 +24,27 @@ public class PlanToProtoConverter
     /// </summary>
     /// <param name="plan">The internal plan.</param>
     /// <returns>The protobuf plan.</returns>
-    public Protobuf.Plan From(IPlan plan)
+    public Protobuf.Plan From(IPlan plan) => this.FromCore(plan, maxInlineRelExpressionDepth: null);
+
+    /// <summary>Exports a plan with bounded inline relation/expression depth using detached subtrees.</summary>
+    /// <param name="plan">The internal plan.</param>
+    /// <param name="maxInlineRelExpressionDepth">Positive maximum number of concrete relation and expression nodes on an inline path.
+    /// Each chunk starts at depth one; detached ordinal placeholders do not count.
+    /// Retained detached tables, types, literal internals, and opaque metadata are not bounded.</param>
+    /// <returns>The protobuf plan, with new detached entries appended after any retained entries.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The depth is less than one.</exception>
+    /// <remarks>This is not a protobuf parser recursion limit. Output is deterministic but does not minimize the number of detached entries.</remarks>
+    public Protobuf.Plan From(IPlan plan, int maxInlineRelExpressionDepth)
+    {
+        if (maxInlineRelExpressionDepth < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxInlineRelExpressionDepth), "Inline relation/expression depth must be positive.");
+        }
+
+        return this.FromCore(plan, maxInlineRelExpressionDepth);
+    }
+
+    private Protobuf.Plan FromCore(IPlan plan, int? maxInlineRelExpressionDepth)
     {
         if (plan.Relations.Count == 0)
         {
@@ -34,6 +54,11 @@ public class PlanToProtoConverter
         PlanValidation.Validate(plan.Relations);
         PlanMetadata metadata = plan.Metadata ?? throw new ArgumentException("Plan metadata must not be null.", nameof(plan));
         var context = new ConverterContext(metadata) { PlanRelations = plan.Relations };
+        if (maxInlineRelExpressionDepth is int maxDepth)
+        {
+            context.Export = new ProtoExportContext(context, maxDepth);
+        }
+
         var relationConverter = new RelToProtoConverter();
         var result = new Protobuf.Plan
         {
@@ -48,16 +73,27 @@ public class PlanToProtoConverter
             },
         };
         result.ExpectedTypeUrls.AddRange(metadata.ExpectedTypeUrls);
-        result.Relations.AddRange(plan.Relations.Select(entry => entry is IPlan.IRoot root
-            ? new Protobuf.PlanRel
+        result.Relations.AddRange(plan.Relations.Select(entry =>
+        {
+            Protobuf.PlanRel output = entry.Metadata.ToProto();
+            ProtoRel input = context.Export is null
+                ? relationConverter.From(entry.Input, context)
+                : context.Export.Convert(entry.Input, output, relationConverter);
+            if (entry is IPlan.IRoot root)
             {
-                Root = new Protobuf.RelRoot
+                output.Root = new Protobuf.RelRoot
                 {
-                    Input = relationConverter.From(root.Input, context),
+                    Input = input,
                     Names = { root.Names },
-                },
+                };
             }
-            : new Protobuf.PlanRel { Rel = relationConverter.From(entry.Input, context) }));
+            else
+            {
+                output.Rel = input;
+            }
+
+            return output;
+        }));
 
         context.ExtensionsCollector.WriteTo(result);
 
@@ -87,6 +123,8 @@ public class PlanToProtoConverter
 
         internal IReadOnlyList<IPlan.IRelation>? PlanRelations { get; init; }
 
+        internal ProtoExportContext? Export { get; set; }
+
         internal void ValidateReference(Reference reference)
         {
             if (this.PlanRelations is null)
@@ -113,7 +151,7 @@ public class PlanToProtoConverter
             this.extensions.CollectReference(type, uri, name);
 
         /// <inheritdoc/>
-        public ProtoRel GetOutput(IRel node) => this.relations.GetOutput(node);
+        public ProtoRel GetOutput(IRel node) => this.Export is null ? this.relations.GetOutput(node) : this.Export.GetOutput(node);
 
         /// <inheritdoc/>
         public void AddOutput(IRel node, ProtoRel output) => this.relations.AddOutput(node, output);
@@ -122,7 +160,7 @@ public class PlanToProtoConverter
         public void RemoveOutput(IRel node) => this.relations.RemoveOutput(node);
 
         /// <inheritdoc/>
-        public ProtoExpression GetOutput(IExpression node) => this.expressions.GetOutput(node);
+        public ProtoExpression GetOutput(IExpression node) => this.Export is null ? this.expressions.GetOutput(node) : this.Export.GetOutput(node);
 
         /// <inheritdoc/>
         public void AddOutput(IExpression node, ProtoExpression output) => this.expressions.AddOutput(node, output);

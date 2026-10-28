@@ -18,7 +18,7 @@ preview releases may contain breaking API changes.
   consumers use the compatible `net8.0` package asset.
 - Generated protobuf bindings, ANTLR parsers, and embedded extension definitions
   come from `Substrait.Net.Protobuf`, `Substrait.Net.Antlr`, and
-  `Substrait.Net.Extensions` version 0.104.0.
+  `Substrait.Net.Extensions` version 0.107.0.
 - All targets also depend on `Antlr4.Runtime.Standard`, `Google.Protobuf`, and
   `YamlDotNet`. The `netstandard2.0` target also uses `IndexRange`,
   `Microsoft.Bcl.HashCode`, `System.Collections.Immutable`, and `System.Memory`
@@ -26,8 +26,7 @@ preview releases may contain breaking API changes.
 - Runtime dependency minimums include Google.Protobuf 3.36.2 and YamlDotNet
   18.1.0. The YAML collection adapter forwards the root deserializer required
   by YamlDotNet's updated interface while retaining nested read-only
-  collections, polymorphic arguments, and aliases. The Substrait specification
-  packages remain at 0.104.0.
+  collections, polymorphic arguments, and aliases.
 - Product-specific integrations, schemas, and test assets remain outside the
   public package.
 
@@ -255,6 +254,154 @@ entry**. For example, a field one subquery level outward inside an entry's scala
 subquery is supported; a one-level outer field at the entry's top level is not.
 When extracting a shared subplan, keep its correlated enclosing query inside the
 same entry or remove the caller-dependent correlation before registration.
+
+## Upgrading to Substrait 0.107.0
+
+The three specification packages are upgraded together from 0.104.0 to 0.107.0.
+Runtime dependency minimums are unchanged. `Version.Current` reports 0.107.0
+from the protobuf assembly metadata, so newly constructed plans use that version.
+The generated read-only metadata facades are unchanged.
+
+The extension loader accepts the optional file-level `description` introduced
+in 0.105.0 through `ExtensionDefinitions.Description`; unrecognized YAML fields
+still fail rather than being ignored. Existing files without descriptions remain
+valid. The same nine function families are loaded by default.
+
+Consumers must account for the intervening upstream contract changes:
+
+- Decimal `avg` now declares a nullable `DECIMAL?<38,S>` result, including its
+  window form. Plans using this explicitly loaded extension should no longer
+  declare a required result.
+- The date and precision-time `round_calendar` overloads no longer accept a
+  trailing origin value. Keep the origin enum argument and remove the duplicate
+  trailing date/time argument, updating the compound signature accordingly.
+- The deprecated `subtract:ptstz_iyear` overload is removed. Use
+  `subtract:ptstz_iyear_str` with an explicit IANA timezone.
+- Generated `LambdaInvocation.lambda` is now in a oneof. Existing inline-lambda
+  wire encoding is unchanged, but callers using generated APIs should recompile
+  and account for oneof presence.
+
+The newer protobuf packages expose detached expression/relation subtrees and
+named lambdas. Detached tables are supported as described in
+[detached plan imports](#detached-plan-imports). All plan import entry points
+still reject nonempty `Plan.named_lambdas` tables with `NotSupportedException`,
+even when unreferenced or when extension resolution is non-strict.
+
+The extension type-expression parser's existing limitations also remain:
+parameterized precision-time/timestamp signatures are loaded as declarations
+but are not available through function-key lookup. The contract changes above
+do not add support for resolving those signatures.
+
+See the upstream release notes for [0.105.0](https://github.com/substrait-io/substrait/releases/tag/v0.105.0),
+[0.106.0](https://github.com/substrait-io/substrait/releases/tag/v0.106.0), and
+[0.107.0](https://github.com/substrait-io/substrait/releases/tag/v0.107.0).
+
+## Detached plan imports
+
+`ProtoToPlanConverter.From`, `FromBytes`, `FromStream`, `FromFile`, and
+`FromJson` resolve `detached_expression_ordinal` and `detached_rel_ordinal`
+references using the tables of the containing `PlanRel`. Root and non-root
+entries have separate namespaces, even when one refers to another through
+`ReferenceRel`. Detachment is encoding-only, not computation sharing: core
+relations and expressions contain the resolved logical trees.
+
+Import validates the reachable portion of each entry. Detached ordinals must
+be in range, each entry may be referenced at most once, and references must be
+acyclic, including cycles through subqueries. Each referenced table entry must
+have a concrete non-ordinal variant; its children may be detached ordinals.
+Violations produce `SerializationException` identifying the plan entry.
+Existing correlation, plan-reference, and relation-anchor checks apply after
+resolution, in the original use-site scope. Unreachable table entries are not
+execution roots and are not semantically validated.
+
+Detached relation, expression, and mixed subquery chains are converted through
+one shared work stack, with container-local resolution at frame entry. Binary
+and JSON parsers retain their existing limits:
+detachment does not make excessively nested individual chunks, types, literals,
+or field-reference paths parseable. Standalone relation/expression converters
+cannot resolve detached ordinals without their containing plan entry and
+report `SerializationException`; convert the containing plan instead.
+
+### Encoding metadata and opaque payloads
+
+`IPlan.IRelation.Metadata` is a non-null `PlanRelationMetadata` snapshot of the
+original detached tables, including unused entries. This is separate from
+`IRel.Metadata` (operator metadata) and `IPlan.Metadata` (plan-level metadata).
+The tables are retained in their original order because opaque `Any` payloads
+may reference them. The library does not interpret or validate ordinals inside
+opaque payloads; consumers that interpret them must apply the same
+container-local validation rules.
+
+`PlanRelationMetadata.FromProto(entry)` copies only the detached tables, not the
+entry's root or relation. `ToProto()` returns an independent mutable copy of
+those tables in a `PlanRel` with no relation variant set. Public object imports
+copy retained messages; private binary/JSON imports can retain privately owned
+messages. Exported tables can be mutated without changing the core plan.
+Entry equality and hashing include the retained encoding metadata.
+
+When copying an imported entry, pass its metadata to the metadata-first
+`Plan.Root`/`Plan.Relation` constructors, or to the corresponding
+`PlanBuilder.AddRoot`/`RegisterSubplan` overloads. `Plan.FromRelations` retains
+each entry's metadata. Preserve plan-level extension declarations and relevant
+plan entry ordinals as well: detached tables and opaque payloads may reference
+them. Changing logical trees does not rewrite opaque payloads or retained
+tables; applications making such edits are responsible for their consistency.
+
+This adds a required `Metadata` property to custom `IPlan.IRelation`/`IRoot`
+implementations. Return `PlanRelationMetadata.Empty` for entries without
+retained encoding metadata. Existing concrete constructors and builder
+overloads use this empty value automatically.
+
+### Export scope
+
+`PlanToProtoConverter.From(plan)` preserves retained detached tables and their
+ordinals while emitting the resolved logical tree inline. This default output
+is unchanged and may exceed parser limits for a deep import. Opt-in detachment
+is described below. Standalone `ExtendedExpression` conversion is not supported.
+
+## Bounded plan export
+
+Use the depth overload to generate detached relation and expression subtrees:
+
+```csharp
+var protobuf = new PlanToProtoConverter().From(
+    plan, maxInlineRelExpressionDepth: 8);
+```
+
+The positive integer bounds the number of concrete `Rel` and `Expression`
+nodes along each inline path in the newly emitted logical query. Each chunk's
+root counts as one. Relation-to-expression and expression-to-subquery edges
+share one counter; subqueries do not reset depth unless detached. Sibling
+counts do not affect depth. When adding a child would exceed the bound, that
+child starts a detached chunk at depth one. Ordinal placeholders terminate the
+inline path and do not count as concrete nodes. Zero and negative bounds throw
+`ArgumentOutOfRangeException`.
+
+For example, `Project -> Cast -> ScalarSubquery -> Read` has depth four.
+At a bound of three, its final `Read` becomes a detached relation. Protobuf
+wrapper messages do not count; neither do types, literal internals, metadata,
+or embedded physical field references that are not `Expression` messages.
+This is **not** a protobuf message-depth or parser recursion limit. Deep
+excluded content or wrapper-heavy paths can still exceed binary or JSON parser
+limits. The example value eight is not a universal parser-safety guarantee.
+
+The bounded writer traverses relation/expression/subquery work iteratively and
+does not use runtime protobuf descriptors. It emits each occurrence independently:
+sharing a core node does not cause two uses of one detached ordinal. Output is
+deterministic for a fixed plan and bound, but does not minimize table size.
+Ordinary `ReferenceRel` links remain in the plan-wide namespace.
+
+**Retained tables are exempt from the bound.** They are copied unchanged, in
+their original order, to preserve opaque extension references. Newly generated
+entries are appended within each root/non-root plan entry and obey the bound.
+Repeated import/export can therefore grow the tables; this overload does not
+compact, deduplicate, renumber, or reinterpret retained entries or opaque
+payloads. Mutating returned protobufs does not modify the source plan.
+
+Binary and JSON round-trips preserve the logical query, output names, schemas,
+and metadata. Because encoding metadata participates in plan equality, an
+import of newly detached output need not compare equal to the original plan
+entry even when its logical relation tree is equal.
 
 ## Migration to specification packages
 

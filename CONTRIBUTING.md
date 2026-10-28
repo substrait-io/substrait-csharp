@@ -131,6 +131,40 @@ on every target, including `netstandard2.0`. Duplicate-key exceptions are
 translated into location-aware validation errors. Builder registration tracks
 inserted anchors and rolls them back if a later anchor conflicts.
 
+Protobuf relation, expression, and subquery conversion shares one
+`ProtoConversionContext` per top-level conversion. Its array-backed
+`Stack<Frame>` stores value-type continuation frames; two shared result buffers
+hold completed children until their parent consumes them. Capture result
+offsets when a frame starts executing, not when siblings are scheduled, and
+release only that frame's child results on completion.
+
+Schedule child work in the operator's conversion case, pushing children in
+reverse evaluation order. Resume the parent only after its inputs are available
+so expressions receive the correct input and enclosing schemas. Do not call
+public relation/expression conversion entry points from within traversal:
+that creates a new context and can reintroduce CLR recursion through subqueries.
+Literal and type conversion retain their independent iterative implementations.
+This infrastructure does not change protobuf parser limits.
+
+Detached subtree validation follows only references reachable from each plan
+entry, before logical conversion. Keep the original tables in
+`PlanRelationMetadata` for opaque payload references. The conversion context
+resolves detached ordinals when a frame enters, before dispatch, so continuations
+use the resolved node without changing its input or enclosing schemas.
+Keep the detached container on the per-conversion context, not on individual
+frames or reusable converters.
+
+Bounded export uses `ProtoExportContext` with one stack and shared child-result
+buffers. It reuses the existing node serializer visitors. Keep
+`RelationExpressions` in the same consumption order as those visitors; explicit
+checks reject missing, reordered, or unconsumed children. Virtual row wrappers,
+literal internals, and physical field-reference wrappers are not concrete
+`Expression` messages and must not consume the depth budget or be detached.
+Expression children otherwise follow `InputNodes`; subquery relations use the
+same depth budget. Never memoize bounded query results by node identity:
+two occurrences of a shared core node need independently encoded subtrees.
+Retained tables are exempt and new entries must only be appended.
+
 ## Public API changes
 
 The Public API analyzer tracks the package surface in

@@ -14,6 +14,10 @@ namespace Substrait.Core.Plan.Converters;
 /// <summary>
 /// Converts protobuf plans to the internal representation.
 /// </summary>
+/// <remarks>
+/// All import entry points resolve reachable detached subtrees and retain their container-local
+/// tables for opaque payloads. Nonempty named-lambda and type-alias tables remain unsupported.
+/// </remarks>
 public class ProtoToPlanConverter
 {
     private readonly ExtensionsCollection extensions;
@@ -91,21 +95,34 @@ public class ProtoToPlanConverter
     private IPlan FromCore(Protobuf.Plan plan, ExtensionsDictionary.StrictMode strictMode, bool ownsMetadata)
     {
         _ = plan ?? throw new ArgumentNullException(nameof(plan));
+        if (plan.NamedLambdas.Count > 0)
+        {
+            throw new NotSupportedException("Plan.named_lambdas is not supported by the internal representation.");
+        }
+
+        if (plan.TypeAliases.Count > 0)
+        {
+            throw new NotSupportedException("Plan.type_aliases is not supported by the internal representation.");
+        }
+
+
         var metadata = PlanMetadata.Capture(plan, ownsMetadata);
         _ = new ExtensionsCollector.Builder(metadata.ExtensionUrns, metadata.Extensions);
         var inputs = new Protobuf.Rel[plan.Relations.Count];
         var dependencies = new List<IReadOnlyList<int>>(plan.Relations.Count);
+        var detachedContexts = new DetachedPlanContext[plan.Relations.Count];
         var anchors = new Dictionary<uint, string>();
         for (int ordinal = 0; ordinal < plan.Relations.Count; ++ordinal)
         {
             Protobuf.PlanRel entry = plan.Relations[ordinal];
+            detachedContexts[ordinal] = new DetachedPlanContext(entry, ordinal);
             inputs[ordinal] = entry.RelTypeCase switch
             {
                 Protobuf.PlanRel.RelTypeOneofCase.Root when entry.Root.Input is not null => entry.Root.Input,
                 Protobuf.PlanRel.RelTypeOneofCase.Rel => entry.Rel,
                 _ => throw new SerializationException($"Plan relation ordinal {ordinal} must have a root input or a non-root relation; its variant or input is unset."),
             };
-            dependencies.Add(ProtoPlanDependencies.Find(inputs[ordinal], ordinal, plan.Relations.Count, anchors));
+            dependencies.Add(ProtoPlanDependencies.FindDetached(inputs[ordinal], ordinal, plan.Relations.Count, anchors, detachedContexts[ordinal]));
         }
 
         IReadOnlyList<int> order = PlanValidation.GetDependencyOrder(dependencies, message => new SerializationException(message));
@@ -122,7 +139,7 @@ public class ProtoToPlanConverter
             {
                 // Entries are independent correlation scopes, even when referenced
                 // from a subquery. Never borrow a referring caller's schemas.
-                converted[ordinal] = relationConverter.ToRel(inputs[ordinal]);
+                converted[ordinal] = relationConverter.ToRel(inputs[ordinal], detachedContexts[ordinal]);
             }
             catch (SerializationException error)
             {
@@ -133,9 +150,10 @@ public class ProtoToPlanConverter
         var entries = plan.Relations.Select((entry, ordinal) =>
         {
             IRel input = converted[ordinal] ?? throw new SerializationException($"Plan relation ordinal {ordinal} was not converted.");
+            PlanRelationMetadata entryMetadata = PlanRelationMetadata.Capture(entry, ownsMetadata);
             return entry.RelTypeCase == Protobuf.PlanRel.RelTypeOneofCase.Root
-                ? (IPlan.IRelation)new Plan.Root(input, entry.Root.Names)
-                : new Plan.Relation(input);
+                ? (IPlan.IRelation)new Plan.Root(entryMetadata, input, entry.Root.Names)
+                : new Plan.Relation(entryMetadata, input);
         });
 
         Protobuf.Version version = plan.Version ?? throw new SerializationException("Plan version is required by this converter.");

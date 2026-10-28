@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+using Google.Protobuf;
 using Substrait.Core.Expression;
 using Substrait.Core.Extension;
 using Substrait.Core.Relation;
@@ -122,25 +123,72 @@ public sealed class ProtoToRelConverterTests
     [Arguments(3L, 0L)]
     [Arguments(-1L, 3L)]
     [Arguments(100L, 8L)]
-    public async Task ConvertsFetch(long count, long offset)
+    [Arguments(0L, 0L)]
+    [Arguments(null, 8L)]
+    [Arguments(3L, null)]
+    [Arguments(null, null)]
+    public async Task ConvertsFetch(long? count, long? offset)
     {
         ProtoRel relation = new()
         {
             Fetch = new FetchRel
             {
                 Input = CreateNamedRead(),
-                CountExpr = new ProtoExpression { Literal = new ProtoExpression.Types.Literal { I64 = count } },
-                OffsetExpr = new ProtoExpression { Literal = new ProtoExpression.Types.Literal { I64 = offset } },
+                CountExpr = count.HasValue ? new ProtoExpression { Literal = new ProtoExpression.Types.Literal { I64 = count.Value } } : null,
+                OffsetExpr = offset.HasValue ? new ProtoExpression { Literal = new ProtoExpression.Types.Literal { I64 = offset.Value } } : null,
                 Common = new RelCommon(),
             },
         };
 
-        Fetch result = (Fetch)this.converter.ToRel(relation);
+        IExpression expectedCount = count.HasValue
+            ? new Literal.I64Literal(count.Value)
+            : new Literal.NullLiteral(TypeFactory.NULLABLE.I64);
+        ProtoRel[] inputs =
+        [
+            relation,
+            ProtoRel.Parser.ParseFrom(relation.ToByteArray()),
+            ProtoRel.Parser.ParseJson(JsonFormatter.Default.Format(relation)),
+        ];
 
-        await Assert.That(result.Count).IsEqualTo(new Literal.I64Literal(count));
-        await Assert.That(result.Offset).IsEqualTo(new Literal.I64Literal(offset));
-        await Assert.That(result.RecordType.Fields.Count).IsEqualTo(1);
-        await Assert.That(result.RecordType.Fields[0]).IsEqualTo(TypeFactory.REQUIRED.I64);
+        foreach (ProtoRel input in inputs)
+        {
+            Fetch result = (Fetch)this.converter.ToRel(input);
+            await Assert.That(result.Count).IsEqualTo(expectedCount);
+            await Assert.That(result.Offset).IsEqualTo(new Literal.I64Literal(offset ?? 0));
+            await Assert.That(result.RecordType.Fields.Count).IsEqualTo(1);
+            await Assert.That(result.RecordType.Fields[0]).IsEqualTo(TypeFactory.REQUIRED.I64);
+            await Assert.That(input.Fetch.CountExpr is null).IsEqualTo(!count.HasValue);
+            await Assert.That(input.Fetch.OffsetExpr is null).IsEqualTo(!offset.HasValue);
+
+            ProtoRel exported = new RelToProtoConverter().From(result);
+            if (!count.HasValue)
+            {
+                await Assert.That(exported.Fetch.CountExpr.Literal.LiteralTypeCase).IsEqualTo(ProtoExpression.Types.Literal.LiteralTypeOneofCase.Null);
+                await Assert.That(exported.Fetch.CountExpr.Literal.Null.I64.Nullability).IsEqualTo(ProtoType.Types.Nullability.Nullable);
+            }
+
+            IRel expected = result;
+            await Assert.That(this.converter.ToRel(ProtoRel.Parser.ParseFrom(exported.ToByteArray()))).IsEqualTo(expected);
+            await Assert.That(this.converter.ToRel(ProtoRel.Parser.ParseJson(JsonFormatter.Default.Format(exported)))).IsEqualTo(expected);
+        }
+    }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task RejectsFetchWithUnsetExpressionKind(bool count)
+    {
+        ProtoRel relation = new() { Fetch = new() { Input = CreateNamedRead() } };
+        if (count)
+        {
+            relation.Fetch.CountExpr = new();
+        }
+        else
+        {
+            relation.Fetch.OffsetExpr = new();
+        }
+
+        await Assert.That(() => this.converter.ToRel(relation)).ThrowsExactly<NotImplementedException>();
     }
 
     [Test]
