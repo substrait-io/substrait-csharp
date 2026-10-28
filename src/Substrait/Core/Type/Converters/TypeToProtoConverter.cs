@@ -145,6 +145,17 @@ public class TypeToProtoConverter
         public override ProtoType Visit(ParameterizedType.AliasReference type, PlanToProtoConverter.ConverterContext context) =>
             new() { Alias = new() { TypeAliasReference_ = type.Anchor, Nullability = type.Nullable.ToProto() } };
 
+        public override ProtoType Visit(ParameterizedType.Func type, PlanToProtoConverter.ConverterContext context)
+        {
+            var result = new ProtoType.Types.Func
+            {
+                Nullability = type.Nullable.ToProto(),
+            };
+            result.ParameterTypes.AddRange(type.Parameters.Select(context.GetOutput));
+            result.ReturnType = context.GetOutput(type.ReturnType);
+            return new ProtoType { Func = result };
+        }
+
         public override ProtoType Visit(UnboundType type, PlanToProtoConverter.ConverterContext context)
         {
             return new ProtoType { Unbound = new ProtoType.Types.Unbound() };

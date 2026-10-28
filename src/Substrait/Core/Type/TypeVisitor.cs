@@ -207,6 +207,12 @@ public abstract class TypeVisitor<TContext, TOutput> : IVisitor<IType, TContext,
     /// <returns>The result of the visit.</returns>
     public virtual TOutput Visit(AliasReference type, TContext context) => this.Visit((IType)type, context);
 
+    /// <summary>Visits a function type, falling back to the general type handler.</summary>
+    /// <param name="type">Function type.</param>
+    /// <param name="context">Input context.</param>
+    /// <returns>The result of the visit.</returns>
+    public virtual TOutput Visit(Func type, TContext context) => this.Visit((IType)type, context);
+
     /// <summary>Visits the unbound placeholder type, falling back to the general type handler.</summary>
     public virtual TOutput Visit(UnboundType type, TContext context) => this.Visit((IType)type, context);
 

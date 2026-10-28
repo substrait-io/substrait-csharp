@@ -67,8 +67,9 @@ public static class TypeUtils
     /// <summary>
     /// Returns <paramref name="namedStruct"/>'s struct fields paired with their names, in depth-first
     /// order. Only struct fields consume a name, at any depth: a field reached transparently through
-    /// a list element or a map key/value is still paired with a name if it is itself a struct, and
-    /// map keys are paired before values. List and map containers contribute no pairs of their own.
+    /// a list element, a map key/value, or a function parameter/return type is still paired with a
+    /// name if it is itself a struct, and map keys are paired before values. List, map, and function
+    /// containers contribute no pairs of their own.
     /// </summary>
     /// <param name="namedStruct">The named struct to traverse.</param>
     /// <returns>Each struct field's own declared type paired with its name, in depth-first order.</returns>
@@ -108,6 +109,15 @@ public static class TypeUtils
                     break;
                 case ParameterizedType.List list:
                     stack.Push((list.ElementType, false));
+                    break;
+                case ParameterizedType.Func func:
+                    // Return type pushed first so parameters pop - and are visited/named - first, in order.
+                    stack.Push((func.ReturnType, false));
+                    for (int index = func.Parameters.Count - 1; index >= 0; --index)
+                    {
+                        stack.Push((func.Parameters[index], false));
+                    }
+
                     break;
                 case ParameterizedType.Map map:
                     // Value pushed first so key pops - and is visited/named - first.

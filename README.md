@@ -105,6 +105,11 @@ points to. See [type-alias references](docs/alias-references.md) for
 construction, the distinction from alias-table resolution, and the
 variation-rejection behavior.
 
+`ParameterizedType.Func` models a function's parameter and return types; it
+is the one parameterized type that cannot carry a type variation. See
+[function types](docs/function-types.md) for construction, malformed-message
+error reporting, and the variation-rejection behavior.
+
 `UnboundType.Instance` models `Type.unbound`, a placeholder for a type not
 yet bound to a concrete type in a partially bound plan or expression; unlike
 every other `IType`, its nullability throws rather than returning a value.

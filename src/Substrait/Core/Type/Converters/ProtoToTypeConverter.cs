@@ -218,6 +218,28 @@ public class ProtoToTypeConverter
                     case ProtoType.KindOneofCase.Alias:
                         collectedTypes.Add(GetFactory(current.Alias.Nullability).AliasReference(current.Alias.TypeAliasReference_));
                         break;
+                    case ProtoType.KindOneofCase.Func:
+                        if (nestedTypes is not null)
+                        {
+                            int returnIndex = nestedTypes.Count - 1;
+                            collectedTypes.Add(GetFactory(current.Func.Nullability).Func(nestedTypes.Take(returnIndex), nestedTypes[returnIndex]));
+                        }
+                        else if (current.Func.ReturnType is null)
+                        {
+                            throw new SerializationException("The function return type is unset.");
+                        }
+                        else
+                        {
+                            var childTypes = new List<IType>(current.Func.ParameterTypes.Count + 1);
+                            stack.Push((current, collectedTypes, childTypes, path));
+                            stack.Push((current.Func.ReturnType, childTypes, null, new TypePath(path, null, current.Func.ParameterTypes.Count, "function return type")));
+                            for (int index = current.Func.ParameterTypes.Count - 1; index >= 0; --index)
+                            {
+                                stack.Push((current.Func.ParameterTypes[index], childTypes, null, new TypePath(path, null, index, $"function parameter {index}")));
+                            }
+                        }
+
+                        break;
                     case ProtoType.KindOneofCase.Unbound:
                         collectedTypes.Add(UnboundType.Instance);
                         break;
