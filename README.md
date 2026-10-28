@@ -9,8 +9,9 @@ Experimental C# bindings for [substrait](https://substrait.io).
 
 ## Development
 
-The repository requires a .NET 10 SDK. The checked-in `global.json` selects a
-compatible installed SDK.
+The repository requires .NET SDK 10.0.403 or a newer stable .NET 10 SDK. The
+checked-in `global.json` selects a compatible installed SDK. Running the .NET 8
+tests also requires .NET 8.0.33 or later.
 
 Clone the repository:
 
