@@ -110,6 +110,12 @@ is the one parameterized type that cannot carry a type variation. See
 [function types](docs/function-types.md) for construction, malformed-message
 error reporting, and the variation-rejection behavior.
 
+`UnboundType.Instance` models `Type.unbound`, a placeholder for a type not
+yet bound to a concrete type in a partially bound plan or expression; unlike
+every other `IType`, its nullability throws rather than returning a value.
+See [the unbound placeholder type](docs/unbound-type.md) for construction,
+the throwing-nullability behavior, and binding boundaries.
+
 `ProtoToPlanConverter.FromBytes`, `FromStream`, and `FromFile` parse binary
 protobuf privately, avoiding redundant metadata copies; `FromJson` explicitly
 parses protobuf JSON and accepts a parser with registered `Any` payload types.

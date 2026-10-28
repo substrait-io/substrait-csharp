@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Reflection;
 using System.Runtime.Serialization;
 using Google.Protobuf;
 using Substrait.Core.Extension;
@@ -292,7 +293,10 @@ public sealed class UserDefinedTypeTests
         {
             PrecisionTime = new() { Precision = 13, Nullability = ProtoType.Types.Nullability.Required },
         }, typeof(ArgumentOutOfRangeException));
-        yield return (() => new ProtoType { Unbound = new() }, typeof(NotImplementedException));
+
+        // Forces an out-of-range KindCase so this exercises NotImplementedException regardless of
+        // how much of Type.kind is implemented, rather than depending on a specific still-missing kind.
+        yield return (CreateUnmatchableKind, typeof(NotImplementedException));
         yield return (() => CreateProto(17), typeof(ArgumentException));
     }
 
@@ -573,6 +577,14 @@ public sealed class UserDefinedTypeTests
         }
 
         return new ExtensionsDictionary.Builder(plan).Build();
+    }
+
+    private static ProtoType CreateUnmatchableKind()
+    {
+        var proto = new ProtoType();
+        FieldInfo kindCaseField = typeof(ProtoType).GetField("kindCase_", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        kindCaseField.SetValue(proto, (ProtoType.KindOneofCase)(-1));
+        return proto;
     }
 
     private sealed class RecordingVisitor : DefaultTypeVisitor<List<IType>, VoidOutput>

@@ -273,7 +273,9 @@ public static class TypeUtils
         {
             hash.Add(type.GetType());
             hash.Add(type.InputNodes.Count());
-            if ((comparison & ITypeComparison.Nullability) != 0)
+
+            // UnboundType has no nullability to read, matching its own NodeEquals.
+            if (type is not UnboundType && (comparison & ITypeComparison.Nullability) != 0)
             {
                 hash.Add(type.Nullable);
             }
