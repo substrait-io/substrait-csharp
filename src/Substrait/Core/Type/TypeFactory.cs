@@ -223,6 +223,19 @@ public class TypeFactory : PrimitiveTypeFactory
     }
 
     /// <summary>
+    /// Function.
+    /// </summary>
+    /// <param name="parameters">The ordered parameter types.</param>
+    /// <param name="returnType">The return type.</param>
+    /// <param name="typeVariation">Must be null: the pinned <c>Type.func</c> message has no
+    /// type-variation field, so a function type cannot carry one.</param>
+    /// <returns>The function type.</returns>
+    public ParameterizedType.Func Func(IEnumerable<IType> parameters, IType returnType, ITypeVariation? typeVariation = null)
+    {
+        return new ParameterizedType.Func(parameters, returnType, this.Nullable, typeVariation);
+    }
+
+    /// <summary>
     /// Returns the input type as nullable.
     /// </summary>
     /// <param name="type">The input type.</param>
@@ -299,6 +312,14 @@ public class TypeFactory : PrimitiveTypeFactory
                     }
 
                     return this.AliasReference(alias.Anchor);
+
+                case ParameterizedType.Func func:
+                    if (typeVariation is not null)
+                    {
+                        throw new ArgumentException("A function type cannot carry a type variation: the pinned Type.func message has no such field.", nameof(typeVariation));
+                    }
+
+                    return this.Func(func.Parameters, func.ReturnType);
             }
         }
 

@@ -840,4 +840,89 @@ public abstract class ParameterizedType : IType
             return null;
         }
     }
+
+    /// <summary>
+    /// Immutable function type: an ordered parameter signature and return type.
+    /// </summary>
+    public sealed class Func : ParameterizedType, IEquatable<Func>
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Func"/> class.
+        /// </summary>
+        /// <param name="parameters">The ordered parameter types. May be empty.</param>
+        /// <param name="returnType">The return type.</param>
+        /// <param name="nullable">Whether it is nullable.</param>
+        /// <param name="typeVariation">Must be null: the pinned <c>Type.func</c> message has no
+        /// type-variation field, so a function type cannot carry one.</param>
+        /// <exception cref="ArgumentException"><paramref name="typeVariation"/> is not null.</exception>
+        public Func(IEnumerable<IType> parameters, IType returnType, NullableType nullable, ITypeVariation? typeVariation = null)
+            : base(nullable, RejectVariation(typeVariation))
+        {
+            this.Parameters = (parameters ?? throw new ArgumentNullException(nameof(parameters))).ToImmutableList();
+            this.ReturnType = returnType ?? throw new ArgumentNullException(nameof(returnType));
+        }
+
+        /// <summary>
+        /// Gets the ordered parameter types.
+        /// </summary>
+        public IReadOnlyList<IType> Parameters { get; }
+
+        /// <summary>
+        /// Gets the return type.
+        /// </summary>
+        public IType ReturnType { get; }
+
+        /// <inheritdoc/>
+        public override IEnumerable<IType> InputNodes => [.. this.Parameters, this.ReturnType];
+
+        /// <inheritdoc/>
+        public override string ShortTypeName => "func";
+
+        /// <inheritdoc/>
+        public override string TypeName => "func";
+
+        /// <inheritdoc/>
+        public override string ToTypeString()
+        {
+            var buf = new StringBuilder(128);
+            buf.Append(this.TypeName).Append('<');
+            foreach (var parameter in this.Parameters)
+            {
+                buf.Append(parameter.ToTypeString()).Append(',');
+            }
+
+            buf.Append(this.ReturnType.ToTypeString()).Append('>');
+            return buf.ToString();
+        }
+
+        /// <inheritdoc/>
+        public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public bool Equals(Func? other) =>
+            other is not null && this.Nullable == other.Nullable && this.Parameters.SequenceEqual(other.Parameters) && this.ReturnType.Equals(other.ReturnType);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is Func other && this.Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.Parameters.CombineHashCodes(), this.ReturnType);
+
+        /// <inheritdoc/>
+        protected override bool NodeEqualTypeParameters(IType other)
+        {
+            // Parameter and return types are calculated recursively.
+            return true;
+        }
+
+        private static ITypeVariation? RejectVariation(ITypeVariation? typeVariation)
+        {
+            if (typeVariation is not null)
+            {
+                throw new ArgumentException("A function type cannot carry a type variation: the pinned Type.func message has no such field.", nameof(typeVariation));
+            }
+
+            return null;
+        }
+    }
 }

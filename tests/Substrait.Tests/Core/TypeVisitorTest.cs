@@ -138,6 +138,26 @@ public class TypeVisitorTest
         await this.CheckBottomUpTraversal(structType, bottomUpExpected);
     }
 
+    /// <summary>
+    /// Tests exact top-down and bottom-up dispatcher sequences for a func wrapping distinguishable
+    /// parameter and return types, so an ordering bug shows up as the wrong name at the wrong
+    /// position rather than just a difference in count.
+    /// </summary>
+    [Test]
+    public async Task TestTypeVisitorWithFunc()
+    {
+        var funcType = this.typeFactory.Func(
+            [this.primitiveTypeFactory.BOOL, this.primitiveTypeFactory.I8],
+            this.primitiveTypeFactory.STR);
+        var structType = this.typeFactory.Struct([funcType]);
+
+        string topDownExpected = "Struct|Func|Bool|I8|Str|";
+        string bottomUpExpected = "Bool|I8|Str|Func|Struct|";
+
+        await this.CheckTopDownTraversal(structType, topDownExpected);
+        await this.CheckBottomUpTraversal(structType, bottomUpExpected);
+    }
+
     [Test]
     public async Task NewTypeVisitorOverloadsRemainOptional()
     {
