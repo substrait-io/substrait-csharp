@@ -354,12 +354,54 @@ overloads use this empty value automatically.
 
 ### Export scope
 
-`PlanToProtoConverter` preserves retained detached tables and their ordinals
-while emitting the resolved logical tree inline. This preserves references
-inside opaque payloads but is not a bounded-depth writer: re-exporting a deep
-import may exceed parser limits. Existing plans without encoding metadata keep
-their prior output shape. Opt-in bounded-depth generation and standalone
-`ExtendedExpression` conversion are not included in this change.
+`PlanToProtoConverter.From(plan)` preserves retained detached tables and their
+ordinals while emitting the resolved logical tree inline. This default output
+is unchanged and may exceed parser limits for a deep import. Opt-in detachment
+is described below. Standalone `ExtendedExpression` conversion is not supported.
+
+## Bounded plan export
+
+Use the depth overload to generate detached relation and expression subtrees:
+
+```csharp
+var protobuf = new PlanToProtoConverter().From(
+    plan, maxInlineRelExpressionDepth: 8);
+```
+
+The positive integer bounds the number of concrete `Rel` and `Expression`
+nodes along each inline path in the newly emitted logical query. Each chunk's
+root counts as one. Relation-to-expression and expression-to-subquery edges
+share one counter; subqueries do not reset depth unless detached. Sibling
+counts do not affect depth. When adding a child would exceed the bound, that
+child starts a detached chunk at depth one. Ordinal placeholders terminate the
+inline path and do not count as concrete nodes. Zero and negative bounds throw
+`ArgumentOutOfRangeException`.
+
+For example, `Project -> Cast -> ScalarSubquery -> Read` has depth four.
+At a bound of three, its final `Read` becomes a detached relation. Protobuf
+wrapper messages do not count; neither do types, literal internals, metadata,
+or embedded physical field references that are not `Expression` messages.
+This is **not** a protobuf message-depth or parser recursion limit. Deep
+excluded content or wrapper-heavy paths can still exceed binary or JSON parser
+limits. The example value eight is not a universal parser-safety guarantee.
+
+The bounded writer traverses relation/expression/subquery work iteratively and
+does not use runtime protobuf descriptors. It emits each occurrence independently:
+sharing a core node does not cause two uses of one detached ordinal. Output is
+deterministic for a fixed plan and bound, but does not minimize table size.
+Ordinary `ReferenceRel` links remain in the plan-wide namespace.
+
+**Retained tables are exempt from the bound.** They are copied unchanged, in
+their original order, to preserve opaque extension references. Newly generated
+entries are appended within each root/non-root plan entry and obey the bound.
+Repeated import/export can therefore grow the tables; this overload does not
+compact, deduplicate, renumber, or reinterpret retained entries or opaque
+payloads. Mutating returned protobufs does not modify the source plan.
+
+Binary and JSON round-trips preserve the logical query, output names, schemas,
+and metadata. Because encoding metadata participates in plan equality, an
+import of newly detached output need not compare equal to the original plan
+entry even when its logical relation tree is equal.
 
 ## Migration to specification packages
 

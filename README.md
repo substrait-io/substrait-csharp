@@ -99,6 +99,12 @@ types, including a struct nested arbitrarily deep inside either. See
 [list and map types](docs/list-and-map-types.md) for construction, malformed-
 message error reporting, and depth-first named-struct field traversal.
 
+`ParameterizedType.AliasReference` models a plan-local type-alias reference
+as a lossless anchor value; it does not resolve or follow the alias it
+points to. See [type-alias references](docs/alias-references.md) for
+construction, the distinction from alias-table resolution, and the
+variation-rejection behavior.
+
 `UnboundType.Instance` models `Type.unbound`, a placeholder for a type not
 yet bound to a concrete type in a partially bound plan or expression; unlike
 every other `IType`, its nullability throws rather than returning a value.
@@ -117,10 +123,15 @@ All plan import entry points resolve detached expression and relation subtrees,
 including those inside subqueries, without increasing protobuf parser limits.
 `IPlan.IRelation.Metadata` retains the original container-local tables so opaque
 extension payloads keep valid ordinal references. Preserve this metadata when
-copying an imported entry. Export preserves the tables but writes the logical
-tree inline; it does not yet generate bounded-depth encodings. See
+copying an imported entry. Export preserves the tables and writes the logical
+tree inline by default. Use
+`PlanToProtoConverter.From(plan, maxInlineRelExpressionDepth: 8)` to generate
+detached subtrees with a combined inline relation/expression depth bound.
+Retained tables are unchanged and exempt from the bound; it is not a protobuf
+parser recursion limit. See
 [detached plan imports](docs/preview-package.md#detached-plan-imports) for
-validation, ownership, and compatibility details.
+validation and ownership, and [bounded export](docs/preview-package.md#bounded-plan-export)
+for the depth contract and compatibility details.
 
 Custom `ExtensionLeaf`, `ExtensionSingle`, and `ExtensionMulti` relations preserve
 opaque detail payloads and common metadata. Supply an unmapped schema when

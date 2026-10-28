@@ -156,6 +156,12 @@ public abstract class DefaultTypeVisitor<TContext, TOutput> : TypeVisitor<TConte
     }
 
     /// <inheritdoc/>
+    public override TOutput Visit(AliasReference type, TContext context)
+    {
+        return this.DefaultVisit(type, context);
+    }
+
+    /// <inheritdoc/>
     public override TOutput Visit(UnboundType type, TContext context) => this.DefaultVisit(type, context);
 
     /// <inheritdoc/>

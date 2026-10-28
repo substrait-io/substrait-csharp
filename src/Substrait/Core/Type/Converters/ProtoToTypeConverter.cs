@@ -215,6 +215,9 @@ public class ProtoToTypeConverter
                         }
 
                         break;
+                    case ProtoType.KindOneofCase.Alias:
+                        collectedTypes.Add(GetFactory(current.Alias.Nullability).AliasReference(current.Alias.TypeAliasReference_));
+                        break;
                     case ProtoType.KindOneofCase.Unbound:
                         collectedTypes.Add(UnboundType.Instance);
                         break;

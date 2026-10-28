@@ -21,6 +21,7 @@ namespace Substrait.Core.Expression.Converters;
 public class ExpressionToProtoConverter
 {
     private readonly ExpressionBottomUpDispatcher<PlanToProtoConverter.ConverterContext, ProtoExpression> dispatcher;
+    private readonly ExpressionToProtoVisitor visitor;
 
     /// <summary>Initializes an expression converter.</summary>
     public ExpressionToProtoConverter(TypeToProtoConverter typeConverter)
@@ -31,7 +32,8 @@ public class ExpressionToProtoConverter
     /// <summary>Initializes an expression converter with optional subquery support.</summary>
     public ExpressionToProtoConverter(TypeToProtoConverter typeConverter, RelToProtoConverter? relationConverter)
     {
-        this.dispatcher = new(new ExpressionToProtoVisitor(typeConverter, relationConverter));
+        this.visitor = new(typeConverter, relationConverter);
+        this.dispatcher = new(this.visitor);
     }
 
     /// <summary>Converts an expression using a new context.</summary>
@@ -40,7 +42,10 @@ public class ExpressionToProtoConverter
 
     /// <summary>Converts an expression using a shared context.</summary>
     public ProtoExpression From(IExpression expression, PlanToProtoConverter.ConverterContext context) =>
-        this.dispatcher.Dispatch(expression, context);
+        context.Export is null ? this.dispatcher.Dispatch(expression, context) : context.GetOutput(expression);
+
+    internal ProtoExpression ConvertSingle(IExpression expression, PlanToProtoConverter.ConverterContext context) =>
+        expression.Accept(this.visitor, context);
 
     private sealed class ExpressionToProtoVisitor : ExpressionVisitor<PlanToProtoConverter.ConverterContext, ProtoExpression>
     {
@@ -142,12 +147,13 @@ public class ExpressionToProtoConverter
 
         public override ProtoExpression Visit(Expression.IfThen expression, PlanToProtoConverter.ConverterContext context)
         {
-            var result = new ProtoExpression.Types.IfThen { Else = context.GetOutput(expression.ElseClause) };
+            var result = new ProtoExpression.Types.IfThen();
             result.Ifs.AddRange(expression.IfClauses.Select(clause => new ProtoExpression.Types.IfThen.Types.IfClause
             {
                 If = context.GetOutput(clause.Condition),
                 Then = context.GetOutput(clause.Then),
             }));
+            result.Else = context.GetOutput(expression.ElseClause);
             return new ProtoExpression { IfThen = result };
         }
 

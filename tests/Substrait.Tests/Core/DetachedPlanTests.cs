@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Runtime.Serialization;
+using System.Text;
 using Google.Protobuf;
 using Google.Protobuf.Reflection;
 using Google.Protobuf.WellKnownTypes;
@@ -356,6 +357,24 @@ public sealed class DetachedPlanTests
     }
 
     [Test]
+    [Arguments(0)]
+    [Arguments(1)]
+    [Arguments(8)]
+    public async Task InlineNestingJsonMatchesTheProtobufFixture(int depth)
+    {
+        ProtoExpression inline = Integer(7);
+        for (int index = 0; index < depth; ++index)
+        {
+            inline = Cast(inline);
+        }
+
+        ProtoPlan expected = WirePlan(Project(Read(), inline));
+        string json = InlineNestingJson(depth);
+        await Assert.That(ProtoPlan.Parser.ParseJson(json)).IsEqualTo(expected);
+        await Assert.That(Reader().FromJson(json)).IsEqualTo(Reader().From(expected));
+    }
+
+    [Test]
     public async Task DetachedEncodingOvercomesTheDefaultParserNestingLimit()
     {
         const int depth = 256;
@@ -368,8 +387,12 @@ public sealed class DetachedPlanTests
         }
 
         ProtoPlan nested = WirePlan(Project(Read(), inline));
-        await Assert.That(() => Reader().FromBytes(nested.ToByteArray())).ThrowsExactly<InvalidProtocolBufferException>();
-        await Assert.That(() => Reader().FromJson(JsonFormatter.Default.Format(nested))).ThrowsExactly<InvalidProtocolBufferException>();
+        byte[] nestedBytes = nested.ToByteArray();
+        string nestedJson = InlineNestingJson(depth);
+        await Assert.That(() => Reader().FromBytes(nestedBytes)).ThrowsExactly<InvalidProtocolBufferException>();
+        InvalidProtocolBufferException error = await Assert.That(() => Reader().FromJson(nestedJson))
+            .ThrowsExactly<InvalidProtocolBufferException>().And.IsNotNull();
+        await Assert.That(error.Message).Contains("too many levels of nesting");
         IPlan fromBytes = Reader().FromBytes(detached.ToByteArray());
         IPlan fromJson = Reader().FromJson(JsonFormatter.Default.Format(detached));
         await Assert.That(fromBytes.Relations[0].Input).IsEqualTo(Reader().From(nested).Relations[0].Input);
@@ -707,6 +730,39 @@ public sealed class DetachedPlanTests
         }
 
         return wire;
+    }
+
+    private static string InlineNestingJson(int depth)
+    {
+        // Formatting the deep protobuf tree recursively can exhaust the test thread's stack
+        // before the parser's nesting limit is exercised.
+        var expression = new StringBuilder();
+        for (int index = 0; index < depth; ++index)
+        {
+            expression.Append("""
+                {"cast":{"type":{"i64":{"nullability":"NULLABILITY_REQUIRED"}},"failureBehavior":"FAILURE_BEHAVIOR_THROW_EXCEPTION","input":
+                """);
+        }
+
+        expression.Append(JsonFormatter.Default.Format(Integer(7)));
+        for (int index = 0; index < depth; ++index)
+        {
+            expression.Append("}}");
+        }
+
+        return $$$"""
+            {
+              "version": {"minorNumber": 107, "producer": "detached-plan-tests"},
+              "relations": [{"root": {
+                "names": ["value", "computed"],
+                "input": {"project": {
+                  "common": {"direct": {}},
+                  "input": {{{JsonFormatter.Default.Format(Read())}}},
+                  "expressions": [{{{expression}}}]
+                }}
+              }}]
+            }
+            """;
     }
 
     private static ProtoPlan WirePlan(ProtoRel input, bool nonRoot = false) => new()
