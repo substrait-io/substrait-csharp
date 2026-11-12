@@ -74,8 +74,13 @@ Checked once, eagerly, for the whole table at `Build()`:
   `AliasReference` at its root. (A definition may still reference another
   alias *nested inside* a container - only the bare, unwrapped case is
   rejected, matching the pinned `TypeAlias` contract.)
-- A **non-concrete definition**: a definition that is `UnboundType` at its
-  root.
+- A **non-concrete definition**: a definition containing `UnboundType` at its
+  root or at any depth - a struct field, list element, map key or value,
+  user-defined data-type parameter, or function parameter or return type.
+- An **unspecified type parameter**: a user-defined type anywhere in a
+  definition with a `TypeParameter.Null` parameter. The pinned contract
+  requires every type parameter of a definition to be specified; specified
+  values such as `false`, `0`, and empty strings remain valid.
 - A **circular alias dependency**, self-referential or indirect through any
   number of other anchors, detected via the same topological-sort idiom
   `PlanValidation.GetDependencyOrder` already uses for the plan's
@@ -102,17 +107,18 @@ Checked only by `ProtoToTypeAliasTableConverter`, at the proto boundary:
   unset. (Every other validation above operates on already-converted `IType`
   values, where this distinction cannot be expressed - the aliased type is
   always already a *some* concrete type or it would have failed sooner.)
-  "Every type parameter must be specified", the pinned contract's other
-  requirement on a definition, is enforced for free: there is no
-  "unspecified parameter" representable in any `IType` constructor, so
-  reusing `ProtoToTypeConverter` to convert each entry's type already rules
-  it out.
+
+The proto boundary also ignores a definition's **root nullability**, as the
+pinned contract specifies: only the reference site's nullability matters, so
+an entry whose aliased type leaves its root nullability unspecified is
+accepted. The caller's protobuf is not modified, and nullability nested
+inside the definition is validated as usual.
 
 Resolve-time errors name the offending anchor and the path to it (for
 example, `"...at struct field 1 -> function parameter 0"`), mirroring
 `ProtoToTypeConverter`'s own path-reporting convention. Table-build-time
-errors name the anchor(s) involved; a `TypeAlias` entry has no deeper
-"path" of its own to report.
+errors name the anchor(s) involved, and the concreteness and type-parameter
+checks also name the nested location (for example, `"...at list element"`).
 
 ## Recursion safety
 

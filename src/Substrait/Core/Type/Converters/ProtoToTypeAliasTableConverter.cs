@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Runtime.Serialization;
+using Google.Protobuf;
+using Google.Protobuf.Reflection;
 using ProtoType = Substrait.Protobuf.Type;
 using ProtoTypeAlias = Substrait.Protobuf.TypeAlias;
 
@@ -46,7 +48,7 @@ public sealed class ProtoToTypeAliasTableConverter
             IType definition;
             try
             {
-                definition = this.typeConverter.From(alias.Type);
+                definition = this.typeConverter.From(WithSpecifiedRootNullability(alias.Type));
             }
             catch (Exception error) when (error is SerializationException or ArgumentException or NotImplementedException or NotSupportedException)
             {
@@ -71,5 +73,19 @@ public sealed class ProtoToTypeAliasTableConverter
         {
             throw new SerializationException(error.Message, error);
         }
+    }
+
+    private static ProtoType WithSpecifiedRootNullability(ProtoType type)
+    {
+        FieldDescriptor kind = ProtoType.Descriptor.FindFieldByNumber((int)type.KindCase);
+        FieldDescriptor? nullability = kind.MessageType.FindFieldByName("nullability");
+        if (nullability is null || nullability.Accessor.GetValue((IMessage)kind.Accessor.GetValue(type)) is not ProtoType.Types.Nullability.Unspecified)
+        {
+            return type;
+        }
+
+        ProtoType clone = type.Clone();
+        nullability.Accessor.SetValue((IMessage)kind.Accessor.GetValue(clone), ProtoType.Types.Nullability.Required);
+        return clone;
     }
 }

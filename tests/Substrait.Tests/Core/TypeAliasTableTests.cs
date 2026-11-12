@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Runtime.Serialization;
+using Substrait.Core.Extension;
 using Substrait.Core.Extension.Types;
 using Substrait.Core.Plan.Converters;
 using Substrait.Core.Type;
@@ -14,6 +15,7 @@ namespace Substrait.Tests.Core;
 public sealed class TypeAliasTableTests
 {
     private const string Urn = "extension:example:alias-table-types";
+    private static readonly TypeAnchor Shape = new(Urn, "shape");
 
     [Test]
     public async Task EmptyTableHasNoDefinitions()
@@ -133,11 +135,16 @@ public sealed class TypeAliasTableTests
     }
 
     [Test]
-    public async Task RejectsNonConcreteUnboundDefinition()
+    [MethodDataSource(nameof(UnboundDefinitions))]
+    public async Task RejectsNonConcreteUnboundDefinition(IType definition, string location)
     {
-        var builder = new TypeAliasTable.Builder();
+        ArgumentException error = await Assert.That(() => new TypeAliasTable.Builder().Add(7, definition).Build()).ThrowsExactly<ArgumentException>().And.IsNotNull();
+        await Assert.That(error.Message).Contains("Alias anchor 7: a definition must be a concrete type");
+        await Assert.That(error.Message).Contains(location);
 
-        await Assert.That(() => builder.Add(5, UnboundType.Instance)).ThrowsExactly<ArgumentException>();
+        SerializationException protoError = await Assert.That(() => AliasImport().From([new ProtoTypeAlias { TypeAliasAnchor = 7, Type = ToProto(definition) }])).ThrowsExactly<SerializationException>().And.IsNotNull();
+        await Assert.That(protoError.Message).Contains("Alias anchor 7: a definition must be a concrete type");
+        await Assert.That(protoError.Message).Contains(location);
     }
 
     [Test]
@@ -393,6 +400,124 @@ public sealed class TypeAliasTableTests
         IType type = TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.BOOL, TypeFactory.NULLABLE.STR]);
 
         await Assert.That(table.Resolve(type)).IsEqualTo(type);
+    }
+
+    [Test]
+    [MethodDataSource(nameof(RootDefinitions))]
+    public async Task IgnoresUnspecifiedRootNullabilityOfAProtoDefinition(IType definition)
+    {
+        ProtoType root = WithUnspecifiedRootNullability(ToProto(definition));
+        ProtoType original = root.Clone();
+
+        TypeAliasTable table = AliasImport().From([new ProtoTypeAlias { TypeAliasAnchor = 7, Type = root }]);
+
+        await Assert.That(root).IsEqualTo(original);
+        await Assert.That(table.Resolve(TypeFactory.REQUIRED.AliasReference(7))).IsEqualTo(definition);
+        await Assert.That(table.Resolve(TypeFactory.NULLABLE.AliasReference(7))).IsEqualTo(TypeFactory.NULLABLE.ResolveTypeWithNullability(definition));
+    }
+
+    [Test]
+    public async Task IgnoringRootNullabilityDoesNotRelaxNestedOrReferenceSiteNullability()
+    {
+        ProtoType unspecifiedField = WithUnspecifiedRootNullability(ToProto(TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64])));
+        unspecifiedField.Struct.Types_[0].I64.Nullability = ProtoType.Types.Nullability.Unspecified;
+        ProtoType unspecifiedReference = WithUnspecifiedRootNullability(ToProto(TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64])));
+        unspecifiedReference.Struct.Types_[0] = new ProtoType { Alias = new ProtoType.Types.TypeAliasReference { TypeAliasReference_ = 1, Nullability = ProtoType.Types.Nullability.Unspecified } };
+
+        await Assert.That(() => AliasImport().From([new ProtoTypeAlias { TypeAliasAnchor = 7, Type = unspecifiedField }])).ThrowsExactly<SerializationException>();
+        await Assert.That(() => AliasImport().From([new ProtoTypeAlias { TypeAliasAnchor = 1, Type = RequiredI64() }, new ProtoTypeAlias { TypeAliasAnchor = 7, Type = unspecifiedReference }])).ThrowsExactly<SerializationException>();
+    }
+
+    [Test]
+    [MethodDataSource(nameof(UnspecifiedParameterDefinitions))]
+    public async Task RejectsUnspecifiedUserDefinedParameterAnywhereInADefinition(IType definition, string unspecified)
+    {
+        string expected = $"Alias anchor 7: a definition must specify every type parameter, but {unspecified}.";
+
+        ArgumentException error = await Assert.That(() => new TypeAliasTable.Builder().Add(7, definition).Build()).ThrowsExactly<ArgumentException>().And.IsNotNull();
+        await Assert.That(error.Message).Contains(expected);
+
+        SerializationException protoError = await Assert.That(() => AliasImport().From([new ProtoTypeAlias { TypeAliasAnchor = 7, Type = ToProto(definition) }])).ThrowsExactly<SerializationException>().And.IsNotNull();
+        await Assert.That(protoError.Message).Contains(expected);
+    }
+
+    [Test]
+    public async Task AcceptsSpecifiedDefaultLikeUserDefinedParameterValues()
+    {
+        IType definition = TypeFactory.REQUIRED.UserDefined(
+            Shape,
+            [new TypeParameter.Boolean(false), new TypeParameter.Integer(0), new TypeParameter.String(string.Empty), new TypeParameter.Enum(string.Empty)]);
+
+        TypeAliasTable inMemory = new TypeAliasTable.Builder().Add(7, TypeFactory.REQUIRED.List(definition)).Build();
+        TypeAliasTable imported = AliasImport().From([new ProtoTypeAlias { TypeAliasAnchor = 7, Type = ToProto(TypeFactory.REQUIRED.List(definition)) }]);
+
+        await Assert.That(inMemory.Resolve(TypeFactory.REQUIRED.AliasReference(7))).IsEqualTo(TypeFactory.REQUIRED.List(definition));
+        await Assert.That(imported.Resolve(TypeFactory.REQUIRED.AliasReference(7))).IsEqualTo(TypeFactory.REQUIRED.List(definition));
+    }
+
+    [Test]
+    public async Task ResolveStillAcceptsUnboundPlaceholdersOutsideDefinitions()
+    {
+        TypeAliasTable table = new TypeAliasTable.Builder().Add(1, TypeFactory.REQUIRED.I64).Build();
+        IType partiallyBound = TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.AliasReference(1), UnboundType.Instance]);
+
+        await Assert.That(table.Resolve(partiallyBound)).IsEqualTo(TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64, UnboundType.Instance]));
+    }
+
+    public static IEnumerable<Func<IType>> RootDefinitions()
+    {
+        yield return () => TypeFactory.REQUIRED.I64;
+        yield return () => TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64, TypeFactory.NULLABLE.STR]);
+        yield return () => TypeFactory.REQUIRED.List(TypeFactory.REQUIRED.I32);
+        yield return () => TypeFactory.REQUIRED.Map(TypeFactory.REQUIRED.STR, TypeFactory.NULLABLE.I64);
+        yield return () => TypeFactory.REQUIRED.Func([TypeFactory.REQUIRED.I64], TypeFactory.REQUIRED.BOOL);
+        yield return () => TypeFactory.REQUIRED.UserDefined(Shape, [new TypeParameter.Integer(3)]);
+    }
+
+    public static IEnumerable<Func<(IType Definition, string Location)>> UnboundDefinitions()
+    {
+        yield return () => (UnboundType.Instance, "not the unbound placeholder");
+        yield return () => (TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64, UnboundType.Instance]), "unbound placeholder at struct field 1.");
+        yield return () => (TypeFactory.REQUIRED.List(UnboundType.Instance), "unbound placeholder at list element.");
+        yield return () => (TypeFactory.REQUIRED.Map(UnboundType.Instance, TypeFactory.REQUIRED.STR), "unbound placeholder at map key.");
+        yield return () => (TypeFactory.REQUIRED.Map(TypeFactory.REQUIRED.STR, UnboundType.Instance), "unbound placeholder at map value.");
+        yield return () => (TypeFactory.REQUIRED.UserDefined(Shape, [new TypeParameter.DataType(UnboundType.Instance)]), $"unbound placeholder at user-defined type {Urn}#shape parameter 0.");
+        yield return () => (TypeFactory.REQUIRED.Func([UnboundType.Instance], TypeFactory.REQUIRED.BOOL), "unbound placeholder at function parameter 0.");
+        yield return () => (TypeFactory.REQUIRED.Func([], UnboundType.Instance), "unbound placeholder at function return type.");
+    }
+
+    public static IEnumerable<Func<(IType Definition, string Unspecified)>> UnspecifiedParameterDefinitions()
+    {
+        yield return () => (TypeFactory.REQUIRED.UserDefined(Shape, [new TypeParameter.Null()]), $"user-defined type {Urn}#shape parameter 0 is unspecified");
+        yield return () => (
+            TypeFactory.REQUIRED.List(TypeFactory.REQUIRED.UserDefined(Shape, [new TypeParameter.Integer(1), new TypeParameter.Null()])),
+            $"user-defined type {Urn}#shape parameter 1 is unspecified at list element");
+    }
+
+    private static ProtoToTypeAliasTableConverter AliasImport() => new(new ProtoToTypeConverter(
+        new ExtensionsDictionary.Builder(new Protobuf.Plan
+        {
+            ExtensionUrns = { new Protobuf.SimpleExtensionURN { ExtensionUrnAnchor = 1, Urn = Urn } },
+            Extensions = { new Protobuf.SimpleExtensionDeclaration { ExtensionType = new() { ExtensionUrnReference = 1, TypeAnchor = 0, Name = Shape.Key } } },
+        }).Build(),
+        new ExtensionsCollection([new TypeDefinition(Shape)], [], [], [], [])));
+
+    private static ProtoType ToProto(IType type) => new TypeToProtoConverter().From(type, new PlanToProtoConverter.ConverterContext());
+
+    private static ProtoType WithUnspecifiedRootNullability(ProtoType proto)
+    {
+        const ProtoType.Types.Nullability unspecified = ProtoType.Types.Nullability.Unspecified;
+        _ = proto.KindCase switch
+        {
+            ProtoType.KindOneofCase.I64 => proto.I64.Nullability = unspecified,
+            ProtoType.KindOneofCase.Struct => proto.Struct.Nullability = unspecified,
+            ProtoType.KindOneofCase.List => proto.List.Nullability = unspecified,
+            ProtoType.KindOneofCase.Map => proto.Map.Nullability = unspecified,
+            ProtoType.KindOneofCase.Func => proto.Func.Nullability = unspecified,
+            ProtoType.KindOneofCase.UserDefined => proto.UserDefined.Nullability = unspecified,
+            _ => throw new InvalidOperationException($"No root-nullability case for {proto.KindCase}."),
+        };
+        return proto;
     }
 
     private static ProtoType RequiredI64() => new() { I64 = new ProtoType.Types.I64 { Nullability = ProtoType.Types.Nullability.Required } };

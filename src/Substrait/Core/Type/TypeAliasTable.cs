@@ -43,9 +43,9 @@ public sealed class TypeAliasTable
     /// <returns>The resolved type tree.</returns>
     /// <exception cref="ArgumentException">An alias reference in <paramref name="type"/> does not
     /// specify nullability, or names an anchor absent from this table.</exception>
-    public IType Resolve(IType type) => Rewrite(type ?? throw new ArgumentNullException(nameof(type)), this.resolvedDefinitions, path: null);
+    public IType Resolve(IType type) => Rewrite(type ?? throw new ArgumentNullException(nameof(type)), this.resolvedDefinitions, path: null, definitionAnchor: null);
 
-    private static IType Rewrite(IType root, IReadOnlyDictionary<uint, IType> resolvedDefinitions, RewritePath? path)
+    private static IType Rewrite(IType root, IReadOnlyDictionary<uint, IType> resolvedDefinitions, RewritePath? path, uint? definitionAnchor)
     {
         var stack = new Stack<(IType Current, List<IType> CollectedTypes, List<IType>? NestedTypes, RewritePath? Path)>();
         var rootTypes = new List<IType>(1);
@@ -149,6 +149,17 @@ public sealed class TypeAliasTable
                     }
                     else
                     {
+                        if (definitionAnchor is not null)
+                        {
+                            for (int index = 0; index < userDefined.Parameters.Count; ++index)
+                            {
+                                if (userDefined.Parameters[index] is TypeParameter.Null)
+                                {
+                                    throw new ArgumentException($"Alias anchor {definitionAnchor}: a definition must specify every type parameter, but user-defined type {userDefined.Anchor.Namespace}#{userDefined.Anchor.Key} parameter {index} is unspecified{FormatSuffix(currentPath)}.");
+                                }
+                            }
+                        }
+
                         var childTypes = new List<IType>();
                         stack.Push((current, collectedTypes, childTypes, currentPath));
                         for (int index = userDefined.Parameters.Count - 1; index >= 0; --index)
@@ -161,6 +172,9 @@ public sealed class TypeAliasTable
                     }
 
                     break;
+
+                case UnboundType when definitionAnchor is not null:
+                    throw new ArgumentException($"Alias anchor {definitionAnchor}: a definition must be a concrete type, but contains the unbound placeholder{FormatSuffix(currentPath)}.");
 
                 default:
                     collectedTypes.Add(current);
@@ -239,8 +253,9 @@ public sealed class TypeAliasTable
         /// cycle (self or indirect).
         /// </summary>
         /// <returns>The validated, immutable alias table.</returns>
-        /// <exception cref="ArgumentException">A definition references a missing alias anchor, or
-        /// the alias dependency graph contains a cycle.</exception>
+        /// <exception cref="ArgumentException">A definition references a missing alias anchor,
+        /// contains the unbound placeholder or an unspecified user-defined type parameter at any
+        /// depth, or the alias dependency graph contains a cycle.</exception>
         public TypeAliasTable Build()
         {
             if (this.definitions.Count == 0)
@@ -271,7 +286,7 @@ public sealed class TypeAliasTable
             var resolved = new Dictionary<uint, IType>(this.definitions.Count);
             foreach (uint anchor in order)
             {
-                resolved[anchor] = Rewrite(this.definitions[anchor], resolved, path: null);
+                resolved[anchor] = Rewrite(this.definitions[anchor], resolved, path: null, definitionAnchor: anchor);
             }
 
             return new TypeAliasTable(new Dictionary<uint, IType>(this.definitions), resolved);
