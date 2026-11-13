@@ -158,6 +158,7 @@ static Substrait.Core.Plan.Plan.FromRelations(Substrait.Core.Metadata.PlanMetada
 static Substrait.Core.Type.PrimitiveType.IntervalDay.Of(int precision, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.IntervalDay!
 static Substrait.Core.Type.PrimitiveType.Time.Of(int precision, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.Time!
 static Substrait.Core.Type.PrimitiveType.Uuid.Of(Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.Uuid!
+static Substrait.Core.Type.TypeAliasTable.Empty.get -> Substrait.Core.Type.TypeAliasTable!
 static Substrait.Tools.TypeUtils.GetFieldNames(this Substrait.Core.Type.NamedStruct! namedStruct) -> System.Collections.Generic.IEnumerable<(Substrait.Core.Type.IType! Field, string! Name)>!
 Substrait.Core.Extension.ExtensionDefinitions.Description.get -> string!
 Substrait.Core.Extension.ExtensionDefinitions.Description.init -> void
@@ -393,6 +394,15 @@ Substrait.Core.Relation.Set.Set(Substrait.Core.Metadata.RelationMetadata! metada
 Substrait.Core.Relation.SingleBucketExchange.SingleBucketExchange(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! input, int partitionCount, Substrait.Core.Expression.IExpression! expression) -> void
 Substrait.Core.Relation.Sort.Sort(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Relation.IRel! input, System.Collections.Generic.IEnumerable<Substrait.Core.Expression.SortField!>! sortFields) -> void
 Substrait.Core.Relation.VirtualTableRead.VirtualTableRead(Substrait.Core.Metadata.RelationMetadata! metadata, Substrait.Core.Type.NamedStruct! initialSchema, System.Collections.Generic.IEnumerable<Substrait.Core.Expression.Expression.Struct!>! rows, Substrait.Core.Expression.IExpression? filter) -> void
+Substrait.Core.Type.Converters.ProtoToTypeAliasTableConverter
+Substrait.Core.Type.Converters.ProtoToTypeAliasTableConverter.From(System.Collections.Generic.IEnumerable<Substrait.Protobuf.TypeAlias!>! aliases) -> Substrait.Core.Type.TypeAliasTable!
+Substrait.Core.Type.Converters.ProtoToTypeAliasTableConverter.ProtoToTypeAliasTableConverter() -> void
+Substrait.Core.Type.Converters.ProtoToTypeAliasTableConverter.ProtoToTypeAliasTableConverter(Substrait.Core.Type.Converters.ProtoToTypeConverter! typeConverter) -> void
+Substrait.Core.Type.Converters.TypeAliasTableToProtoConverter
+Substrait.Core.Type.Converters.TypeAliasTableToProtoConverter.From(Substrait.Core.Type.TypeAliasTable! table) -> System.Collections.Generic.IReadOnlyList<Substrait.Protobuf.TypeAlias!>!
+Substrait.Core.Type.Converters.TypeAliasTableToProtoConverter.From(Substrait.Core.Type.TypeAliasTable! table, Substrait.Core.Plan.Converters.PlanToProtoConverter.ConverterContext! context) -> System.Collections.Generic.IReadOnlyList<Substrait.Protobuf.TypeAlias!>!
+Substrait.Core.Type.Converters.TypeAliasTableToProtoConverter.TypeAliasTableToProtoConverter() -> void
+Substrait.Core.Type.Converters.TypeAliasTableToProtoConverter.TypeAliasTableToProtoConverter(Substrait.Core.Type.Converters.TypeToProtoConverter! typeConverter) -> void
 Substrait.Core.Type.ParameterizedType.AliasReference
 Substrait.Core.Type.ParameterizedType.AliasReference.AliasReference(uint anchor, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> void
 Substrait.Core.Type.ParameterizedType.AliasReference.Anchor.get -> uint
@@ -423,6 +433,14 @@ Substrait.Core.Type.PrimitiveType.Uuid
 Substrait.Core.Type.PrimitiveType.Uuid.Equals(Substrait.Core.Type.PrimitiveType.Uuid? other) -> bool
 Substrait.Core.Type.PrimitiveTypeFactory.UUID.get -> Substrait.Core.Type.PrimitiveType.Uuid!
 Substrait.Core.Type.PrimitiveTypeFactory.Uuid_(Substrait.Core.Extension.Types.ITypeVariation? typeVariation) -> Substrait.Core.Type.PrimitiveType.Uuid!
+Substrait.Core.Type.TypeAliasTable
+Substrait.Core.Type.TypeAliasTable.Builder
+Substrait.Core.Type.TypeAliasTable.Builder.Add(uint anchor, Substrait.Core.Type.IType! definition) -> Substrait.Core.Type.TypeAliasTable.Builder!
+Substrait.Core.Type.TypeAliasTable.Builder.Build() -> Substrait.Core.Type.TypeAliasTable!
+Substrait.Core.Type.TypeAliasTable.Builder.Builder() -> void
+Substrait.Core.Type.TypeAliasTable.Count.get -> int
+Substrait.Core.Type.TypeAliasTable.Definitions.get -> System.Collections.Generic.IReadOnlyDictionary<uint, Substrait.Core.Type.IType!>!
+Substrait.Core.Type.TypeAliasTable.Resolve(Substrait.Core.Type.IType! type) -> Substrait.Core.Type.IType!
 Substrait.Core.Type.TypeFactory.AliasReference(uint anchor, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.ParameterizedType.AliasReference!
 Substrait.Core.Type.TypeFactory.Func(System.Collections.Generic.IEnumerable<Substrait.Core.Type.IType!>! parameters, Substrait.Core.Type.IType! returnType, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.ParameterizedType.Func!
 Substrait.Core.Type.TypeFactory.IntervalCompound(int precision, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.ParameterizedType.IntervalCompound!

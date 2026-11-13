@@ -117,6 +117,13 @@ every other `IType`, its nullability throws rather than returning a value.
 See [the unbound placeholder type](docs/unbound-type.md) for construction,
 the throwing-nullability behavior, and binding boundaries.
 
+`TypeAliasTable` validates a plan-scoped `Plan.type_aliases` table once, at
+construction, and resolves `ParameterizedType.AliasReference` - at any depth
+- against it, applying each reference's own nullability and detecting cycles
+without unbounded recursion. See [type-alias resolution](docs/alias-resolution.md)
+for construction, validation errors, the proto conversion boundary, and the
+shared conversion-context contract.
+
 `ProtoToPlanConverter.FromBytes`, `FromStream`, and `FromFile` parse binary
 protobuf privately, avoiding redundant metadata copies; `FromJson` explicitly
 parses protobuf JSON and accepts a parser with registered `Any` payload types.

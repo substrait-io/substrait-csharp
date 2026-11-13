@@ -35,10 +35,9 @@ nullability; it does not know the alias table, does not resolve the anchor to
 a concrete type, and does not validate that the anchor exists. Standalone
 conversion through `TypeToProtoConverter`/`ProtoToTypeConverter` must not be
 read as proof that a reference is valid - resolving an anchor against an
-alias table, detecting missing targets, and rejecting cycles belongs to
-alias-table resolution
-([substrait-io/substrait-csharp#78](https://github.com/substrait-io/substrait-csharp/issues/78)),
-a separate step applied on top of this lossless model.
+alias table, detecting missing targets, and rejecting cycles is a separate
+step, applied on top of this lossless model by `TypeAliasTable`. See
+[alias-table resolution](alias-resolution.md).
 
 A proto `Alias` message with unspecified nullability is rejected, matching
 the pinned schema's requirement that a reference site be explicitly
@@ -73,8 +72,8 @@ implementation to keep compiling.
 
 - This adds a lossless reference **model** and conversion, not alias
   **resolution**: defining aliases, resolving references against an alias
-  table, missing-target checks, and cycle detection belong to
-  [substrait-io/substrait-csharp#78](https://github.com/substrait-io/substrait-csharp/issues/78).
+  table, missing-target checks, and cycle detection are
+  [`TypeAliasTable`](alias-resolution.md)'s job, not this type's.
 - Storing or emitting `Plan.type_aliases` belongs to
   [substrait-io/substrait-csharp#27](https://github.com/substrait-io/substrait-csharp/issues/27).
   This slice supplies the reference model that work needs, independent of
