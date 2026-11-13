@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Collections;
 using System.Runtime.Serialization;
 using Google.Protobuf;
 using Google.Protobuf.Reflection;
@@ -78,14 +79,33 @@ public sealed class ProtoToTypeAliasTableConverter
     private static ProtoType WithSpecifiedRootNullability(ProtoType type)
     {
         FieldDescriptor kind = ProtoType.Descriptor.FindFieldByNumber((int)type.KindCase);
-        FieldDescriptor? nullability = kind.MessageType.FindFieldByName("nullability");
-        if (nullability is null || nullability.Accessor.GetValue((IMessage)kind.Accessor.GetValue(type)) is not ProtoType.Types.Nullability.Unspecified)
+        var original = (IMessage)kind.Accessor.GetValue(type);
+        FieldDescriptor? nullability = original.Descriptor.FindFieldByName("nullability");
+        if (nullability is null || nullability.Accessor.GetValue(original) is not ProtoType.Types.Nullability.Unspecified)
         {
             return type;
         }
 
-        ProtoType clone = type.Clone();
-        nullability.Accessor.SetValue((IMessage)kind.Accessor.GetValue(clone), ProtoType.Types.Nullability.Required);
-        return clone;
+        IMessage root = original.Descriptor.Parser.ParseFrom(ByteString.Empty);
+        foreach (FieldDescriptor field in original.Descriptor.Fields.InDeclarationOrder())
+        {
+            if (field.IsRepeated)
+            {
+                var target = (IList)field.Accessor.GetValue(root);
+                foreach (object item in (IList)field.Accessor.GetValue(original))
+                {
+                    target.Add(item);
+                }
+            }
+            else if (!field.HasPresence || field.Accessor.HasValue(original))
+            {
+                field.Accessor.SetValue(root, field.Accessor.GetValue(original));
+            }
+        }
+
+        nullability.Accessor.SetValue(root, ProtoType.Types.Nullability.Required);
+        var result = new ProtoType();
+        kind.Accessor.SetValue(result, root);
+        return result;
     }
 }

@@ -417,6 +417,33 @@ public sealed class TypeAliasTableTests
     }
 
     [Test]
+    public async Task IgnoresUnspecifiedRootNullabilityOfADeepProtoDefinitionWithoutRecursion()
+    {
+        const int depth = 10_000;
+        ProtoType root = RequiredI64();
+        for (int level = 0; level < depth; ++level)
+        {
+            root = new ProtoType { List = new ProtoType.Types.List { Type = root, Nullability = ProtoType.Types.Nullability.Required } };
+        }
+
+        ProtoType element = root.List.Type;
+        root.List.Nullability = ProtoType.Types.Nullability.Unspecified;
+
+        TypeAliasTable table = new ProtoToTypeAliasTableConverter().From([new ProtoTypeAlias { TypeAliasAnchor = 7, Type = root }]);
+
+        await Assert.That(root.List.Nullability).IsEqualTo(ProtoType.Types.Nullability.Unspecified);
+        await Assert.That(root.List.Type).IsSameReferenceAs(element);
+        IType resolved = table.Resolve(TypeFactory.NULLABLE.AliasReference(7));
+        await Assert.That(resolved.Nullable).IsEqualTo(NullableType.Nullable);
+        for (int level = 0; level < depth; ++level)
+        {
+            resolved = ((ParameterizedType.List)resolved).ElementType;
+        }
+
+        await Assert.That(resolved).IsEqualTo(TypeFactory.REQUIRED.I64);
+    }
+
+    [Test]
     public async Task IgnoringRootNullabilityDoesNotRelaxNestedOrReferenceSiteNullability()
     {
         ProtoType unspecifiedField = WithUnspecifiedRootNullability(ToProto(TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64])));
