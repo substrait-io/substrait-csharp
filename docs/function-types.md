@@ -56,10 +56,10 @@ and `TypeFactory.ResolveTypeWithNullability` all handle `Func` generically
 through `InputNodes`, with no special-casing beyond the new
 `TypeVisitor<,>.Visit(Func, ...)` overload and the variation rejection above.
 
-Like `Struct`/`List`/`Map`/other existing parameterized types, direct
-`Equals`/`GetHashCode` on `Func` ignore type variation (there is never one to
-compare); only `IType.Equals(IType, ITypeComparison)` is variation-aware, and
-for `Func` that check is always vacuously satisfied.
+Like every other type, direct `Equals`/`GetHashCode` on `Func` are strict,
+including the type variations of its parameter and return types. `Func`
+itself never carries a variation, so that part of the check is always
+satisfied.
 
 The new visitor overload is virtual and falls back to `Visit(IType, ...)`.
 Existing `TypeVisitor<,>` subclasses do not need another abstract

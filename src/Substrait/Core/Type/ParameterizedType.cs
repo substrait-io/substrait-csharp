@@ -185,15 +185,7 @@ public abstract class ParameterizedType : IType
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
 
         /// <inheritdoc/>
-        public bool Equals(PrecisionTimestamp? other)
-        {
-            if (ReferenceEquals(this, other))
-            {
-                return true;
-            }
-
-            return this.Precision == other?.Precision && this.Nullable == other?.Nullable;
-        }
+        public bool Equals(PrecisionTimestamp? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
 
         /// <inheritdoc/>
         public override bool Equals(object? obj)
@@ -204,7 +196,7 @@ public abstract class ParameterizedType : IType
         /// <inheritdoc/>
         public override int GetHashCode()
         {
-            return HashCode.Combine(this.ShortTypeName, this.Nullable, this.Precision);
+            return HashCode.Combine(this.ShortTypeName, this.Nullable, this.Precision, this.TypeVariation);
         }
 
         /// <inheritdoc/>
@@ -250,15 +242,7 @@ public abstract class ParameterizedType : IType
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
 
         /// <inheritdoc/>
-        public bool Equals(PrecisionTimestampTZ? other)
-        {
-            if (ReferenceEquals(this, other))
-            {
-                return true;
-            }
-
-            return this.Precision == other?.Precision && this.Nullable == other?.Nullable;
-        }
+        public bool Equals(PrecisionTimestampTZ? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
 
         /// <inheritdoc/>
         public override bool Equals(object? obj)
@@ -269,7 +253,7 @@ public abstract class ParameterizedType : IType
         /// <inheritdoc/>
         public override int GetHashCode()
         {
-            return HashCode.Combine(this.ShortTypeName, this.Nullable, this.Precision);
+            return HashCode.Combine(this.ShortTypeName, this.Nullable, this.Precision, this.TypeVariation);
         }
 
         /// <inheritdoc/>
@@ -319,15 +303,7 @@ public abstract class ParameterizedType : IType
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
 
         /// <inheritdoc/>
-        public bool Equals(FixedChar? other)
-        {
-            if (ReferenceEquals(this, other))
-            {
-                return true;
-            }
-
-            return this.Length == other?.Length && this.Nullable == other?.Nullable;
-        }
+        public bool Equals(FixedChar? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
 
         /// <inheritdoc/>
         public override bool Equals(object? obj)
@@ -338,7 +314,7 @@ public abstract class ParameterizedType : IType
         /// <inheritdoc/>
         public override int GetHashCode()
         {
-            return HashCode.Combine(this.ShortTypeName, this.Nullable, this.Length);
+            return HashCode.Combine(this.ShortTypeName, this.Nullable, this.Length, this.TypeVariation);
         }
 
         /// <inheritdoc/>
@@ -388,15 +364,7 @@ public abstract class ParameterizedType : IType
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
 
         /// <inheritdoc/>
-        public bool Equals(VarChar? other)
-        {
-            if (ReferenceEquals(this, other))
-            {
-                return true;
-            }
-
-            return this.Length == other?.Length && this.Nullable == other?.Nullable;
-        }
+        public bool Equals(VarChar? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
 
         /// <inheritdoc/>
         public override bool Equals(object? obj)
@@ -407,7 +375,7 @@ public abstract class ParameterizedType : IType
         /// <inheritdoc/>
         public override int GetHashCode()
         {
-            return HashCode.Combine(this.ShortTypeName, this.Nullable, this.Length);
+            return HashCode.Combine(this.ShortTypeName, this.Nullable, this.Length, this.TypeVariation);
         }
 
         /// <inheritdoc/>
@@ -457,15 +425,7 @@ public abstract class ParameterizedType : IType
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
 
         /// <inheritdoc/>
-        public bool Equals(FixedBinary? other)
-        {
-            if (ReferenceEquals(this, other))
-            {
-                return true;
-            }
-
-            return this.Length == other?.Length && this.Nullable == other?.Nullable;
-        }
+        public bool Equals(FixedBinary? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
 
         /// <inheritdoc/>
         public override bool Equals(object? obj)
@@ -476,7 +436,7 @@ public abstract class ParameterizedType : IType
         /// <inheritdoc/>
         public override int GetHashCode()
         {
-            return HashCode.Combine(this.ShortTypeName, this.Nullable, this.Length);
+            return HashCode.Combine(this.ShortTypeName, this.Nullable, this.Length, this.TypeVariation);
         }
 
         /// <inheritdoc/>
@@ -543,15 +503,7 @@ public abstract class ParameterizedType : IType
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
 
         /// <inheritdoc/>
-        public bool Equals(Decimal? other)
-        {
-            if (ReferenceEquals(this, other))
-            {
-                return true;
-            }
-
-            return this.Precision == other?.Precision && this.Scale == other.Scale && this.Nullable == other.Nullable;
-        }
+        public bool Equals(Decimal? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
 
         /// <inheritdoc/>
         public override bool Equals(object? obj)
@@ -562,7 +514,7 @@ public abstract class ParameterizedType : IType
         /// <inheritdoc/>
         public override int GetHashCode()
         {
-            return HashCode.Combine(this.ShortTypeName, this.Nullable, this.Precision, this.Scale);
+            return HashCode.Combine(this.ShortTypeName, this.Nullable, this.Precision, this.Scale, this.TypeVariation);
         }
 
         /// <inheritdoc/>
@@ -628,15 +580,7 @@ public abstract class ParameterizedType : IType
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
 
         /// <inheritdoc/>
-        public bool Equals(Struct? other)
-        {
-            if (ReferenceEquals(this, other))
-            {
-                return true;
-            }
-
-            return this.Nullable == other?.Nullable && this.Fields.SequenceEqual(other.Fields);
-        }
+        public bool Equals(Struct? other) => TypeUtils.ITypeEqualityComparer.Of(ITypeComparison.Strict).Equals(this, other);
 
         /// <inheritdoc/>
         public override bool Equals(object? obj)
@@ -647,7 +591,7 @@ public abstract class ParameterizedType : IType
         /// <inheritdoc/>
         public override int GetHashCode()
         {
-            return HashCode.Combine(this.ShortTypeName, this.Nullable, this.Fields.CombineHashCodes());
+            return TypeUtils.ITypeEqualityComparer.Of(ITypeComparison.Strict).GetHashCode(this);
         }
 
         /// <inheritdoc/>
@@ -696,13 +640,13 @@ public abstract class ParameterizedType : IType
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
 
         /// <inheritdoc/>
-        public bool Equals(List? other) => other is not null && this.Nullable == other.Nullable && this.ElementType.Equals(other.ElementType);
+        public bool Equals(List? other) => TypeUtils.ITypeEqualityComparer.Of(ITypeComparison.Strict).Equals(this, other);
 
         /// <inheritdoc/>
         public override bool Equals(object? obj) => obj is List other && this.Equals(other);
 
         /// <inheritdoc/>
-        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.ElementType);
+        public override int GetHashCode() => TypeUtils.ITypeEqualityComparer.Of(ITypeComparison.Strict).GetHashCode(this);
 
         /// <inheritdoc/>
         protected override bool NodeEqualTypeParameters(IType other)
@@ -757,14 +701,13 @@ public abstract class ParameterizedType : IType
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
 
         /// <inheritdoc/>
-        public bool Equals(Map? other) =>
-            other is not null && this.Nullable == other.Nullable && this.KeyType.Equals(other.KeyType) && this.ValueType.Equals(other.ValueType);
+        public bool Equals(Map? other) => TypeUtils.ITypeEqualityComparer.Of(ITypeComparison.Strict).Equals(this, other);
 
         /// <inheritdoc/>
         public override bool Equals(object? obj) => obj is Map other && this.Equals(other);
 
         /// <inheritdoc/>
-        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.KeyType, this.ValueType);
+        public override int GetHashCode() => TypeUtils.ITypeEqualityComparer.Of(ITypeComparison.Strict).GetHashCode(this);
 
         /// <inheritdoc/>
         protected override bool NodeEqualTypeParameters(IType other)
