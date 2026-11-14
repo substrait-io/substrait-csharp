@@ -50,9 +50,10 @@ equality/hashing, and `TypeFactory.ResolveTypeWithNullability` all handle both
 container kinds generically through `InputNodes`, with no special-casing
 beyond the new `TypeVisitor<,>.Visit(List, ...)` / `Visit(Map, ...)` overloads.
 
-Like `Struct`/`Decimal`/other existing parameterized types, direct
-`Equals`/`GetHashCode` on `List`/`Map` ignore type variation; only
-`IType.Equals(IType, ITypeComparison)` accounts for it.
+Like every other type, direct `Equals`/`GetHashCode` on `List`/`Map` are
+strict: they compare nullability, parameters, and type variation at every
+node, the same as `IType.Equals(IType, ITypeComparison.Strict)`. Use another
+`ITypeComparison` to ignore type variation.
 
 The two new visitor overloads are virtual and fall back to
 `Visit(IType, ...)`. Existing `TypeVisitor<,>` subclasses do not need another
