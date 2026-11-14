@@ -109,11 +109,33 @@ override Substrait.Core.Type.ParameterizedType.Map.InputNodes.get -> System.Coll
 override Substrait.Core.Type.ParameterizedType.Map.ShortTypeName.get -> string!
 override Substrait.Core.Type.ParameterizedType.Map.ToTypeString() -> string!
 override Substrait.Core.Type.ParameterizedType.Map.TypeName.get -> string!
+override Substrait.Core.Type.PrimitiveType.Binary.Equals(object? obj) -> bool
+override Substrait.Core.Type.PrimitiveType.Binary.GetHashCode() -> int
+override Substrait.Core.Type.PrimitiveType.Bool.Equals(object? obj) -> bool
+override Substrait.Core.Type.PrimitiveType.Bool.GetHashCode() -> int
+override Substrait.Core.Type.PrimitiveType.Date.Equals(object? obj) -> bool
+override Substrait.Core.Type.PrimitiveType.Date.GetHashCode() -> int
+override Substrait.Core.Type.PrimitiveType.FP32.Equals(object? obj) -> bool
+override Substrait.Core.Type.PrimitiveType.FP32.GetHashCode() -> int
+override Substrait.Core.Type.PrimitiveType.FP64.Equals(object? obj) -> bool
+override Substrait.Core.Type.PrimitiveType.FP64.GetHashCode() -> int
+override Substrait.Core.Type.PrimitiveType.I16.Equals(object? obj) -> bool
+override Substrait.Core.Type.PrimitiveType.I16.GetHashCode() -> int
+override Substrait.Core.Type.PrimitiveType.I32.Equals(object? obj) -> bool
+override Substrait.Core.Type.PrimitiveType.I32.GetHashCode() -> int
+override Substrait.Core.Type.PrimitiveType.I64.Equals(object? obj) -> bool
+override Substrait.Core.Type.PrimitiveType.I64.GetHashCode() -> int
+override Substrait.Core.Type.PrimitiveType.I8.Equals(object? obj) -> bool
+override Substrait.Core.Type.PrimitiveType.I8.GetHashCode() -> int
 override Substrait.Core.Type.PrimitiveType.IntervalDay.Equals(object? obj) -> bool
 override Substrait.Core.Type.PrimitiveType.IntervalDay.GetHashCode() -> int
 override Substrait.Core.Type.PrimitiveType.IntervalDay.NodeEquals(Substrait.Core.Type.IType! other, Substrait.Core.Type.ITypeComparison comparison) -> bool
 override Substrait.Core.Type.PrimitiveType.IntervalDay.ToString() -> string!
 override Substrait.Core.Type.PrimitiveType.IntervalDay.ToTypeString() -> string!
+override Substrait.Core.Type.PrimitiveType.IntervalYear.Equals(object? obj) -> bool
+override Substrait.Core.Type.PrimitiveType.IntervalYear.GetHashCode() -> int
+override Substrait.Core.Type.PrimitiveType.Str.Equals(object? obj) -> bool
+override Substrait.Core.Type.PrimitiveType.Str.GetHashCode() -> int
 override Substrait.Core.Type.PrimitiveType.Time.Equals(object? obj) -> bool
 override Substrait.Core.Type.PrimitiveType.Time.GetHashCode() -> int
 override Substrait.Core.Type.PrimitiveType.Time.NodeEquals(Substrait.Core.Type.IType! other, Substrait.Core.Type.ITypeComparison comparison) -> bool
@@ -425,8 +447,19 @@ Substrait.Core.Type.ParameterizedType.Map.Equals(Substrait.Core.Type.Parameteriz
 Substrait.Core.Type.ParameterizedType.Map.KeyType.get -> Substrait.Core.Type.IType!
 Substrait.Core.Type.ParameterizedType.Map.Map(Substrait.Core.Type.IType! keyType, Substrait.Core.Type.IType! valueType, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> void
 Substrait.Core.Type.ParameterizedType.Map.ValueType.get -> Substrait.Core.Type.IType!
+Substrait.Core.Type.PrimitiveType.Binary.Equals(Substrait.Core.Type.PrimitiveType.Binary? other) -> bool
+Substrait.Core.Type.PrimitiveType.Bool.Equals(Substrait.Core.Type.PrimitiveType.Bool? other) -> bool
+Substrait.Core.Type.PrimitiveType.Date.Equals(Substrait.Core.Type.PrimitiveType.Date? other) -> bool
+Substrait.Core.Type.PrimitiveType.FP32.Equals(Substrait.Core.Type.PrimitiveType.FP32? other) -> bool
+Substrait.Core.Type.PrimitiveType.FP64.Equals(Substrait.Core.Type.PrimitiveType.FP64? other) -> bool
+Substrait.Core.Type.PrimitiveType.I16.Equals(Substrait.Core.Type.PrimitiveType.I16? other) -> bool
+Substrait.Core.Type.PrimitiveType.I32.Equals(Substrait.Core.Type.PrimitiveType.I32? other) -> bool
+Substrait.Core.Type.PrimitiveType.I64.Equals(Substrait.Core.Type.PrimitiveType.I64? other) -> bool
+Substrait.Core.Type.PrimitiveType.I8.Equals(Substrait.Core.Type.PrimitiveType.I8? other) -> bool
 Substrait.Core.Type.PrimitiveType.IntervalDay.Equals(Substrait.Core.Type.PrimitiveType.IntervalDay? other) -> bool
 Substrait.Core.Type.PrimitiveType.IntervalDay.Precision.get -> int
+Substrait.Core.Type.PrimitiveType.IntervalYear.Equals(Substrait.Core.Type.PrimitiveType.IntervalYear? other) -> bool
+Substrait.Core.Type.PrimitiveType.Str.Equals(Substrait.Core.Type.PrimitiveType.Str? other) -> bool
 Substrait.Core.Type.PrimitiveType.Time.Equals(Substrait.Core.Type.PrimitiveType.Time? other) -> bool
 Substrait.Core.Type.PrimitiveType.Time.Precision.get -> int
 Substrait.Core.Type.PrimitiveType.Uuid
