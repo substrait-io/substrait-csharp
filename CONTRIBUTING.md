@@ -48,12 +48,19 @@ language version is unchanged.
 
 Tests asserting exact allocation counts use `[NotInParallel]` without constraint
 keys to isolate warmup and measurement from other tests in the same process.
-Run identical warmup and measured workloads synchronously on a dedicated worker
-without flowing the test runner's execution context. Keep worker setup, teardown,
-and assertions outside the measured region. Measure once after warmup: do not
-retry or choose a minimum allocation count, which could hide real allocations.
-Ordinary tests remain parallel; do not relax allocation thresholds to accommodate
-transient failures during concurrent test execution.
+Run identical warmup and measured workloads synchronously. Keep setup and
+assertions outside the measured region. Measure once after warmup: do not retry
+or choose a minimum allocation count, which could hide real allocations.
+Keep a positive control that detects a real allocation during measurement.
+
+The library test project sets `ConcurrentGarbageCollection` to `false` because
+background GC can retire allocation contexts and inflate
+`GC.GetAllocatedBytesForCurrentThread()` without a managed allocation; see
+[dotnet/runtime#134724](https://github.com/dotnet/runtime/issues/134724).
+This workaround affects only the test process, not library consumers. Revisit
+it when an upstream fix is verified on both supported test runtimes.
+Ordinary tests remain parallel; do not relax allocation thresholds to
+accommodate transient failures during concurrent test execution.
 
 ## Package validation
 

@@ -108,7 +108,7 @@ public sealed class TypeUtilsTests
         for (int mode = 0; mode <= (int)ITypeComparison.Strict; ++mode)
         {
             var comparer = TypeUtils.ITypeEqualityComparer.Of((ITypeComparison)mode);
-            var (allocated, hash) = await MeasureHashAllocations(type, comparer);
+            var (allocated, hash) = MeasureHashAllocations(type, comparer);
             await Assert.That(allocated).IsEqualTo(0L).Because($"Hashing {type.TypeName} in comparison mode {mode} should not allocate.");
             await Assert.That(hash).IsEqualTo(0);
         }
@@ -182,7 +182,7 @@ public sealed class TypeUtilsTests
         UserDefinedType second = CreateType();
         for (int mode = 0; mode <= (int)ITypeComparison.Strict; ++mode)
         {
-            var (allocated, equalCount) = await MeasureNodeComparisonAllocations(first, second, (ITypeComparison)mode);
+            var (allocated, equalCount) = MeasureNodeComparisonAllocations(first, second, (ITypeComparison)mode);
             await Assert.That(allocated).IsEqualTo(0L).Because($"Comparing {parameterCount} parameters in comparison mode {mode} should not allocate.");
             await Assert.That(equalCount).IsEqualTo(1000);
         }
@@ -195,27 +195,11 @@ public sealed class TypeUtilsTests
 
     [Test]
     [NotInParallel]
-    public async Task AllocationMeasurementUsesAnIsolatedThread()
-    {
-        var ambient = new AsyncLocal<object?> { Value = new object() };
-        int callerThread = Environment.CurrentManagedThreadId;
-        var (allocated, result) = await MeasureAllocationsOnDedicatedThread(() =>
-            ambient.Value is null
-                && !Thread.CurrentThread.IsThreadPoolThread
-                && Environment.CurrentManagedThreadId != callerThread ? 1 : 0);
-
-        await Assert.That(allocated).IsEqualTo(0L);
-        await Assert.That(result).IsEqualTo(1);
-        await Assert.That(ambient.Value).IsNotNull();
-    }
-
-    [Test]
-    [NotInParallel]
     public async Task AllocationMeasurementDetectsASingleMeasuredAllocation()
     {
         int calls = 0;
         object? allocation = null;
-        var (allocated, result) = await MeasureAllocationsOnDedicatedThread(() =>
+        var (allocated, result) = MeasureAllocations(() =>
         {
             if (++calls == 2)
             {
@@ -231,21 +215,6 @@ public sealed class TypeUtilsTests
         await Assert.That(allocation).IsNotNull();
     }
 
-    [Test]
-    [Arguments(1)]
-    [Arguments(2)]
-    public async Task AllocationMeasurementPropagatesFailures(int failingCall)
-    {
-        int calls = 0;
-        var expected = new InvalidOperationException("Allocation measurement failed.");
-        InvalidOperationException actual = await Assert.That(async () =>
-        {
-            await MeasureAllocationsOnDedicatedThread(() => ++calls == failingCall ? throw expected : 0);
-        }).ThrowsExactly<InvalidOperationException>().And.IsNotNull();
-
-        await Assert.That(actual).IsSameReferenceAs(expected);
-    }
-
     private static async Task AssertTypeComparison(IType first, IType second, TypeUtils.ITypeEqualityComparer comparer, bool expected)
     {
         await Assert.That(comparer.Equals(first, second)).IsEqualTo(expected);
@@ -259,28 +228,17 @@ public sealed class TypeUtilsTests
         }
     }
 
-    private static Task<(long Allocated, int Result)> MeasureAllocationsOnDedicatedThread(Func<int> operation)
+    private static (long Allocated, int Result) MeasureAllocations(Func<int> operation)
     {
-        // Do not inherit the test runner's execution context or measure on its thread pool.
-        using (ExecutionContext.SuppressFlow())
-        {
-            return Task.Factory.StartNew(
-                () =>
-                {
-                    operation();
-                    long before = GC.GetAllocatedBytesForCurrentThread();
-                    int result = operation();
-                    return (GC.GetAllocatedBytesForCurrentThread() - before, result);
-                },
-                CancellationToken.None,
-                TaskCreationOptions.LongRunning,
-                TaskScheduler.Default);
-        }
+        operation();
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        int result = operation();
+        return (GC.GetAllocatedBytesForCurrentThread() - before, result);
     }
 
-    private static Task<(long Allocated, int EqualCount)> MeasureNodeComparisonAllocations(UserDefinedType first, UserDefinedType second, ITypeComparison comparison)
+    private static (long Allocated, int EqualCount) MeasureNodeComparisonAllocations(UserDefinedType first, UserDefinedType second, ITypeComparison comparison)
     {
-        return MeasureAllocationsOnDedicatedThread(() =>
+        return MeasureAllocations(() =>
         {
             int equalCount = 0;
             for (int index = 0; index < 1000; ++index)
@@ -321,9 +279,9 @@ public sealed class TypeUtilsTests
         }
     }
 
-    private static Task<(long Allocated, int Hash)> MeasureHashAllocations(IType type, TypeUtils.ITypeEqualityComparer comparer)
+    private static (long Allocated, int Hash) MeasureHashAllocations(IType type, TypeUtils.ITypeEqualityComparer comparer)
     {
-        return MeasureAllocationsOnDedicatedThread(() =>
+        return MeasureAllocations(() =>
         {
             int result = 0;
             for (int index = 0; index < 1000; ++index)
