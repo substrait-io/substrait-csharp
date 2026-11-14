@@ -193,6 +193,28 @@ public sealed class TypeUtilsTests
             withVariation ? new TypeVariationImpl("extension:test:types", "shape", "custom", string.Empty, FunctionBehavior.INHERITS) : null);
     }
 
+    [Test]
+    [NotInParallel]
+    public async Task AllocationMeasurementDetectsASingleMeasuredAllocation()
+    {
+        int calls = 0;
+        object? allocation = null;
+        var (allocated, result) = MeasureAllocations(() =>
+        {
+            if (++calls == 2)
+            {
+                allocation = new byte[128];
+            }
+
+            return calls;
+        });
+
+        await Assert.That(allocated).IsGreaterThanOrEqualTo(128L);
+        await Assert.That(result).IsEqualTo(2);
+        await Assert.That(calls).IsEqualTo(2);
+        await Assert.That(allocation).IsNotNull();
+    }
+
     private static async Task AssertTypeComparison(IType first, IType second, TypeUtils.ITypeEqualityComparer comparer, bool expected)
     {
         await Assert.That(comparer.Equals(first, second)).IsEqualTo(expected);
@@ -206,25 +228,29 @@ public sealed class TypeUtilsTests
         }
     }
 
+    private static (long Allocated, int Result) MeasureAllocations(Func<int> operation)
+    {
+        operation();
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        int result = operation();
+        return (GC.GetAllocatedBytesForCurrentThread() - before, result);
+    }
+
     private static (long Allocated, int EqualCount) MeasureNodeComparisonAllocations(UserDefinedType first, UserDefinedType second, ITypeComparison comparison)
     {
-        for (int index = 0; index < 1000; ++index)
+        return MeasureAllocations(() =>
         {
-            first.NodeEquals(second, comparison);
-        }
-
-        int equalCount = 0;
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int index = 0; index < 1000; ++index)
-        {
-            if (first.NodeEquals(second, comparison))
+            int equalCount = 0;
+            for (int index = 0; index < 1000; ++index)
             {
-                ++equalCount;
+                if (first.NodeEquals(second, comparison))
+                {
+                    ++equalCount;
+                }
             }
-        }
 
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        return (allocated, equalCount);
+            return equalCount;
+        });
     }
 
     public static IEnumerable<Func<IType>> LeafHashCases()
@@ -255,20 +281,16 @@ public sealed class TypeUtilsTests
 
     private static (long Allocated, int Hash) MeasureHashAllocations(IType type, TypeUtils.ITypeEqualityComparer comparer)
     {
-        int result = 0;
-        for (int index = 0; index < 1000; ++index)
+        return MeasureAllocations(() =>
         {
-            result ^= comparer.GetHashCode(type);
-        }
+            int result = 0;
+            for (int index = 0; index < 1000; ++index)
+            {
+                result ^= comparer.GetHashCode(type);
+            }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int index = 0; index < 1000; ++index)
-        {
-            result ^= comparer.GetHashCode(type);
-        }
-
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        return (allocated, result);
+            return result;
+        });
     }
 
     public static IEnumerable<Func<(IType First, IType Second, bool SameVariation)>> GetVariationCaseSensitivityCases()
