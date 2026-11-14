@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Immutable;
+using Substrait.Core.Extension.Functions;
+using Substrait.Core.Extension.Types;
 using Substrait.Core.Type;
 using static Substrait.Tools.TypeUtils;
 
@@ -37,6 +39,22 @@ public class TypeTests
                 await Assert.That(i == j).IsEqualTo(allPrimitiveTypes[i].Equals(allPrimitiveTypes[j])).Because($"({allPrimitiveTypes[i]},{allPrimitiveTypes[j]})");
                 await Assert.That(i == j).IsEqualTo(allPrimitiveTypes[i].GetHashCode() == allPrimitiveTypes[j].GetHashCode()).Because($"({allPrimitiveTypes[i]},{allPrimitiveTypes[j]}).GetHashCode()");
             }
+        }
+    }
+
+    /// <summary>
+    /// Tests binary keeps its type variation.
+    /// </summary>
+    [Test]
+    public async Task TestBinaryKeepsTypeVariation()
+    {
+        var variation = new TypeVariationImpl("extension:example:types", "binary", "custom", string.Empty, FunctionBehavior.INHERITS);
+        foreach (var nullable in new[] { IType.NullableType.Required, IType.NullableType.Nullable })
+        {
+            var varied = PrimitiveType.Binary.Of(nullable, variation);
+            await Assert.That(varied.TypeVariation).IsEqualTo(variation);
+            await Assert.That(varied.Nullable).IsEqualTo(nullable);
+            await Assert.That(ReferenceEquals(PrimitiveType.Binary.Of(nullable), PrimitiveType.Binary.Of(nullable))).IsTrue();
         }
     }
 
