@@ -86,7 +86,7 @@ public abstract class PrimitiveType : IType
     /// <summary>
     /// Immutable implementation of boolean type.
     /// </summary>
-    public sealed class Bool : PrimitiveType
+    public sealed class Bool : PrimitiveType, IEquatable<Bool>
     {
         private static readonly Bool REQUIRED = new Bool(NullableType.Required, typeVariation: null);
         private static readonly Bool NULLABLE = new Bool(NullableType.Nullable, typeVariation: null);
@@ -125,12 +125,21 @@ public abstract class PrimitiveType : IType
 
         /// <inheritdoc/>
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public bool Equals(Bool? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is Bool other && this.Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.TypeVariation);
     }
 
     /// <summary>
     /// Immutable implementation of I8 type.
     /// </summary>
-    public sealed class I8 : PrimitiveType
+    public sealed class I8 : PrimitiveType, IEquatable<I8>
     {
         private static readonly I8 REQUIRED = new I8(NullableType.Required, typeVariation: null);
         private static readonly I8 NULLABLE = new I8(NullableType.Nullable, typeVariation: null);
@@ -166,12 +175,21 @@ public abstract class PrimitiveType : IType
 
         /// <inheritdoc/>
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public bool Equals(I8? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is I8 other && this.Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.TypeVariation);
     }
 
     /// <summary>
     /// Immutable implementation of I16 type.
     /// </summary>
-    public sealed class I16 : PrimitiveType
+    public sealed class I16 : PrimitiveType, IEquatable<I16>
     {
         private static readonly I16 REQUIRED = new I16(NullableType.Required, typeVariation: null);
         private static readonly I16 NULLABLE = new I16(NullableType.Nullable, typeVariation: null);
@@ -207,12 +225,21 @@ public abstract class PrimitiveType : IType
 
         /// <inheritdoc/>
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public bool Equals(I16? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is I16 other && this.Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.TypeVariation);
     }
 
     /// <summary>
     /// Immutable implementation of I32 type.
     /// </summary>
-    public sealed class I32 : PrimitiveType
+    public sealed class I32 : PrimitiveType, IEquatable<I32>
     {
         private static readonly I32 REQUIRED = new I32(NullableType.Required, typeVariation: null);
         private static readonly I32 NULLABLE = new I32(NullableType.Nullable, typeVariation: null);
@@ -248,12 +275,21 @@ public abstract class PrimitiveType : IType
 
         /// <inheritdoc/>
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public bool Equals(I32? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is I32 other && this.Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.TypeVariation);
     }
 
     /// <summary>
     /// Immutable implementation of I64 type.
     /// </summary>
-    public sealed class I64 : PrimitiveType
+    public sealed class I64 : PrimitiveType, IEquatable<I64>
     {
         private static readonly I64 REQUIRED = new I64(NullableType.Required, typeVariation: null);
         private static readonly I64 NULLABLE = new I64(NullableType.Nullable, typeVariation: null);
@@ -289,12 +325,21 @@ public abstract class PrimitiveType : IType
 
         /// <inheritdoc/>
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public bool Equals(I64? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is I64 other && this.Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.TypeVariation);
     }
 
     /// <summary>
     /// Immutable implementation of FP32 type.
     /// </summary>
-    public sealed class FP32 : PrimitiveType
+    public sealed class FP32 : PrimitiveType, IEquatable<FP32>
     {
         private static readonly FP32 REQUIRED = new FP32(NullableType.Required, typeVariation: null);
         private static readonly FP32 NULLABLE = new FP32(NullableType.Nullable, typeVariation: null);
@@ -330,12 +375,21 @@ public abstract class PrimitiveType : IType
 
         /// <inheritdoc/>
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public bool Equals(FP32? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is FP32 other && this.Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.TypeVariation);
     }
 
     /// <summary>
     /// Immutable implementation of FP64 type.
     /// </summary>
-    public sealed class FP64 : PrimitiveType
+    public sealed class FP64 : PrimitiveType, IEquatable<FP64>
     {
         private static readonly FP64 REQUIRED = new FP64(NullableType.Required, typeVariation: null);
         private static readonly FP64 NULLABLE = new FP64(NullableType.Nullable, typeVariation: null);
@@ -371,12 +425,21 @@ public abstract class PrimitiveType : IType
 
         /// <inheritdoc/>
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public bool Equals(FP64? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is FP64 other && this.Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.TypeVariation);
     }
 
     /// <summary>
     /// Immutable implementation of string type.
     /// </summary>
-    public sealed class Str : PrimitiveType
+    public sealed class Str : PrimitiveType, IEquatable<Str>
     {
         private static readonly Str REQUIRED = new Str(NullableType.Required, typeVariation: null);
         private static readonly Str NULLABLE = new Str(NullableType.Nullable, typeVariation: null);
@@ -415,12 +478,21 @@ public abstract class PrimitiveType : IType
 
         /// <inheritdoc/>
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public bool Equals(Str? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is Str other && this.Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.TypeVariation);
     }
 
     /// <summary>
     /// Immutable implementation of binary type.
     /// </summary>
-    public sealed class Binary : PrimitiveType
+    public sealed class Binary : PrimitiveType, IEquatable<Binary>
     {
         private static readonly Binary REQUIRED = new Binary(NullableType.Required, typeVariation: null);
         private static readonly Binary NULLABLE = new Binary(NullableType.Nullable, typeVariation: null);
@@ -459,12 +531,21 @@ public abstract class PrimitiveType : IType
 
         /// <inheritdoc/>
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public bool Equals(Binary? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is Binary other && this.Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.TypeVariation);
     }
 
     /// <summary>
     /// Immutable implementation of date type.
     /// </summary>
-    public sealed class Date : PrimitiveType
+    public sealed class Date : PrimitiveType, IEquatable<Date>
     {
         private static readonly Date REQUIRED = new Date(NullableType.Required, typeVariation: null);
         private static readonly Date NULLABLE = new Date(NullableType.Nullable, typeVariation: null);
@@ -500,6 +581,15 @@ public abstract class PrimitiveType : IType
 
         /// <inheritdoc/>
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public bool Equals(Date? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is Date other && this.Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.TypeVariation);
     }
 
     /// <summary>
@@ -618,7 +708,7 @@ public abstract class PrimitiveType : IType
     /// <summary>
     /// Immutable implementation of interval year type.
     /// </summary>
-    public sealed class IntervalYear : PrimitiveType
+    public sealed class IntervalYear : PrimitiveType, IEquatable<IntervalYear>
     {
         private static readonly IntervalYear REQUIRED = new IntervalYear(NullableType.Required, typeVariation: null);
         private static readonly IntervalYear NULLABLE = new IntervalYear(NullableType.Nullable, typeVariation: null);
@@ -657,6 +747,15 @@ public abstract class PrimitiveType : IType
 
         /// <inheritdoc/>
         public override TOutput Accept<TContext, TOutput>(TypeVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public bool Equals(IntervalYear? other) => other is not null && this.NodeEquals(other, ITypeComparison.Strict);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is IntervalYear other && this.Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(this.ShortTypeName, this.Nullable, this.TypeVariation);
     }
 
     /// <summary>
