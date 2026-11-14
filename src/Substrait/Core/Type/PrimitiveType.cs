@@ -444,7 +444,7 @@ public abstract class PrimitiveType : IType
         /// <returns>The instance of <see cref="Binary"/> class.</returns>
         public static Binary Of(NullableType nullable, ITypeVariation? typeVariation = null)
         {
-            if (typeVariation == null)
+            if (typeVariation is not null)
             {
                 return new Binary(nullable, typeVariation);
             }
