@@ -18,6 +18,7 @@ public sealed class PrimitiveTypeEqualityTests
     [Arguments("fp32")]
     [Arguments("fp64")]
     [Arguments("str")]
+    [Arguments("binary")]
     [Arguments("date")]
     [Arguments("iyear")]
     public async Task VariedInstancesCompareByValue(string kind)
@@ -47,6 +48,7 @@ public sealed class PrimitiveTypeEqualityTests
             "fp32" => factory.FP32_,
             "fp64" => factory.FP64_,
             "str" => factory.String_,
+            "binary" => factory.Binary_,
             "date" => factory.Date_,
             "iyear" => factory.IntervalYear_,
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
