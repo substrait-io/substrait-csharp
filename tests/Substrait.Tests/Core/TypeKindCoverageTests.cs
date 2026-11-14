@@ -102,9 +102,9 @@ public sealed class TypeKindCoverageTests
 
     [Test]
     [MethodDataSource(nameof(PositionCases))]
-    public async Task RoundTripsEveryKindInEveryContainerPosition(TypeKind kind, Position position)
+    public async Task RoundTripsEveryKindInEveryContainerPosition(TypeKind kind, Position position, NullableType nullable, bool withVariation)
     {
-        await AssertRoundTrips(Wrap(position, Create(kind, NullableType.Nullable, withVariation: true)));
+        await AssertRoundTrips(Wrap(position, Create(kind, nullable, withVariation)));
     }
 
     [Test]
@@ -213,8 +213,8 @@ public sealed class TypeKindCoverageTests
         }
     }
 
-    public static IEnumerable<(TypeKind Kind, Position Position)> PositionCases() =>
-        Kinds.Keys.SelectMany(kind => Enum.GetValues<Position>().Select(position => (kind, position)));
+    public static IEnumerable<(TypeKind Kind, Position Position, NullableType Nullable, bool WithVariation)> PositionCases() =>
+        RootCases().SelectMany(root => Enum.GetValues<Position>().Select(position => (root.Kind, position, root.Nullable, root.WithVariation)));
 
     public static IEnumerable<Position> Positions() => Enum.GetValues<Position>();
 
