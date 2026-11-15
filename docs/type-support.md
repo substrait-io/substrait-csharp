@@ -112,7 +112,7 @@ collections.
 | Input | Root | Nested |
 | --- | --- | --- |
 | Unset `Type.kind` | `NotImplementedException` | `SerializationException` naming the path |
-| Unspecified nullability | `NotImplementedException` | `SerializationException` naming the path |
+| Unspecified nullability | `NotImplementedException`; `SerializationException` for `user_defined` | `SerializationException` naming the path |
 | Undeclared variation anchor | `SerializationException` | `SerializationException` naming the path |
 | Out-of-range parameter | `ArgumentOutOfRangeException` | `SerializationException` naming the path |
 
