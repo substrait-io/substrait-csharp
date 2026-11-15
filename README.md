@@ -88,6 +88,10 @@ function references but cannot attach their declarations.
 Converting a plan does not add nondeterministic metadata, so repeated protobuf
 serialization of the same internal plan produces the same bytes.
 
+Core type conversion covers every `Type.kind` in the pinned specification. See
+[type support](docs/type-support.md) for the support matrix, extension and
+alias contexts, equality, errors, and remaining boundaries.
+
 User-defined types support ordered null, data-type, boolean, signed 64-bit
 integer, enum, and string parameters. Full-plan export emits the required type
 declarations and URNs, including nested dependencies. Standalone type conversion
@@ -118,8 +122,8 @@ See [the unbound placeholder type](docs/unbound-type.md) for construction,
 the throwing-nullability behavior, and binding boundaries.
 
 `TypeAliasTable` validates a plan-scoped `Plan.type_aliases` table once, at
-construction, and resolves `ParameterizedType.AliasReference` - at any depth
-- against it, applying each reference's own nullability and detecting cycles
+construction, and resolves `ParameterizedType.AliasReference` - at any
+depth - against it, applying each reference's own nullability and detecting cycles
 without unbounded recursion. See [type-alias resolution](docs/alias-resolution.md)
 for construction, validation errors, the proto conversion boundary, and the
 shared conversion-context contract.

@@ -34,8 +34,8 @@ public sealed class ProtoToTypeAliasTableConverter
     /// <returns>The validated, immutable alias table.</returns>
     /// <exception cref="SerializationException">An entry's aliased type is unset, an entry's aliased
     /// type is otherwise malformed, or the resulting table is invalid: a duplicate anchor, a missing
-    /// target, a direct alias-to-alias definition, a non-concrete definition, or a circular alias
-    /// dependency.</exception>
+    /// target, a direct alias-to-alias definition, a non-concrete definition, an unspecified
+    /// user-defined type parameter, or a circular alias dependency.</exception>
     public TypeAliasTable From(IEnumerable<ProtoTypeAlias> aliases)
     {
         var builder = new TypeAliasTable.Builder();
