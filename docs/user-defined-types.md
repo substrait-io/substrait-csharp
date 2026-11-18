@@ -195,7 +195,6 @@ requested variation, preserving nested metadata and the attached definition.
 
 The new visitor overload is virtual and falls back to `Visit(IType, ...)`.
 Existing visitor subclasses do not need another abstract implementation.
-`DefaultTypeVisitor` routes UDTs to `DefaultVisit`.
 
 ## Boundaries
 

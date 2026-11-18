@@ -221,16 +221,16 @@ public class TypeVisitorTest
         public override string ToString() => this.builder.ToString();
     }
 
-    private sealed class TypePrinter : DefaultTypeVisitor<StringBuilderContext, VoidOutput>
+    private sealed class TypePrinter : TypeVisitor<StringBuilderContext, VoidOutput>
     {
         public override VoidOutput Visit(IType other, StringBuilderContext context)
         {
-            throw new NotSupportedException($"Unable to print type {other.GetType().Name}");
-        }
+            if (other is UnsupportedType)
+            {
+                throw new NotSupportedException($"Unable to print type {other.GetType().Name}");
+            }
 
-        protected override VoidOutput DefaultVisit(IType type, StringBuilderContext context)
-        {
-            context.Append(type.GetType().Name);
+            context.Append(other.GetType().Name);
             return VoidOutput.Instance;
         }
     }

@@ -466,11 +466,11 @@ public sealed class ListAndMapTypeTests
         return new ExtensionsDictionary.Builder(plan).Build();
     }
 
-    private sealed class RecordingDefaultVisitor : DefaultTypeVisitor<int, int>
+    private sealed class RecordingDefaultVisitor : TypeVisitor<int, int>
     {
         public List<IType> VisitedTypes { get; } = [];
 
-        protected override int DefaultVisit(IType type, int context)
+        public override int Visit(IType type, int context)
         {
             this.VisitedTypes.Add(type);
             return context;

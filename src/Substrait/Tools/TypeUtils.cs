@@ -356,7 +356,7 @@ public static class TypeUtils
             /// <summary>
             /// NodeEquality visitor.
             /// </summary>
-            private sealed class NodeEqualsVisitor(ITypeComparison comparison) : DefaultTypeVisitor<IEnumerator<IType>, bool>
+            private sealed class NodeEqualsVisitor(ITypeComparison comparison) : TypeVisitor<IEnumerator<IType>, bool>
             {
                 /// <summary>
                 /// Default instance.
@@ -364,7 +364,7 @@ public static class TypeUtils
                 internal static readonly NodeEqualsVisitor DEFAULT = new(ITypeComparison.Strict);
 
                 /// <inheritdoc/>
-                protected override bool DefaultVisit(IType type, IEnumerator<IType> context)
+                public override bool Visit(IType type, IEnumerator<IType> context)
                 {
                     return context.MoveNext()
                         && context.Current is not null

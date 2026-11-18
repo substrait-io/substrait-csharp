@@ -119,7 +119,6 @@ The default extension catalog does not supply custom variations.
 
 New UUID and compound-interval visitor overloads are virtual fallbacks to
 `Visit(IType, ...)`; existing custom visitors need not implement them.
-`DefaultTypeVisitor` sends them to `DefaultVisit`.
 
 Out-of-range precision throws `ArgumentOutOfRangeException`, consistent with
 timestamp types. A protobuf day interval with absent precision throws

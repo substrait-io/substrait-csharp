@@ -68,14 +68,6 @@ override Substrait.Core.Relation.Reference.Metadata.get -> Substrait.Core.Metada
 override Substrait.Core.Relation.Set.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 override Substrait.Core.Relation.Sort.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
 override Substrait.Core.Relation.VirtualTableRead.Metadata.get -> Substrait.Core.Metadata.RelationMetadata!
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.AliasReference! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Func! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.IntervalCompound! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.List! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Map! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Uuid! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.UnboundType! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.UserDefinedType! type, TContext context) -> TOutput
 override Substrait.Core.Type.ParameterizedType.AliasReference.Accept<TContext, TOutput>(Substrait.Core.Type.TypeVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
 override Substrait.Core.Type.ParameterizedType.AliasReference.Equals(object? obj) -> bool
 override Substrait.Core.Type.ParameterizedType.AliasReference.GetHashCode() -> int
@@ -617,7 +609,6 @@ abstract Substrait.Core.Relation.RelVisitor<TContext, TOutput>.Visit(Substrait.C
 abstract Substrait.Core.Relation.RelVisitor<TContext, TOutput>.Visit(Substrait.Core.Relation.Sort! op, TContext context) -> TOutput
 abstract Substrait.Core.Relation.RelVisitor<TContext, TOutput>.Visit(Substrait.Core.Relation.VirtualTableRead! op, TContext context) -> TOutput
 abstract Substrait.Core.Relation.SingleInput.Input.get -> Substrait.Core.Relation.IRel!
-abstract Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.DefaultVisit(Substrait.Core.Type.IType! type, TContext context) -> TOutput
 abstract Substrait.Core.Type.ParameterizedType.Accept<TContext, TOutput>(Substrait.Core.Type.TypeVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
 abstract Substrait.Core.Type.ParameterizedType.NodeEqualTypeParameters(Substrait.Core.Type.IType! other) -> bool
 abstract Substrait.Core.Type.ParameterizedType.ShortTypeName.get -> string!
@@ -626,26 +617,6 @@ abstract Substrait.Core.Type.ParameterizedType.TypeName.get -> string!
 abstract Substrait.Core.Type.PrimitiveType.Accept<TContext, TOutput>(Substrait.Core.Type.TypeVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
 abstract Substrait.Core.Type.PrimitiveType.ShortTypeName.get -> string!
 abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.IType! other, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Decimal! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.FixedBinary! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.FixedChar! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.PrecisionTimestamp! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.PrecisionTimestampTZ! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Struct! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.VarChar! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Binary! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Bool! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Date! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.FP32! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.FP64! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.I16! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.I32! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.I64! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.I8! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.IntervalDay! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.IntervalYear! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Str! type, TContext context) -> TOutput
-abstract Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Time! type, TContext context) -> TOutput
 override sealed Substrait.Core.Relation.BiInput.Inputs.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Relation.IRel!>!
 override sealed Substrait.Core.Relation.Read.DeriveRecordType() -> Substrait.Core.Type.ParameterizedType.Struct!
 override sealed Substrait.Core.Relation.SingleInput.Inputs.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Relation.IRel!>!
@@ -953,27 +924,6 @@ override Substrait.Core.Relation.VirtualTableRead.Filter.get -> Substrait.Core.E
 override Substrait.Core.Relation.VirtualTableRead.GetNodeHashCode() -> int
 override Substrait.Core.Relation.VirtualTableRead.InitialSchema.get -> Substrait.Core.Type.NamedStruct!
 override Substrait.Core.Relation.VirtualTableRead.NodeEquals(Substrait.Core.Relation.IRel! other) -> bool
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.IType! other, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Decimal! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.FixedBinary! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.FixedChar! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.PrecisionTimestamp! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.PrecisionTimestampTZ! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Struct! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.VarChar! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Binary! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Bool! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Date! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.FP32! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.FP64! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.I16! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.I32! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.I64! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.I8! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.IntervalDay! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.IntervalYear! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Str! type, TContext context) -> TOutput
-override Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Time! type, TContext context) -> TOutput
 override Substrait.Core.Type.NamedStruct.Equals(object? obj) -> bool
 override Substrait.Core.Type.NamedStruct.GetHashCode() -> int
 override Substrait.Core.Type.ParameterizedType.Decimal.Accept<TContext, TOutput>(Substrait.Core.Type.TypeVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
@@ -1819,8 +1769,6 @@ Substrait.Core.Type.Converters.ProtoToTypeConverter
 Substrait.Core.Type.Converters.ProtoToTypeConverter.From(Substrait.Protobuf.Type! protoType) -> Substrait.Core.Type.IType!
 Substrait.Core.Type.Converters.ProtoToTypeConverter.ProtoToTypeConverter() -> void
 Substrait.Core.Type.Converters.ProtoToTypeConverter.ProtoToTypeConverter(Substrait.Core.Extension.ExtensionsDictionary! lookup, Substrait.Core.Extension.ExtensionsCollection! extensions, Substrait.Core.Extension.ExtensionsDictionary.StrictMode strictMode = Substrait.Core.Extension.ExtensionsDictionary.StrictMode.STRICT) -> void
-Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>
-Substrait.Core.Type.DefaultTypeVisitor<TContext, TOutput>.DefaultTypeVisitor() -> void
 Substrait.Core.Type.IType
 Substrait.Core.Type.IType.Accept<TContext, TOutput>(Substrait.Core.Type.TypeVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
 Substrait.Core.Type.IType.NodeEquals(Substrait.Core.Type.IType! other, Substrait.Core.Type.ITypeComparison comparison) -> bool
@@ -2147,10 +2095,30 @@ virtual Substrait.Core.Type.PrimitiveType.TypeName.get -> string!
 virtual Substrait.Core.Type.TypeBottomUpDispatcher<TContext, TOutput>.ShouldBailOut(TOutput result, TContext context) -> bool
 virtual Substrait.Core.Type.TypeTopDownDispatcher<TContext, TOutput>.ShouldBailOut(TOutput result, TContext context) -> bool
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.AliasReference! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Decimal! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.FixedBinary! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.FixedChar! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Func! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.IntervalCompound! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.List! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Map! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.PrecisionTimestamp! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.PrecisionTimestampTZ! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.Struct! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.ParameterizedType.VarChar! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Binary! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Bool! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Date! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.FP32! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.FP64! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.I16! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.I32! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.I64! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.I8! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.IntervalDay! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.IntervalYear! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Str! type, TContext context) -> TOutput
+virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Time! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.PrimitiveType.Uuid! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.UnboundType! type, TContext context) -> TOutput
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.UserDefinedType! type, TContext context) -> TOutput
