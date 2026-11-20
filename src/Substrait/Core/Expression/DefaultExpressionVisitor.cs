@@ -147,6 +147,48 @@ public abstract class DefaultExpressionVisitor<TContext, TOutput> : ExpressionVi
     }
 
     /// <inheritdoc/>
+    public override TOutput Visit(UuidLiteral expr, TContext context)
+    {
+        return this.DefaultVisit(expr, context);
+    }
+
+    /// <inheritdoc/>
+    public override TOutput Visit(IntervalCompoundLiteral expr, TContext context)
+    {
+        return this.DefaultVisit(expr, context);
+    }
+
+    /// <inheritdoc/>
+    public override TOutput Visit(ListLiteral expr, TContext context)
+    {
+        return this.DefaultVisit(expr, context);
+    }
+
+    /// <inheritdoc/>
+    public override TOutput Visit(MapLiteral expr, TContext context)
+    {
+        return this.DefaultVisit(expr, context);
+    }
+
+    /// <inheritdoc/>
+    public override TOutput Visit(EmptyListLiteral expr, TContext context)
+    {
+        return this.DefaultVisit(expr, context);
+    }
+
+    /// <inheritdoc/>
+    public override TOutput Visit(EmptyMapLiteral expr, TContext context)
+    {
+        return this.DefaultVisit(expr, context);
+    }
+
+    /// <inheritdoc/>
+    public override TOutput Visit(UserDefinedLiteral expr, TContext context)
+    {
+        return this.DefaultVisit(expr, context);
+    }
+
+    /// <inheritdoc/>
     public override TOutput Visit(ScalarFunctionInvocation expr, TContext context)
     {
         return this.DefaultVisit(expr, context);
