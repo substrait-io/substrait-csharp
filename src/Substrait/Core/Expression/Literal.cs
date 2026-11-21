@@ -1515,6 +1515,30 @@ public abstract class Literal : IExpression, IEquatable<Literal>, INodeEquatable
         }
 
         /// <summary>
+        /// Initializes a new instance of the <see cref="UserDefinedLiteral"/> class with an opaque value whose type is a plan-local type alias.
+        /// </summary>
+        /// <param name="aliasAnchor">Anchor of the type alias.</param>
+        /// <param name="value">Opaque encoded value.</param>
+        /// <param name="nullable">Whether the literal type is nullable.</param>
+        public UserDefinedLiteral(uint aliasAnchor, Any value, NullableType nullable = NullableType.Required)
+            : base(TypeFactory.Of(nullable).AliasReference(aliasAnchor), nullable)
+        {
+            this.Value = value;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UserDefinedLiteral"/> class with a structured value whose type is a plan-local type alias.
+        /// </summary>
+        /// <param name="aliasAnchor">Anchor of the type alias.</param>
+        /// <param name="fields">Structured value fields.</param>
+        /// <param name="nullable">Whether the literal type is nullable.</param>
+        public UserDefinedLiteral(uint aliasAnchor, IEnumerable<Literal> fields, NullableType nullable = NullableType.Required)
+            : base(TypeFactory.Of(nullable).AliasReference(aliasAnchor), nullable)
+        {
+            this.Fields = fields.ToImmutableList();
+        }
+
+        /// <summary>
         /// Gets the opaque encoded value, or null when the value is structured.
         /// </summary>
         public Any? Value { get; }

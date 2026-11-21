@@ -123,6 +123,59 @@ public sealed class LiteralVariantTests
     }
 
     [Test]
+    public async Task UserDefinedLiteralPreservesTypeAlias()
+    {
+        Any value = Any.Pack(new Google.Protobuf.WellKnownTypes.StringValue { Value = "x" });
+        ProtoLiteral proto = new()
+        {
+            UserDefined = new ProtoLiteral.Types.UserDefined { TypeAliasReference = 37, Value = value },
+        };
+
+        Literal literal = this.converter.CreateLiteral(proto);
+
+        await Assert.That(literal.Type).IsEqualTo(new ParameterizedType.AliasReference(37, IType.NullableType.Required));
+
+        ProtoLiteral back = new ExpressionToProtoConverter(new TypeToProtoConverter()).From(literal).Literal;
+        await Assert.That(back.UserDefined.TypeAnchorTypeCase).IsEqualTo(ProtoLiteral.Types.UserDefined.TypeAnchorTypeOneofCase.TypeAliasReference);
+        await Assert.That(back.UserDefined.TypeAliasReference).IsEqualTo(37u);
+        await Assert.That(back.UserDefined.Value).IsEqualTo(value);
+    }
+
+    [Test]
+    public async Task RejectsTypeAliasUserDefinedLiteralWithParametersOrVariation()
+    {
+        Any value = Any.Pack(new Google.Protobuf.WellKnownTypes.StringValue { Value = "x" });
+        ProtoLiteral withParameters = new()
+        {
+            UserDefined = new ProtoLiteral.Types.UserDefined
+            {
+                TypeAliasReference = 37,
+                TypeParameters = { new Substrait.Protobuf.Type.Types.Parameter { Integer = 3 } },
+                Value = value,
+            },
+        };
+        ProtoLiteral withVariation = new()
+        {
+            TypeVariationReference = 9,
+            UserDefined = new ProtoLiteral.Types.UserDefined { TypeAliasReference = 37, Value = value },
+        };
+
+        await Assert.That(() => this.converter.CreateLiteral(withParameters)).Throws<System.Runtime.Serialization.SerializationException>();
+        await Assert.That(() => this.converter.CreateLiteral(withVariation)).Throws<System.Runtime.Serialization.SerializationException>();
+    }
+
+    [Test]
+    public async Task RejectsUserDefinedLiteralWithoutTypeAnchor()
+    {
+        ProtoLiteral proto = new()
+        {
+            UserDefined = new ProtoLiteral.Types.UserDefined { Value = Any.Pack(new Google.Protobuf.WellKnownTypes.StringValue { Value = "x" }) },
+        };
+
+        await Assert.That(() => this.converter.CreateLiteral(proto)).Throws<System.Runtime.Serialization.SerializationException>();
+    }
+
+    [Test]
     public async Task RejectsEmptyListAndMapLiterals()
     {
         await Assert.That(() => new Literal.ListLiteral([])).Throws<ArgumentException>();

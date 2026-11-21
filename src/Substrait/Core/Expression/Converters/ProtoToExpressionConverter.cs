@@ -281,6 +281,35 @@ public class ProtoToExpressionConverter : IProtoConverter
                         break;
                     }
 
+                    if (current.UserDefined.Struct is null && current.UserDefined.Value is null)
+                    {
+                        throw new SerializationException("User-defined literal must set either a value or a struct.");
+                    }
+
+                    if (current.UserDefined.TypeAnchorTypeCase == ProtoLiteral.Types.UserDefined.TypeAnchorTypeOneofCase.TypeAliasReference)
+                    {
+                        if (current.UserDefined.TypeParameters.Count > 0 || current.TypeVariationReference != 0)
+                        {
+                            throw new SerializationException("User-defined literal with a type alias reference cannot set type parameters or a type variation.");
+                        }
+
+                        if (current.UserDefined.Struct is not null)
+                        {
+                            destination.Add(new Literal.UserDefinedLiteral(current.UserDefined.TypeAliasReference, inputs, nullable));
+                        }
+                        else
+                        {
+                            destination.Add(new Literal.UserDefinedLiteral(current.UserDefined.TypeAliasReference, current.UserDefined.Value, nullable));
+                        }
+
+                        break;
+                    }
+
+                    if (current.UserDefined.TypeAnchorTypeCase != ProtoLiteral.Types.UserDefined.TypeAnchorTypeOneofCase.TypeReference)
+                    {
+                        throw new SerializationException("User-defined literal must set either a type reference or a type alias reference.");
+                    }
+
                     var userDefinedProto = new Substrait.Protobuf.Type.Types.UserDefined
                     {
                         TypeReference = current.UserDefined.TypeReference,
@@ -293,13 +322,9 @@ public class ProtoToExpressionConverter : IProtoConverter
                     {
                         destination.Add(new Literal.UserDefinedLiteral(userDefinedType.Anchor, userDefinedType.Parameters, inputs, nullable, userDefinedType.Declaration) { TypeVariation = userDefinedType.TypeVariation });
                     }
-                    else if (current.UserDefined.Value is not null)
-                    {
-                        destination.Add(new Literal.UserDefinedLiteral(userDefinedType.Anchor, userDefinedType.Parameters, current.UserDefined.Value, nullable, userDefinedType.Declaration) { TypeVariation = userDefinedType.TypeVariation });
-                    }
                     else
                     {
-                        throw new SerializationException("User-defined literal must set either a value or a struct.");
+                        destination.Add(new Literal.UserDefinedLiteral(userDefinedType.Anchor, userDefinedType.Parameters, current.UserDefined.Value, nullable, userDefinedType.Declaration) { TypeVariation = userDefinedType.TypeVariation });
                     }
 
                     break;

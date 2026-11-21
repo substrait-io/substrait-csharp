@@ -166,9 +166,18 @@ public class ExpressionToProtoConverter
 
         public override ProtoExpression Visit(UserDefinedLiteral expression, PlanToProtoConverter.ConverterContext context)
         {
-            var type = this.typeConverter.From(expression.Type, context).UserDefined;
-            var userDefined = new ProtoLiteral.Types.UserDefined { TypeReference = type.TypeReference };
-            userDefined.TypeParameters.AddRange(type.TypeParameters);
+            var userDefined = new ProtoLiteral.Types.UserDefined();
+            if (expression.Type is ParameterizedType.AliasReference alias)
+            {
+                userDefined.TypeAliasReference = alias.Anchor;
+            }
+            else
+            {
+                var type = this.typeConverter.From(expression.Type, context).UserDefined;
+                userDefined.TypeReference = type.TypeReference;
+                userDefined.TypeParameters.AddRange(type.TypeParameters);
+            }
+
             if (expression.Fields is not null)
             {
                 userDefined.Struct = ToStruct(expression.Fields, context);
