@@ -184,7 +184,7 @@ public class ExpressionToProtoConverter
             }
             else
             {
-                userDefined.Value = expression.Value;
+                userDefined.Value = expression.Value!.ToProto();
             }
 
             return Wrap(new() { UserDefined = userDefined }, expression, context);

@@ -7,6 +7,7 @@ using System.Runtime.Serialization;
 using Substrait.Core.Extension;
 using Substrait.Core.Extension.Functions;
 using Substrait.Core.Extension.Types;
+using Substrait.Core.Metadata;
 using Substrait.Core.Plan.Converters;
 using Substrait.Core.Relation.Converters;
 using Substrait.Core.Type;
@@ -299,7 +300,7 @@ public class ProtoToExpressionConverter : IProtoConverter
                         }
                         else
                         {
-                            destination.Add(new Literal.UserDefinedLiteral(current.UserDefined.TypeAliasReference, current.UserDefined.Value, nullable));
+                            destination.Add(new Literal.UserDefinedLiteral(current.UserDefined.TypeAliasReference, ReadOnlyAny.FromProto(current.UserDefined.Value), nullable));
                         }
 
                         break;
@@ -324,7 +325,7 @@ public class ProtoToExpressionConverter : IProtoConverter
                     }
                     else
                     {
-                        destination.Add(new Literal.UserDefinedLiteral(userDefinedType.Anchor, userDefinedType.Parameters, current.UserDefined.Value, nullable, userDefinedType.Declaration) { TypeVariation = userDefinedType.TypeVariation });
+                        destination.Add(new Literal.UserDefinedLiteral(userDefinedType.Anchor, userDefinedType.Parameters, ReadOnlyAny.FromProto(current.UserDefined.Value), nullable, userDefinedType.Declaration) { TypeVariation = userDefinedType.TypeVariation });
                     }
 
                     break;

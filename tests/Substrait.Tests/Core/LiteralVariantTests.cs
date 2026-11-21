@@ -77,7 +77,7 @@ public sealed class LiteralVariantTests
         Literal.UserDefinedLiteral literal = (Literal.UserDefinedLiteral)this.converter.CreateLiteral(proto);
         UserDefinedType type = (UserDefinedType)literal.Type;
 
-        await Assert.That(literal.Value).IsEqualTo(value);
+        await Assert.That(literal.Value!.ToProto()).IsEqualTo(value);
         await Assert.That(literal.Fields).IsNull();
         await Assert.That(type.Anchor).IsEqualTo(new TypeAnchor("extension:test:shapes", "point"));
         await Assert.That(type.Parameters.Count).IsEqualTo(1);
@@ -112,6 +112,53 @@ public sealed class LiteralVariantTests
         ProtoLiteral back = new ExpressionToProtoConverter(new TypeToProtoConverter()).From(literal).Literal;
         await Assert.That(back.UserDefined.ValCase).IsEqualTo(ProtoLiteral.Types.UserDefined.ValOneofCase.Struct);
         await Assert.That(back.UserDefined.Struct.Fields.Count).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task UserDefinedLiteralIsIsolatedFromInputPayloadMutation()
+    {
+        Any value = Any.Pack(new Google.Protobuf.WellKnownTypes.StringValue { Value = "x" });
+        ProtoLiteral proto = new() { UserDefined = new ProtoLiteral.Types.UserDefined { TypeReference = 7, Value = value } };
+        Literal original = this.converter.CreateLiteral(proto.Clone());
+        Literal literal = this.converter.CreateLiteral(proto);
+        HashSet<Literal> set = [literal];
+
+        value.Value = ByteString.CopyFromUtf8("changed");
+
+        await Assert.That(literal).IsEqualTo(original);
+        await Assert.That(set.Contains(original)).IsTrue();
+    }
+
+    [Test]
+    public async Task UserDefinedLiteralIsIsolatedFromExportedPayloadMutation()
+    {
+        ProtoLiteral proto = new()
+        {
+            UserDefined = new ProtoLiteral.Types.UserDefined { TypeReference = 7, Value = Any.Pack(new Google.Protobuf.WellKnownTypes.StringValue { Value = "x" }) },
+        };
+        Literal original = this.converter.CreateLiteral(proto.Clone());
+        Literal literal = this.converter.CreateLiteral(proto);
+        HashSet<Literal> set = [literal];
+
+        new ExpressionToProtoConverter(new TypeToProtoConverter()).From(literal).Literal.UserDefined.Value.Value = ByteString.CopyFromUtf8("changed");
+
+        await Assert.That(literal).IsEqualTo(original);
+        await Assert.That(set.Contains(original)).IsTrue();
+    }
+
+    [Test]
+    public async Task UserDefinedLiteralSnapshotsMessagePayload()
+    {
+        Google.Protobuf.WellKnownTypes.StringValue message = new() { Value = "x" };
+        Any any = Any.Pack(new Google.Protobuf.WellKnownTypes.StringValue { Value = "y" });
+        Literal.UserDefinedLiteral packed = new(new TypeAnchor("extension:test:shapes", "point"), [], message);
+        Literal.UserDefinedLiteral copied = new(37, any);
+
+        message.Value = "changed";
+        any.Value = ByteString.CopyFromUtf8("changed");
+
+        await Assert.That(packed.Value!.ToProto()).IsEqualTo(Any.Pack(new Google.Protobuf.WellKnownTypes.StringValue { Value = "x" }));
+        await Assert.That(copied.Value!.ToProto()).IsEqualTo(Any.Pack(new Google.Protobuf.WellKnownTypes.StringValue { Value = "y" }));
     }
 
     [Test]

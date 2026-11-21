@@ -4,8 +4,8 @@
 using System;
 using System.Collections.Immutable;
 using Google.Protobuf;
-using Google.Protobuf.WellKnownTypes;
 using Substrait.Core.Extension.Types;
+using Substrait.Core.Metadata;
 using Substrait.Core.Type;
 using Substrait.Tools;
 using Substrait.Tools.Visitor;
@@ -1487,12 +1487,30 @@ public abstract class Literal : IExpression, IEquatable<Literal>, INodeEquatable
         public UserDefinedLiteral(
             TypeAnchor anchor,
             IEnumerable<TypeParameter> parameters,
-            Any value,
+            ReadOnlyAny value,
             NullableType nullable = NullableType.Required,
             TypeDefinition? declaration = null)
             : base(TypeFactory.Of(nullable).UserDefined(anchor, parameters, null, declaration), nullable)
         {
             this.Value = value;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UserDefinedLiteral"/> class by snapshotting a protobuf message as its opaque value.
+        /// </summary>
+        /// <param name="anchor">Anchor of the user-defined type.</param>
+        /// <param name="parameters">Type parameters of the user-defined type.</param>
+        /// <param name="message">A non-null message to pack, or an already-packed Any to copy without repacking. Do not mutate concurrently with construction.</param>
+        /// <param name="nullable">Whether the literal type is nullable.</param>
+        /// <param name="declaration">Declaration of the user-defined type.</param>
+        public UserDefinedLiteral(
+            TypeAnchor anchor,
+            IEnumerable<TypeParameter> parameters,
+            IMessage message,
+            NullableType nullable = NullableType.Required,
+            TypeDefinition? declaration = null)
+            : this(anchor, parameters, ProtoUtils.SnapshotAny(message), nullable, declaration)
+        {
         }
 
         /// <summary>
@@ -1520,10 +1538,21 @@ public abstract class Literal : IExpression, IEquatable<Literal>, INodeEquatable
         /// <param name="aliasAnchor">Anchor of the type alias.</param>
         /// <param name="value">Opaque encoded value.</param>
         /// <param name="nullable">Whether the literal type is nullable.</param>
-        public UserDefinedLiteral(uint aliasAnchor, Any value, NullableType nullable = NullableType.Required)
+        public UserDefinedLiteral(uint aliasAnchor, ReadOnlyAny value, NullableType nullable = NullableType.Required)
             : base(TypeFactory.Of(nullable).AliasReference(aliasAnchor), nullable)
         {
             this.Value = value;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UserDefinedLiteral"/> class by snapshotting a protobuf message as the opaque value of a plan-local type alias.
+        /// </summary>
+        /// <param name="aliasAnchor">Anchor of the type alias.</param>
+        /// <param name="message">A non-null message to pack, or an already-packed Any to copy without repacking. Do not mutate concurrently with construction.</param>
+        /// <param name="nullable">Whether the literal type is nullable.</param>
+        public UserDefinedLiteral(uint aliasAnchor, IMessage message, NullableType nullable = NullableType.Required)
+            : this(aliasAnchor, ProtoUtils.SnapshotAny(message), nullable)
+        {
         }
 
         /// <summary>
@@ -1541,7 +1570,7 @@ public abstract class Literal : IExpression, IEquatable<Literal>, INodeEquatable
         /// <summary>
         /// Gets the opaque encoded value, or null when the value is structured.
         /// </summary>
-        public Any? Value { get; }
+        public ReadOnlyAny? Value { get; }
 
         /// <summary>
         /// Gets the structured value fields, or null when the value is opaque.
