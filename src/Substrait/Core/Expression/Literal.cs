@@ -4,6 +4,8 @@
 using System;
 using System.Collections.Immutable;
 using Google.Protobuf;
+using Substrait.Core.Extension.Types;
+using Substrait.Core.Metadata;
 using Substrait.Core.Type;
 using Substrait.Tools;
 using Substrait.Tools.Visitor;
@@ -31,7 +33,7 @@ public abstract class Literal : IExpression, IEquatable<Literal>, INodeEquatable
     }
 
     /// <inheritdoc/>
-    public IType Type { get; }
+    public IType Type { get; private init; }
 
     /// <inheritdoc/>
     public virtual IEnumerable<IExpression> InputNodes => ImmutableList<IExpression>.Empty;
@@ -40,6 +42,15 @@ public abstract class Literal : IExpression, IEquatable<Literal>, INodeEquatable
     /// Gets a value indicating whether the literal type is nullable.
     /// </summary>
     public NullableType Nullable { get; }
+
+    /// <summary>
+    /// Gets the type variation of the literal type.
+    /// </summary>
+    public ITypeVariation? TypeVariation
+    {
+        get => this.Type.TypeVariation;
+        init => this.Type = TypeFactory.Of(this.Nullable).ResolveTypeWithNullability(this.Type, value);
+    }
 
     /// <inheritdoc/>
     public bool HasHashCode => this.hashCode.IsValueCreated;
@@ -69,6 +80,20 @@ public abstract class Literal : IExpression, IEquatable<Literal>, INodeEquatable
     public override bool Equals(object? obj)
     {
         return this.Equals(obj as Literal);
+    }
+
+    private static IType HomogeneousType(IReadOnlyList<Literal> literals, string description, string paramName)
+    {
+        var comparer = TypeUtils.ITypeEqualityComparer.Of(ITypeComparison.Strict);
+        for (int index = 1; index < literals.Count; index++)
+        {
+            if (!comparer.Equals(literals[index].Type, literals[0].Type))
+            {
+                throw new ArgumentException($"{description} {index} has type {literals[index].Type}, but {description} 0 has type {literals[0].Type}.", paramName);
+            }
+        }
+
+        return literals[0].Type;
     }
 
     /// <summary>
@@ -644,15 +669,32 @@ public abstract class Literal : IExpression, IEquatable<Literal>, INodeEquatable
         /// <param name="value">Value of the literal.</param>
         /// <param name="nullable">Whether the literal type is nullable.</param>
         public TimeLiteral(long value, NullableType nullable)
-            : base(TypeFactory.Of(nullable).TIME, nullable)
+            : this(value, 6, nullable)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TimeLiteral"/> class.
+        /// </summary>
+        /// <param name="value">Value of the literal, in units of 10^-precision seconds since midnight.</param>
+        /// <param name="precision">Precision of the time.</param>
+        /// <param name="nullable">Whether the literal type is nullable.</param>
+        public TimeLiteral(long value, int precision, NullableType nullable)
+            : base(TypeFactory.Of(nullable).PrecisionTime(precision), nullable)
         {
             this.Value = value;
+            this.Precision = precision;
         }
 
         /// <summary>
         /// Gets value property.
         /// </summary>
         public long Value { get; }
+
+        /// <summary>
+        /// Gets precision property.
+        /// </summary>
+        public int Precision { get; }
 
         /// <inheritdoc/>
         public override TOutput Accept<TContext, TOutput>(ExpressionVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
@@ -792,10 +834,25 @@ public abstract class Literal : IExpression, IEquatable<Literal>, INodeEquatable
         /// <param name="seconds">Value of the seconds.</param>
         /// <param name="nullable">Whether the literal type is nullable.</param>
         public IntervalDayLiteral(int days, int seconds, NullableType nullable)
-            : base(TypeFactory.Of(nullable).INTERVAL_DAY, nullable)
+            : this(days, seconds, 0, 0, nullable)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="IntervalDayLiteral"/> class.
+        /// </summary>
+        /// <param name="days">Value of the days.</param>
+        /// <param name="seconds">Value of the seconds.</param>
+        /// <param name="subseconds">Value of the subseconds, in units of 10^-precision seconds.</param>
+        /// <param name="precision">Precision of the subseconds.</param>
+        /// <param name="nullable">Whether the literal type is nullable.</param>
+        public IntervalDayLiteral(int days, int seconds, long subseconds, int precision, NullableType nullable)
+            : base(TypeFactory.Of(nullable).IntervalDay(precision), nullable)
         {
             this.Days = days;
             this.Seconds = seconds;
+            this.Subseconds = subseconds;
+            this.Precision = precision;
         }
 
         /// <summary>
@@ -808,19 +865,29 @@ public abstract class Literal : IExpression, IEquatable<Literal>, INodeEquatable
         /// </summary>
         public int Seconds { get; }
 
+        /// <summary>
+        /// Gets subseconds property.
+        /// </summary>
+        public long Subseconds { get; }
+
+        /// <summary>
+        /// Gets precision property.
+        /// </summary>
+        public int Precision { get; }
+
         /// <inheritdoc/>
         public override TOutput Accept<TContext, TOutput>(ExpressionVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
 
         /// <inheritdoc/>
         public override int GetNodeHashCode()
         {
-            return HashCode.Combine(nameof(IntervalDayLiteral), this.Days, this.Seconds);
+            return HashCode.Combine(nameof(IntervalDayLiteral), this.Days, this.Seconds, this.Subseconds);
         }
 
         /// <inheritdoc/>
         public override bool NodeEquals(IExpression other)
         {
-            return other is IntervalDayLiteral o && this.Days == o.Days && this.Seconds == o.Seconds;
+            return other is IntervalDayLiteral o && this.Days == o.Days && this.Seconds == o.Seconds && this.Subseconds == o.Subseconds;
         }
     }
 
@@ -1078,6 +1145,456 @@ public abstract class Literal : IExpression, IEquatable<Literal>, INodeEquatable
         public override bool NodeEquals(IExpression other)
         {
             return other is StructLiteral;
+        }
+    }
+
+    /// <summary>
+    /// An immutable implementation of UUID literal.
+    /// </summary>
+    public sealed class UuidLiteral : Literal
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UuidLiteral"/> class.
+        /// </summary>
+        /// <param name="value">The 16 bytes of the UUID.</param>
+        public UuidLiteral(ByteString value)
+          : this(value, NullableType.Required)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UuidLiteral"/> class.
+        /// </summary>
+        /// <param name="value">The 16 bytes of the UUID.</param>
+        /// <param name="nullable">Whether the literal type is nullable.</param>
+        public UuidLiteral(ByteString value, NullableType nullable)
+            : base(PrimitiveType.Uuid.Of(nullable), nullable)
+        {
+            this.Value = value;
+        }
+
+        /// <summary>
+        /// Gets value property.
+        /// </summary>
+        public ByteString Value { get; }
+
+        /// <inheritdoc/>
+        public override TOutput Accept<TContext, TOutput>(ExpressionVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public override int GetNodeHashCode()
+        {
+            return HashCode.Combine(nameof(UuidLiteral), this.Value);
+        }
+
+        /// <inheritdoc/>
+        public override bool NodeEquals(IExpression other)
+        {
+            return other is UuidLiteral o && this.Value.Equals(o.Value);
+        }
+    }
+
+    /// <summary>
+    /// An immutable implementation of precision-aware compound interval literal.
+    /// </summary>
+    public sealed class IntervalCompoundLiteral : Literal
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="IntervalCompoundLiteral"/> class.
+        /// </summary>
+        /// <param name="years">Value of the years.</param>
+        /// <param name="months">Value of the months.</param>
+        /// <param name="days">Value of the days.</param>
+        /// <param name="seconds">Value of the seconds.</param>
+        /// <param name="subseconds">Value of the subseconds, in units of 10^-precision seconds.</param>
+        /// <param name="precision">Precision of the subseconds.</param>
+        /// <param name="nullable">Whether the literal type is nullable.</param>
+        public IntervalCompoundLiteral(int years, int months, int days, int seconds, long subseconds, int precision, NullableType nullable)
+            : base(TypeFactory.Of(nullable).IntervalCompound(precision), nullable)
+        {
+            this.Years = years;
+            this.Months = months;
+            this.Days = days;
+            this.Seconds = seconds;
+            this.Subseconds = subseconds;
+            this.Precision = precision;
+        }
+
+        /// <summary>
+        /// Gets years property.
+        /// </summary>
+        public int Years { get; }
+
+        /// <summary>
+        /// Gets months property.
+        /// </summary>
+        public int Months { get; }
+
+        /// <summary>
+        /// Gets days property.
+        /// </summary>
+        public int Days { get; }
+
+        /// <summary>
+        /// Gets seconds property.
+        /// </summary>
+        public int Seconds { get; }
+
+        /// <summary>
+        /// Gets subseconds property.
+        /// </summary>
+        public long Subseconds { get; }
+
+        /// <summary>
+        /// Gets precision property.
+        /// </summary>
+        public int Precision { get; }
+
+        /// <inheritdoc/>
+        public override TOutput Accept<TContext, TOutput>(ExpressionVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public override int GetNodeHashCode()
+        {
+            return HashCode.Combine(nameof(IntervalCompoundLiteral), this.Years, this.Months, this.Days, this.Seconds, this.Subseconds);
+        }
+
+        /// <inheritdoc/>
+        public override bool NodeEquals(IExpression other)
+        {
+            return other is IntervalCompoundLiteral o
+                && this.Years == o.Years
+                && this.Months == o.Months
+                && this.Days == o.Days
+                && this.Seconds == o.Seconds
+                && this.Subseconds == o.Subseconds;
+        }
+    }
+
+    /// <summary>
+    /// An immutable implementation of non-empty list literal.
+    /// </summary>
+    public sealed class ListLiteral : Literal
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ListLiteral"/> class.
+        /// </summary>
+        /// <param name="values">Values of the list, at least one.</param>
+        public ListLiteral(IEnumerable<Literal> values)
+          : this(values, NullableType.Required)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ListLiteral"/> class.
+        /// </summary>
+        /// <param name="values">Values of the list, at least one.</param>
+        /// <param name="nullable">Whether the literal type is nullable.</param>
+        public ListLiteral(IEnumerable<Literal> values, NullableType nullable)
+            : this(values.ToImmutableList(), nullable)
+        {
+        }
+
+        private ListLiteral(ImmutableList<Literal> values, NullableType nullable)
+            : base(TypeFactory.Of(nullable).List(ElementTypeOf(values)), nullable)
+        {
+            this.Values = values;
+        }
+
+        /// <summary>
+        /// Gets values property.
+        /// </summary>
+        public IReadOnlyList<Literal> Values { get; }
+
+        /// <inheritdoc/>
+        public override IEnumerable<IExpression> InputNodes => this.Values;
+
+        /// <inheritdoc/>
+        public override TOutput Accept<TContext, TOutput>(ExpressionVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public override int GetNodeHashCode()
+        {
+            return HashCode.Combine(nameof(ListLiteral));
+        }
+
+        /// <inheritdoc/>
+        public override bool NodeEquals(IExpression other)
+        {
+            return other is ListLiteral;
+        }
+
+        private static IType ElementTypeOf(ImmutableList<Literal> values)
+        {
+            if (values.Count == 0)
+            {
+                throw new ArgumentException("A list literal needs at least one value; use EmptyListLiteral.", nameof(values));
+            }
+
+            return HomogeneousType(values, "List value", nameof(values));
+        }
+    }
+
+    /// <summary>
+    /// An immutable implementation of non-empty map literal.
+    /// </summary>
+    public sealed class MapLiteral : Literal
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MapLiteral"/> class.
+        /// </summary>
+        /// <param name="entries">Key-value pairs of the map, at least one.</param>
+        public MapLiteral(IEnumerable<KeyValuePair<Literal, Literal>> entries)
+          : this(entries, NullableType.Required)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MapLiteral"/> class.
+        /// </summary>
+        /// <param name="entries">Key-value pairs of the map, at least one.</param>
+        /// <param name="nullable">Whether the literal type is nullable.</param>
+        public MapLiteral(IEnumerable<KeyValuePair<Literal, Literal>> entries, NullableType nullable)
+            : this(entries.ToImmutableList(), nullable)
+        {
+        }
+
+        private MapLiteral(ImmutableList<KeyValuePair<Literal, Literal>> entries, NullableType nullable)
+            : base(TypeFactory.Of(nullable).Map(KeyTypeOf(entries), ValueTypeOf(entries)), nullable)
+        {
+            this.Entries = entries;
+        }
+
+        /// <summary>
+        /// Gets entries property.
+        /// </summary>
+        public IReadOnlyList<KeyValuePair<Literal, Literal>> Entries { get; }
+
+        /// <inheritdoc/>
+        public override IEnumerable<IExpression> InputNodes => this.Entries.SelectMany(e => new IExpression[] { e.Key, e.Value });
+
+        /// <inheritdoc/>
+        public override TOutput Accept<TContext, TOutput>(ExpressionVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public override int GetNodeHashCode()
+        {
+            return HashCode.Combine(nameof(MapLiteral));
+        }
+
+        /// <inheritdoc/>
+        public override bool NodeEquals(IExpression other)
+        {
+            return other is MapLiteral;
+        }
+
+        private static IType KeyTypeOf(ImmutableList<KeyValuePair<Literal, Literal>> entries)
+        {
+            if (entries.Count == 0)
+            {
+                throw new ArgumentException("A map literal needs at least one entry; use EmptyMapLiteral.", nameof(entries));
+            }
+
+            int nullKey = entries.FindIndex(entry => entry.Key is NullLiteral);
+            if (nullKey >= 0)
+            {
+                throw new ArgumentException($"Map key {nullKey} is null; map keys may not be null.", nameof(entries));
+            }
+
+            return HomogeneousType(entries.Select(entry => entry.Key).ToList(), "Map key", nameof(entries));
+        }
+
+        private static IType ValueTypeOf(ImmutableList<KeyValuePair<Literal, Literal>> entries) =>
+            HomogeneousType(entries.Select(entry => entry.Value).ToList(), "Map value", nameof(entries));
+    }
+
+    /// <summary>
+    /// An immutable implementation of typed empty list literal.
+    /// </summary>
+    public sealed class EmptyListLiteral : Literal
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="EmptyListLiteral"/> class.
+        /// </summary>
+        /// <param name="elementType">Element type of the list.</param>
+        /// <param name="nullable">Whether the literal type is nullable.</param>
+        public EmptyListLiteral(IType elementType, NullableType nullable)
+            : base(TypeFactory.Of(nullable).List(elementType), nullable)
+        {
+        }
+
+        /// <inheritdoc/>
+        public override TOutput Accept<TContext, TOutput>(ExpressionVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public override int GetNodeHashCode()
+        {
+            return nameof(EmptyListLiteral).GetHashCode();
+        }
+
+        /// <inheritdoc/>
+        public override bool NodeEquals(IExpression other)
+        {
+            return other is EmptyListLiteral;
+        }
+    }
+
+    /// <summary>
+    /// An immutable implementation of typed empty map literal.
+    /// </summary>
+    public sealed class EmptyMapLiteral : Literal
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="EmptyMapLiteral"/> class.
+        /// </summary>
+        /// <param name="keyType">Key type of the map.</param>
+        /// <param name="valueType">Value type of the map.</param>
+        /// <param name="nullable">Whether the literal type is nullable.</param>
+        public EmptyMapLiteral(IType keyType, IType valueType, NullableType nullable)
+            : base(TypeFactory.Of(nullable).Map(keyType, valueType), nullable)
+        {
+        }
+
+        /// <inheritdoc/>
+        public override TOutput Accept<TContext, TOutput>(ExpressionVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public override int GetNodeHashCode()
+        {
+            return nameof(EmptyMapLiteral).GetHashCode();
+        }
+
+        /// <inheritdoc/>
+        public override bool NodeEquals(IExpression other)
+        {
+            return other is EmptyMapLiteral;
+        }
+    }
+
+    /// <summary>
+    /// An immutable implementation of user-defined literal.
+    /// </summary>
+    public sealed class UserDefinedLiteral : Literal
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UserDefinedLiteral"/> class with an opaque value.
+        /// </summary>
+        /// <param name="anchor">Anchor of the user-defined type.</param>
+        /// <param name="parameters">Type parameters of the user-defined type.</param>
+        /// <param name="value">Opaque encoded value.</param>
+        /// <param name="nullable">Whether the literal type is nullable.</param>
+        /// <param name="declaration">Declaration of the user-defined type.</param>
+        public UserDefinedLiteral(
+            TypeAnchor anchor,
+            IEnumerable<TypeParameter> parameters,
+            ReadOnlyAny value,
+            NullableType nullable = NullableType.Required,
+            TypeDefinition? declaration = null)
+            : base(TypeFactory.Of(nullable).UserDefined(anchor, parameters, null, declaration), nullable)
+        {
+            this.Value = value;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UserDefinedLiteral"/> class by snapshotting a protobuf message as its opaque value.
+        /// </summary>
+        /// <param name="anchor">Anchor of the user-defined type.</param>
+        /// <param name="parameters">Type parameters of the user-defined type.</param>
+        /// <param name="message">A non-null message to pack, or an already-packed Any to copy without repacking. Do not mutate concurrently with construction.</param>
+        /// <param name="nullable">Whether the literal type is nullable.</param>
+        /// <param name="declaration">Declaration of the user-defined type.</param>
+        public UserDefinedLiteral(
+            TypeAnchor anchor,
+            IEnumerable<TypeParameter> parameters,
+            IMessage message,
+            NullableType nullable = NullableType.Required,
+            TypeDefinition? declaration = null)
+            : this(anchor, parameters, ProtoUtils.SnapshotAny(message), nullable, declaration)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UserDefinedLiteral"/> class with a structured value.
+        /// </summary>
+        /// <param name="anchor">Anchor of the user-defined type.</param>
+        /// <param name="parameters">Type parameters of the user-defined type.</param>
+        /// <param name="fields">Structured value fields.</param>
+        /// <param name="nullable">Whether the literal type is nullable.</param>
+        /// <param name="declaration">Declaration of the user-defined type.</param>
+        public UserDefinedLiteral(
+            TypeAnchor anchor,
+            IEnumerable<TypeParameter> parameters,
+            IEnumerable<Literal> fields,
+            NullableType nullable = NullableType.Required,
+            TypeDefinition? declaration = null)
+            : base(TypeFactory.Of(nullable).UserDefined(anchor, parameters, null, declaration), nullable)
+        {
+            this.Fields = fields.ToImmutableList();
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UserDefinedLiteral"/> class with an opaque value whose type is a plan-local type alias.
+        /// </summary>
+        /// <param name="aliasAnchor">Anchor of the type alias.</param>
+        /// <param name="value">Opaque encoded value.</param>
+        /// <param name="nullable">Whether the literal type is nullable.</param>
+        public UserDefinedLiteral(uint aliasAnchor, ReadOnlyAny value, NullableType nullable = NullableType.Required)
+            : base(TypeFactory.Of(nullable).AliasReference(aliasAnchor), nullable)
+        {
+            this.Value = value;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UserDefinedLiteral"/> class by snapshotting a protobuf message as the opaque value of a plan-local type alias.
+        /// </summary>
+        /// <param name="aliasAnchor">Anchor of the type alias.</param>
+        /// <param name="message">A non-null message to pack, or an already-packed Any to copy without repacking. Do not mutate concurrently with construction.</param>
+        /// <param name="nullable">Whether the literal type is nullable.</param>
+        public UserDefinedLiteral(uint aliasAnchor, IMessage message, NullableType nullable = NullableType.Required)
+            : this(aliasAnchor, ProtoUtils.SnapshotAny(message), nullable)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UserDefinedLiteral"/> class with a structured value whose type is a plan-local type alias.
+        /// </summary>
+        /// <param name="aliasAnchor">Anchor of the type alias.</param>
+        /// <param name="fields">Structured value fields.</param>
+        /// <param name="nullable">Whether the literal type is nullable.</param>
+        public UserDefinedLiteral(uint aliasAnchor, IEnumerable<Literal> fields, NullableType nullable = NullableType.Required)
+            : base(TypeFactory.Of(nullable).AliasReference(aliasAnchor), nullable)
+        {
+            this.Fields = fields.ToImmutableList();
+        }
+
+        /// <summary>
+        /// Gets the opaque encoded value, or null when the value is structured.
+        /// </summary>
+        public ReadOnlyAny? Value { get; }
+
+        /// <summary>
+        /// Gets the structured value fields, or null when the value is opaque.
+        /// </summary>
+        public IReadOnlyList<Literal>? Fields { get; }
+
+        /// <inheritdoc/>
+        public override IEnumerable<IExpression> InputNodes => this.Fields ?? ImmutableList<Literal>.Empty;
+
+        /// <inheritdoc/>
+        public override TOutput Accept<TContext, TOutput>(ExpressionVisitor<TContext, TOutput> visitor, TContext context) => visitor.Visit(this, context);
+
+        /// <inheritdoc/>
+        public override int GetNodeHashCode()
+        {
+            return HashCode.Combine(nameof(UserDefinedLiteral), this.Value, this.Fields is null);
+        }
+
+        /// <inheritdoc/>
+        public override bool NodeEquals(IExpression other)
+        {
+            return other is UserDefinedLiteral o
+                && (this.Value?.Equals(o.Value) ?? o.Value is null)
+                && this.Fields?.Count == o.Fields?.Count;
         }
     }
 }

@@ -1,4 +1,42 @@
 #nullable enable
+abstract Substrait.Core.Expression.ExpressionVisitor<TContext, TOutput>.Visit(Substrait.Core.Expression.Literal.EmptyListLiteral! expr, TContext context) -> TOutput
+abstract Substrait.Core.Expression.ExpressionVisitor<TContext, TOutput>.Visit(Substrait.Core.Expression.Literal.EmptyMapLiteral! expr, TContext context) -> TOutput
+abstract Substrait.Core.Expression.ExpressionVisitor<TContext, TOutput>.Visit(Substrait.Core.Expression.Literal.IntervalCompoundLiteral! expr, TContext context) -> TOutput
+abstract Substrait.Core.Expression.ExpressionVisitor<TContext, TOutput>.Visit(Substrait.Core.Expression.Literal.ListLiteral! expr, TContext context) -> TOutput
+abstract Substrait.Core.Expression.ExpressionVisitor<TContext, TOutput>.Visit(Substrait.Core.Expression.Literal.MapLiteral! expr, TContext context) -> TOutput
+abstract Substrait.Core.Expression.ExpressionVisitor<TContext, TOutput>.Visit(Substrait.Core.Expression.Literal.UserDefinedLiteral! expr, TContext context) -> TOutput
+abstract Substrait.Core.Expression.ExpressionVisitor<TContext, TOutput>.Visit(Substrait.Core.Expression.Literal.UuidLiteral! expr, TContext context) -> TOutput
+override Substrait.Core.Expression.DefaultExpressionVisitor<TContext, TOutput>.Visit(Substrait.Core.Expression.Literal.EmptyListLiteral! expr, TContext context) -> TOutput
+override Substrait.Core.Expression.DefaultExpressionVisitor<TContext, TOutput>.Visit(Substrait.Core.Expression.Literal.EmptyMapLiteral! expr, TContext context) -> TOutput
+override Substrait.Core.Expression.DefaultExpressionVisitor<TContext, TOutput>.Visit(Substrait.Core.Expression.Literal.IntervalCompoundLiteral! expr, TContext context) -> TOutput
+override Substrait.Core.Expression.DefaultExpressionVisitor<TContext, TOutput>.Visit(Substrait.Core.Expression.Literal.ListLiteral! expr, TContext context) -> TOutput
+override Substrait.Core.Expression.DefaultExpressionVisitor<TContext, TOutput>.Visit(Substrait.Core.Expression.Literal.MapLiteral! expr, TContext context) -> TOutput
+override Substrait.Core.Expression.DefaultExpressionVisitor<TContext, TOutput>.Visit(Substrait.Core.Expression.Literal.UserDefinedLiteral! expr, TContext context) -> TOutput
+override Substrait.Core.Expression.DefaultExpressionVisitor<TContext, TOutput>.Visit(Substrait.Core.Expression.Literal.UuidLiteral! expr, TContext context) -> TOutput
+override Substrait.Core.Expression.Literal.EmptyListLiteral.Accept<TContext, TOutput>(Substrait.Core.Expression.ExpressionVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
+override Substrait.Core.Expression.Literal.EmptyListLiteral.GetNodeHashCode() -> int
+override Substrait.Core.Expression.Literal.EmptyListLiteral.NodeEquals(Substrait.Core.Expression.IExpression! other) -> bool
+override Substrait.Core.Expression.Literal.EmptyMapLiteral.Accept<TContext, TOutput>(Substrait.Core.Expression.ExpressionVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
+override Substrait.Core.Expression.Literal.EmptyMapLiteral.GetNodeHashCode() -> int
+override Substrait.Core.Expression.Literal.EmptyMapLiteral.NodeEquals(Substrait.Core.Expression.IExpression! other) -> bool
+override Substrait.Core.Expression.Literal.IntervalCompoundLiteral.Accept<TContext, TOutput>(Substrait.Core.Expression.ExpressionVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
+override Substrait.Core.Expression.Literal.IntervalCompoundLiteral.GetNodeHashCode() -> int
+override Substrait.Core.Expression.Literal.IntervalCompoundLiteral.NodeEquals(Substrait.Core.Expression.IExpression! other) -> bool
+override Substrait.Core.Expression.Literal.ListLiteral.Accept<TContext, TOutput>(Substrait.Core.Expression.ExpressionVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
+override Substrait.Core.Expression.Literal.ListLiteral.GetNodeHashCode() -> int
+override Substrait.Core.Expression.Literal.ListLiteral.InputNodes.get -> System.Collections.Generic.IEnumerable<Substrait.Core.Expression.IExpression!>!
+override Substrait.Core.Expression.Literal.ListLiteral.NodeEquals(Substrait.Core.Expression.IExpression! other) -> bool
+override Substrait.Core.Expression.Literal.MapLiteral.Accept<TContext, TOutput>(Substrait.Core.Expression.ExpressionVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
+override Substrait.Core.Expression.Literal.MapLiteral.GetNodeHashCode() -> int
+override Substrait.Core.Expression.Literal.MapLiteral.InputNodes.get -> System.Collections.Generic.IEnumerable<Substrait.Core.Expression.IExpression!>!
+override Substrait.Core.Expression.Literal.MapLiteral.NodeEquals(Substrait.Core.Expression.IExpression! other) -> bool
+override Substrait.Core.Expression.Literal.UserDefinedLiteral.Accept<TContext, TOutput>(Substrait.Core.Expression.ExpressionVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
+override Substrait.Core.Expression.Literal.UserDefinedLiteral.GetNodeHashCode() -> int
+override Substrait.Core.Expression.Literal.UserDefinedLiteral.InputNodes.get -> System.Collections.Generic.IEnumerable<Substrait.Core.Expression.IExpression!>!
+override Substrait.Core.Expression.Literal.UserDefinedLiteral.NodeEquals(Substrait.Core.Expression.IExpression! other) -> bool
+override Substrait.Core.Expression.Literal.UuidLiteral.Accept<TContext, TOutput>(Substrait.Core.Expression.ExpressionVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
+override Substrait.Core.Expression.Literal.UuidLiteral.GetNodeHashCode() -> int
+override Substrait.Core.Expression.Literal.UuidLiteral.NodeEquals(Substrait.Core.Expression.IExpression! other) -> bool
 override Substrait.Core.Extension.Types.TypeAnchor.Equals(object? obj) -> bool
 override Substrait.Core.Extension.Types.TypeAnchor.GetHashCode() -> int
 override Substrait.Core.Extension.Types.TypeAnchor.ToString() -> string!
@@ -182,6 +220,44 @@ static Substrait.Core.Type.PrimitiveType.Time.Of(int precision, Substrait.Core.T
 static Substrait.Core.Type.PrimitiveType.Uuid.Of(Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.Uuid!
 static Substrait.Core.Type.TypeAliasTable.Empty.get -> Substrait.Core.Type.TypeAliasTable!
 static Substrait.Tools.TypeUtils.GetFieldNames(this Substrait.Core.Type.NamedStruct! namedStruct) -> System.Collections.Generic.IEnumerable<(Substrait.Core.Type.IType! Field, string! Name)>!
+Substrait.Core.Expression.Literal.EmptyListLiteral
+Substrait.Core.Expression.Literal.EmptyListLiteral.EmptyListLiteral(Substrait.Core.Type.IType! elementType, Substrait.Core.Type.IType.NullableType nullable) -> void
+Substrait.Core.Expression.Literal.EmptyMapLiteral
+Substrait.Core.Expression.Literal.EmptyMapLiteral.EmptyMapLiteral(Substrait.Core.Type.IType! keyType, Substrait.Core.Type.IType! valueType, Substrait.Core.Type.IType.NullableType nullable) -> void
+Substrait.Core.Expression.Literal.IntervalCompoundLiteral
+Substrait.Core.Expression.Literal.IntervalCompoundLiteral.Days.get -> int
+Substrait.Core.Expression.Literal.IntervalCompoundLiteral.IntervalCompoundLiteral(int years, int months, int days, int seconds, long subseconds, int precision, Substrait.Core.Type.IType.NullableType nullable) -> void
+Substrait.Core.Expression.Literal.IntervalCompoundLiteral.Months.get -> int
+Substrait.Core.Expression.Literal.IntervalCompoundLiteral.Precision.get -> int
+Substrait.Core.Expression.Literal.IntervalCompoundLiteral.Seconds.get -> int
+Substrait.Core.Expression.Literal.IntervalCompoundLiteral.Subseconds.get -> long
+Substrait.Core.Expression.Literal.IntervalCompoundLiteral.Years.get -> int
+Substrait.Core.Expression.Literal.IntervalDayLiteral.IntervalDayLiteral(int days, int seconds, long subseconds, int precision, Substrait.Core.Type.IType.NullableType nullable) -> void
+Substrait.Core.Expression.Literal.IntervalDayLiteral.Precision.get -> int
+Substrait.Core.Expression.Literal.IntervalDayLiteral.Subseconds.get -> long
+Substrait.Core.Expression.Literal.ListLiteral
+Substrait.Core.Expression.Literal.ListLiteral.ListLiteral(System.Collections.Generic.IEnumerable<Substrait.Core.Expression.Literal!>! values) -> void
+Substrait.Core.Expression.Literal.ListLiteral.ListLiteral(System.Collections.Generic.IEnumerable<Substrait.Core.Expression.Literal!>! values, Substrait.Core.Type.IType.NullableType nullable) -> void
+Substrait.Core.Expression.Literal.ListLiteral.Values.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Expression.Literal!>!
+Substrait.Core.Expression.Literal.MapLiteral
+Substrait.Core.Expression.Literal.MapLiteral.Entries.get -> System.Collections.Generic.IReadOnlyList<System.Collections.Generic.KeyValuePair<Substrait.Core.Expression.Literal!, Substrait.Core.Expression.Literal!>>!
+Substrait.Core.Expression.Literal.MapLiteral.MapLiteral(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<Substrait.Core.Expression.Literal!, Substrait.Core.Expression.Literal!>>! entries) -> void
+Substrait.Core.Expression.Literal.MapLiteral.MapLiteral(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<Substrait.Core.Expression.Literal!, Substrait.Core.Expression.Literal!>>! entries, Substrait.Core.Type.IType.NullableType nullable) -> void
+Substrait.Core.Expression.Literal.TimeLiteral.Precision.get -> int
+Substrait.Core.Expression.Literal.TimeLiteral.TimeLiteral(long value, int precision, Substrait.Core.Type.IType.NullableType nullable) -> void
+Substrait.Core.Expression.Literal.UserDefinedLiteral
+Substrait.Core.Expression.Literal.UserDefinedLiteral.Fields.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Expression.Literal!>?
+Substrait.Core.Expression.Literal.UserDefinedLiteral.UserDefinedLiteral(Substrait.Core.Extension.Types.TypeAnchor! anchor, System.Collections.Generic.IEnumerable<Substrait.Core.Type.TypeParameter!>! parameters, Substrait.Core.Metadata.ReadOnlyAny! value, Substrait.Core.Type.IType.NullableType nullable = Substrait.Core.Type.IType.NullableType.Required, Substrait.Core.Extension.Types.TypeDefinition? declaration = null) -> void
+Substrait.Core.Expression.Literal.UserDefinedLiteral.UserDefinedLiteral(Substrait.Core.Extension.Types.TypeAnchor! anchor, System.Collections.Generic.IEnumerable<Substrait.Core.Type.TypeParameter!>! parameters, System.Collections.Generic.IEnumerable<Substrait.Core.Expression.Literal!>! fields, Substrait.Core.Type.IType.NullableType nullable = Substrait.Core.Type.IType.NullableType.Required, Substrait.Core.Extension.Types.TypeDefinition? declaration = null) -> void
+Substrait.Core.Expression.Literal.UserDefinedLiteral.UserDefinedLiteral(uint aliasAnchor, Substrait.Core.Metadata.ReadOnlyAny! value, Substrait.Core.Type.IType.NullableType nullable = Substrait.Core.Type.IType.NullableType.Required) -> void
+Substrait.Core.Expression.Literal.UserDefinedLiteral.UserDefinedLiteral(uint aliasAnchor, System.Collections.Generic.IEnumerable<Substrait.Core.Expression.Literal!>! fields, Substrait.Core.Type.IType.NullableType nullable = Substrait.Core.Type.IType.NullableType.Required) -> void
+Substrait.Core.Expression.Literal.UserDefinedLiteral.UserDefinedLiteral(Substrait.Core.Extension.Types.TypeAnchor! anchor, System.Collections.Generic.IEnumerable<Substrait.Core.Type.TypeParameter!>! parameters, Google.Protobuf.IMessage! message, Substrait.Core.Type.IType.NullableType nullable = Substrait.Core.Type.IType.NullableType.Required, Substrait.Core.Extension.Types.TypeDefinition? declaration = null) -> void
+Substrait.Core.Expression.Literal.UserDefinedLiteral.UserDefinedLiteral(uint aliasAnchor, Google.Protobuf.IMessage! message, Substrait.Core.Type.IType.NullableType nullable = Substrait.Core.Type.IType.NullableType.Required) -> void
+Substrait.Core.Expression.Literal.UserDefinedLiteral.Value.get -> Substrait.Core.Metadata.ReadOnlyAny?
+Substrait.Core.Expression.Literal.UuidLiteral
+Substrait.Core.Expression.Literal.UuidLiteral.UuidLiteral(Google.Protobuf.ByteString! value) -> void
+Substrait.Core.Expression.Literal.UuidLiteral.UuidLiteral(Google.Protobuf.ByteString! value, Substrait.Core.Type.IType.NullableType nullable) -> void
+Substrait.Core.Expression.Literal.UuidLiteral.Value.get -> Google.Protobuf.ByteString!
 Substrait.Core.Extension.ExtensionDefinitions.Description.get -> string!
 Substrait.Core.Extension.ExtensionDefinitions.Description.init -> void
 Substrait.Core.Extension.ExtensionsCollection.ExtensionsCollection(System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Types.TypeDefinition!>! types, System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Types.TypeVariationImpl!>! typeVariationImpls, System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Functions.ScalarFunctionImpl!>! scalarFunctionImpls, System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Functions.AggregateFunctionImpl!>! aggregateFunctionImpls, System.Collections.Generic.IEnumerable<Substrait.Core.Extension.Functions.WindowFunctionImpl!>! windowFunctionImpls) -> void
@@ -2156,3 +2232,5 @@ virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.UserDefinedType! type, TContext context) -> TOutput
 virtual Substrait.Tools.Visitor.BottomUpTraversal<TNode>.ShouldVisit(TNode node) -> bool
 virtual Substrait.Tools.Visitor.TopDownTraversal<TNode>.ShouldVisit(TNode node) -> bool
+Substrait.Core.Expression.Literal.TypeVariation.get -> Substrait.Core.Extension.Types.ITypeVariation?
+Substrait.Core.Expression.Literal.TypeVariation.init -> void

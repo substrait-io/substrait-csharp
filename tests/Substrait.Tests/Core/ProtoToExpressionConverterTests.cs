@@ -61,31 +61,6 @@ public sealed class ProtoToExpressionConverterTests
     }
 
     [Test]
-    [Arguments(0)]
-    [Arguments(3)]
-    [Arguments(9)]
-    public async Task RejectsUnsupportedTimePrecision(int precision)
-    {
-        ProtoLiteral literal = new() { PrecisionTime = new() { Precision = precision, Value = 123 } };
-
-        await Assert.That(() => this.converter.CreateLiteral(literal)).ThrowsExactly<NotSupportedException>();
-    }
-
-    [Test]
-    [Arguments(6, 1L)]
-    [Arguments(6, 0L)]
-    [Arguments(0, 1L)]
-    public async Task RejectsFractionalIntervalLiterals(int precision, long subseconds)
-    {
-        ProtoLiteral literal = new()
-        {
-            IntervalDayToSecond = new() { Days = 1, Seconds = 2, Precision = precision, Subseconds = subseconds },
-        };
-
-        await Assert.That(() => this.converter.CreateLiteral(literal)).ThrowsExactly<NotSupportedException>();
-    }
-
-    [Test]
     public async Task RejectsRelationAnchorOuterReferences()
     {
         ParameterizedType.Struct schema = TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I32]);
@@ -324,5 +299,55 @@ public sealed class ProtoToExpressionConverterTests
         {
             Decimal = new ProtoLiteral.Types.Decimal { Value = decimalValue, Precision = 6, Scale = 5 },
         }, new Literal.DecimalLiteral(decimalValue, 6, 5));
+        yield return () => (new ProtoLiteral { PrecisionTime = new() { Precision = 3, Value = 123 } }, new Literal.TimeLiteral(123, 3, IType.NullableType.Required));
+        yield return () => (new ProtoLiteral { PrecisionTimestamp = new() { Precision = 9, Value = 77 }, Nullable = true }, new Literal.PrecisionTimestampLiteral(77, 9, IType.NullableType.Nullable));
+        yield return () => (new ProtoLiteral { PrecisionTimestampTz = new() { Precision = 0, Value = 88 } }, new Literal.PrecisionTimestampTZLiteral(88, 0));
+        yield return () => (new ProtoLiteral { Uuid = ByteString.CopyFrom(new byte[16]) }, new Literal.UuidLiteral(ByteString.CopyFrom(new byte[16])));
+        yield return
+        () => (new ProtoLiteral
+        {
+            IntervalDayToSecond = new ProtoLiteral.Types.IntervalDayToSecond { Days = 1, Seconds = 2, Precision = 6, Subseconds = 345 },
+        }, new Literal.IntervalDayLiteral(1, 2, 345, 6, IType.NullableType.Required));
+        yield return
+        () => (new ProtoLiteral
+        {
+            IntervalCompound = new ProtoLiteral.Types.IntervalCompound
+            {
+                IntervalYearToMonth = new ProtoLiteral.Types.IntervalYearToMonth { Years = 1, Months = 2 },
+                IntervalDayToSecond = new ProtoLiteral.Types.IntervalDayToSecond { Days = 3, Seconds = 4, Precision = 6, Subseconds = 5 },
+            },
+        }, new Literal.IntervalCompoundLiteral(1, 2, 3, 4, 5, 6, IType.NullableType.Required));
+        yield return
+        () => (new ProtoLiteral
+        {
+            List = new ProtoLiteral.Types.List { Values = { new ProtoLiteral { I32 = 1 }, new ProtoLiteral { I32 = 2 } } },
+        }, new Literal.ListLiteral([new Literal.I32Literal(1), new Literal.I32Literal(2)]));
+        yield return
+        () => (new ProtoLiteral
+        {
+            Map = new ProtoLiteral.Types.Map
+            {
+                KeyValues = { new ProtoLiteral.Types.Map.Types.KeyValue { Key = new ProtoLiteral { I32 = 1 }, Value = new ProtoLiteral { String = "a" } } },
+            },
+        }, new Literal.MapLiteral([new KeyValuePair<Literal, Literal>(new Literal.I32Literal(1), new Literal.StrLiteral("a"))]));
+        yield return
+        () => (new ProtoLiteral
+        {
+            EmptyList = new ProtoType.Types.List
+            {
+                Type = new ProtoType { I32 = new ProtoType.Types.I32 { Nullability = ProtoType.Types.Nullability.Required } },
+                Nullability = ProtoType.Types.Nullability.Nullable,
+            },
+        }, new Literal.EmptyListLiteral(TypeFactory.REQUIRED.I32, IType.NullableType.Nullable));
+        yield return
+        () => (new ProtoLiteral
+        {
+            EmptyMap = new ProtoType.Types.Map
+            {
+                Key = new ProtoType { String = new ProtoType.Types.String { Nullability = ProtoType.Types.Nullability.Required } },
+                Value = new ProtoType { I64 = new ProtoType.Types.I64 { Nullability = ProtoType.Types.Nullability.Nullable } },
+                Nullability = ProtoType.Types.Nullability.Required,
+            },
+        }, new Literal.EmptyMapLiteral(TypeFactory.REQUIRED.STR, TypeFactory.NULLABLE.I64, IType.NullableType.Required));
     }
 }

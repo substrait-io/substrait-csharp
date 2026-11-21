@@ -85,44 +85,109 @@ public class ExpressionToProtoConverter
         public override ProtoExpression Visit(NullLiteral expression, PlanToProtoConverter.ConverterContext context) =>
             Wrap(new ProtoLiteral { Null = this.typeConverter.From(expression.Type, context) });
 
-        public override ProtoExpression Visit(BoolLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { Boolean = expression.Value, Nullable = expression.Type.IsNullable() });
-        public override ProtoExpression Visit(I8Literal expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { I8 = expression.Value, Nullable = expression.Type.IsNullable() });
-        public override ProtoExpression Visit(I16Literal expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { I16 = expression.Value, Nullable = expression.Type.IsNullable() });
-        public override ProtoExpression Visit(I32Literal expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { I32 = expression.Value, Nullable = expression.Type.IsNullable() });
-        public override ProtoExpression Visit(I64Literal expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { I64 = expression.Value, Nullable = expression.Type.IsNullable() });
-        public override ProtoExpression Visit(FP32Literal expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { Fp32 = expression.Value, Nullable = expression.Type.IsNullable() });
-        public override ProtoExpression Visit(FP64Literal expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { Fp64 = expression.Value, Nullable = expression.Type.IsNullable() });
-        public override ProtoExpression Visit(StrLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { String = expression.Value, Nullable = expression.Type.IsNullable() });
-        public override ProtoExpression Visit(BinaryLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { Binary = expression.Value, Nullable = expression.Type.IsNullable() });
-        public override ProtoExpression Visit(DateLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { Date = expression.Value, Nullable = expression.Type.IsNullable() });
-        public override ProtoExpression Visit(TimeLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { PrecisionTime = new() { Precision = 6, Value = expression.Value }, Nullable = expression.Type.IsNullable() });
-        public override ProtoExpression Visit(FixedCharLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { FixedChar = expression.Value, Nullable = expression.Type.IsNullable() });
-        public override ProtoExpression Visit(FixedBinaryLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { FixedBinary = expression.Value, Nullable = expression.Type.IsNullable() });
+        public override ProtoExpression Visit(BoolLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { Boolean = expression.Value }, expression, context);
+        public override ProtoExpression Visit(I8Literal expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { I8 = expression.Value }, expression, context);
+        public override ProtoExpression Visit(I16Literal expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { I16 = expression.Value }, expression, context);
+        public override ProtoExpression Visit(I32Literal expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { I32 = expression.Value }, expression, context);
+        public override ProtoExpression Visit(I64Literal expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { I64 = expression.Value }, expression, context);
+        public override ProtoExpression Visit(FP32Literal expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { Fp32 = expression.Value }, expression, context);
+        public override ProtoExpression Visit(FP64Literal expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { Fp64 = expression.Value }, expression, context);
+        public override ProtoExpression Visit(StrLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { String = expression.Value }, expression, context);
+        public override ProtoExpression Visit(BinaryLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { Binary = expression.Value }, expression, context);
+        public override ProtoExpression Visit(DateLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { Date = expression.Value }, expression, context);
+        public override ProtoExpression Visit(TimeLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { PrecisionTime = new() { Precision = expression.Precision, Value = expression.Value } }, expression, context);
+        public override ProtoExpression Visit(FixedCharLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { FixedChar = expression.Value }, expression, context);
+        public override ProtoExpression Visit(FixedBinaryLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { FixedBinary = expression.Value }, expression, context);
+        public override ProtoExpression Visit(UuidLiteral expression, PlanToProtoConverter.ConverterContext context) => Wrap(new() { Uuid = expression.Value }, expression, context);
 
         public override ProtoExpression Visit(PrecisionTimestampLiteral expression, PlanToProtoConverter.ConverterContext context) =>
-            throw new NotImplementedException($"Conversion for {expression.GetType().Name} is not implemented.");
+            Wrap(new() { PrecisionTimestamp = new() { Precision = expression.Precision, Value = expression.Value } }, expression, context);
 
         public override ProtoExpression Visit(PrecisionTimestampTZLiteral expression, PlanToProtoConverter.ConverterContext context) =>
-            throw new NotImplementedException($"Conversion for {expression.GetType().Name} is not implemented.");
+            Wrap(new() { PrecisionTimestampTz = new() { Precision = expression.Precision, Value = expression.Value } }, expression, context);
 
         public override ProtoExpression Visit(IntervalYearLiteral expression, PlanToProtoConverter.ConverterContext context) =>
-            Wrap(new() { IntervalYearToMonth = new() { Years = expression.Years, Months = expression.Months }, Nullable = expression.Type.IsNullable() });
+            Wrap(new() { IntervalYearToMonth = new() { Years = expression.Years, Months = expression.Months } }, expression, context);
 
         public override ProtoExpression Visit(IntervalDayLiteral expression, PlanToProtoConverter.ConverterContext context) =>
-            Wrap(new() { IntervalDayToSecond = new() { Days = expression.Days, Seconds = expression.Seconds }, Nullable = expression.Type.IsNullable() });
+            Wrap(new() { IntervalDayToSecond = new() { Days = expression.Days, Seconds = expression.Seconds, Precision = expression.Precision, Subseconds = expression.Subseconds } }, expression, context);
+
+        public override ProtoExpression Visit(IntervalCompoundLiteral expression, PlanToProtoConverter.ConverterContext context) =>
+            Wrap(
+                new()
+                {
+                    IntervalCompound = new()
+                    {
+                        IntervalYearToMonth = new() { Years = expression.Years, Months = expression.Months },
+                        IntervalDayToSecond = new() { Days = expression.Days, Seconds = expression.Seconds, Precision = expression.Precision, Subseconds = expression.Subseconds },
+                    },
+                },
+                expression,
+                context);
 
         public override ProtoExpression Visit(VarCharLiteral expression, PlanToProtoConverter.ConverterContext context) =>
-            Wrap(new() { VarChar = new() { Value = expression.Value, Length = (uint)expression.Length }, Nullable = expression.Type.IsNullable() });
+            Wrap(new() { VarChar = new() { Value = expression.Value, Length = (uint)expression.Length } }, expression, context);
 
         public override ProtoExpression Visit(DecimalLiteral expression, PlanToProtoConverter.ConverterContext context) =>
-            Wrap(new() { Decimal = new() { Value = expression.Value, Precision = expression.Precision, Scale = expression.Scale }, Nullable = expression.Type.IsNullable() });
+            Wrap(new() { Decimal = new() { Value = expression.Value, Precision = expression.Precision, Scale = expression.Scale } }, expression, context);
 
-        public override ProtoExpression Visit(StructLiteral expression, PlanToProtoConverter.ConverterContext context)
+        public override ProtoExpression Visit(StructLiteral expression, PlanToProtoConverter.ConverterContext context) =>
+            Wrap(new() { Struct = ToStruct(expression.Fields, context) }, expression, context);
+
+        public override ProtoExpression Visit(ListLiteral expression, PlanToProtoConverter.ConverterContext context)
         {
-            var structure = new ProtoLiteral.Types.Struct();
-            structure.Fields.AddRange(expression.Fields.Select(field =>
-                context.GetOutput(field).Literal ?? throw new InvalidOperationException($"Literal is not set for field: {field}")));
-            return Wrap(new ProtoLiteral { Struct = structure, Nullable = expression.Type.IsNullable() });
+            var list = new ProtoLiteral.Types.List();
+            list.Values.AddRange(expression.Values.Select(value => ToLiteral(value, context)));
+            return Wrap(new() { List = list }, expression, context);
+        }
+
+        public override ProtoExpression Visit(MapLiteral expression, PlanToProtoConverter.ConverterContext context)
+        {
+            var map = new ProtoLiteral.Types.Map();
+            map.KeyValues.AddRange(expression.Entries.Select(entry => new ProtoLiteral.Types.Map.Types.KeyValue
+            {
+                Key = ToLiteral(entry.Key, context),
+                Value = ToLiteral(entry.Value, context),
+            }));
+            return Wrap(new() { Map = map }, expression, context);
+        }
+
+        public override ProtoExpression Visit(EmptyListLiteral expression, PlanToProtoConverter.ConverterContext context)
+        {
+            var list = this.typeConverter.From(expression.Type, context).List;
+            return Wrap(new ProtoLiteral { EmptyList = list, TypeVariationReference = list.TypeVariationReference });
+        }
+
+        public override ProtoExpression Visit(EmptyMapLiteral expression, PlanToProtoConverter.ConverterContext context)
+        {
+            var map = this.typeConverter.From(expression.Type, context).Map;
+            return Wrap(new ProtoLiteral { EmptyMap = map, TypeVariationReference = map.TypeVariationReference });
+        }
+
+        public override ProtoExpression Visit(UserDefinedLiteral expression, PlanToProtoConverter.ConverterContext context)
+        {
+            var userDefined = new ProtoLiteral.Types.UserDefined();
+            if (expression.Type is ParameterizedType.AliasReference alias)
+            {
+                userDefined.TypeAliasReference = alias.Anchor;
+            }
+            else
+            {
+                var type = this.typeConverter.From(expression.Type, context).UserDefined;
+                userDefined.TypeReference = type.TypeReference;
+                userDefined.TypeParameters.AddRange(type.TypeParameters);
+            }
+
+            if (expression.Fields is not null)
+            {
+                userDefined.Struct = ToStruct(expression.Fields, context);
+            }
+            else
+            {
+                userDefined.Value = expression.Value!.ToProto();
+            }
+
+            return Wrap(new() { UserDefined = userDefined }, expression, context);
         }
 
         public override ProtoExpression Visit(Expression.ScalarFunctionInvocation expression, PlanToProtoConverter.ConverterContext context)
@@ -205,6 +270,27 @@ public class ExpressionToProtoConverter
             throw new NotImplementedException($"Conversion for {other.GetType().Name} is not implemented.");
 
         private static ProtoExpression Wrap(ProtoLiteral literal) => new() { Literal = literal };
+
+        private static ProtoExpression Wrap(ProtoLiteral literal, Literal source, PlanToProtoConverter.ConverterContext context)
+        {
+            literal.Nullable = source.Type.IsNullable();
+            if (source.Type.TypeVariation is { } variation)
+            {
+                literal.TypeVariationReference = context.AddExtensionReference(ExtensionsCollector.ExtensionType.TypeVariation, variation.Namespace, variation.Name);
+            }
+
+            return Wrap(literal);
+        }
+
+        private static ProtoLiteral ToLiteral(Literal literal, PlanToProtoConverter.ConverterContext context) =>
+            context.GetOutput(literal).Literal ?? throw new InvalidOperationException($"Literal is not set for: {literal}");
+
+        private static ProtoLiteral.Types.Struct ToStruct(IEnumerable<Literal> fields, PlanToProtoConverter.ConverterContext context)
+        {
+            var structure = new ProtoLiteral.Types.Struct();
+            structure.Fields.AddRange(fields.Select(field => ToLiteral(field, context)));
+            return structure;
+        }
 
         private RelToProtoConverter GetRelationConverter() =>
             this.relationConverter ?? throw new InvalidOperationException("Subquery conversion requires a relation converter.");

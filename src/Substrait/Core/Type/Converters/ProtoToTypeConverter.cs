@@ -336,7 +336,7 @@ public class ProtoToTypeConverter
         };
     }
 
-    private TypeVariationImpl? GetTypeVariation(uint reference)
+    internal TypeVariationImpl? GetTypeVariation(uint reference)
     {
         if (reference == 0)
         {
