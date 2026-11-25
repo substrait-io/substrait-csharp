@@ -274,7 +274,7 @@ public class ExpressionToProtoConverter
         private static ProtoExpression Wrap(ProtoLiteral literal, Literal source, PlanToProtoConverter.ConverterContext context)
         {
             literal.Nullable = source.Type.IsNullable();
-            if (source.Type.TypeVariation is { } variation)
+            if (source.TypeVariation is { } variation)
             {
                 literal.TypeVariationReference = context.AddExtensionReference(ExtensionsCollector.ExtensionType.TypeVariation, variation.Namespace, variation.Name);
             }

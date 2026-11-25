@@ -289,18 +289,18 @@ public class ProtoToExpressionConverter : IProtoConverter
 
                     if (current.UserDefined.TypeAnchorTypeCase == ProtoLiteral.Types.UserDefined.TypeAnchorTypeOneofCase.TypeAliasReference)
                     {
-                        if (current.UserDefined.TypeParameters.Count > 0 || current.TypeVariationReference != 0)
+                        if (current.UserDefined.TypeParameters.Count > 0)
                         {
-                            throw new SerializationException("User-defined literal with a type alias reference cannot set type parameters or a type variation.");
+                            throw new SerializationException("User-defined literal with a type alias reference cannot set type parameters.");
                         }
 
                         if (current.UserDefined.Struct is not null)
                         {
-                            destination.Add(new Literal.UserDefinedLiteral(current.UserDefined.TypeAliasReference, inputs, nullable));
+                            destination.Add(new Literal.UserDefinedLiteral(current.UserDefined.TypeAliasReference, inputs, nullable) { TypeVariation = variation });
                         }
                         else
                         {
-                            destination.Add(new Literal.UserDefinedLiteral(current.UserDefined.TypeAliasReference, ReadOnlyAny.FromProto(current.UserDefined.Value), nullable));
+                            destination.Add(new Literal.UserDefinedLiteral(current.UserDefined.TypeAliasReference, ReadOnlyAny.FromProto(current.UserDefined.Value), nullable) { TypeVariation = variation });
                         }
 
                         break;

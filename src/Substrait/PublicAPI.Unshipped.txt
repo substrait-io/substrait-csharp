@@ -34,6 +34,8 @@ override Substrait.Core.Expression.Literal.UserDefinedLiteral.Accept<TContext, T
 override Substrait.Core.Expression.Literal.UserDefinedLiteral.GetNodeHashCode() -> int
 override Substrait.Core.Expression.Literal.UserDefinedLiteral.InputNodes.get -> System.Collections.Generic.IEnumerable<Substrait.Core.Expression.IExpression!>!
 override Substrait.Core.Expression.Literal.UserDefinedLiteral.NodeEquals(Substrait.Core.Expression.IExpression! other) -> bool
+override Substrait.Core.Expression.Literal.UserDefinedLiteral.TypeVariation.get -> Substrait.Core.Extension.Types.ITypeVariation?
+override Substrait.Core.Expression.Literal.UserDefinedLiteral.TypeVariation.init -> void
 override Substrait.Core.Expression.Literal.UuidLiteral.Accept<TContext, TOutput>(Substrait.Core.Expression.ExpressionVisitor<TContext, TOutput>! visitor, TContext context) -> TOutput
 override Substrait.Core.Expression.Literal.UuidLiteral.GetNodeHashCode() -> int
 override Substrait.Core.Expression.Literal.UuidLiteral.NodeEquals(Substrait.Core.Expression.IExpression! other) -> bool
@@ -2232,5 +2234,5 @@ virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.
 virtual Substrait.Core.Type.TypeVisitor<TContext, TOutput>.Visit(Substrait.Core.Type.UserDefinedType! type, TContext context) -> TOutput
 virtual Substrait.Tools.Visitor.BottomUpTraversal<TNode>.ShouldVisit(TNode node) -> bool
 virtual Substrait.Tools.Visitor.TopDownTraversal<TNode>.ShouldVisit(TNode node) -> bool
-Substrait.Core.Expression.Literal.TypeVariation.get -> Substrait.Core.Extension.Types.ITypeVariation?
-Substrait.Core.Expression.Literal.TypeVariation.init -> void
+virtual Substrait.Core.Expression.Literal.TypeVariation.get -> Substrait.Core.Extension.Types.ITypeVariation?
+virtual Substrait.Core.Expression.Literal.TypeVariation.init -> void

@@ -189,26 +189,62 @@ public sealed class LiteralVariantTests
     }
 
     [Test]
-    public async Task RejectsTypeAliasUserDefinedLiteralWithParametersOrVariation()
+    public async Task RejectsTypeAliasUserDefinedLiteralWithParameters()
     {
-        Any value = Any.Pack(new Google.Protobuf.WellKnownTypes.StringValue { Value = "x" });
-        ProtoLiteral withParameters = new()
+        ProtoLiteral proto = new()
         {
             UserDefined = new ProtoLiteral.Types.UserDefined
             {
                 TypeAliasReference = 37,
                 TypeParameters = { new Substrait.Protobuf.Type.Types.Parameter { Integer = 3 } },
-                Value = value,
+                Value = Any.Pack(new Google.Protobuf.WellKnownTypes.StringValue { Value = "x" }),
             },
         };
-        ProtoLiteral withVariation = new()
+
+        await Assert.That(() => this.converter.CreateLiteral(proto)).Throws<System.Runtime.Serialization.SerializationException>();
+    }
+
+    [Test]
+    public async Task TypeAliasUserDefinedLiteralPreservesVariation()
+    {
+        ProtoLiteral opaque = new()
+        {
+            TypeVariationReference = 9,
+            UserDefined = new ProtoLiteral.Types.UserDefined { TypeAliasReference = 37, Value = Any.Pack(new Google.Protobuf.WellKnownTypes.StringValue { Value = "x" }) },
+        };
+        ProtoLiteral structured = new()
+        {
+            TypeVariationReference = 9,
+            UserDefined = new ProtoLiteral.Types.UserDefined { TypeAliasReference = 37, Struct = new ProtoLiteral.Types.Struct { Fields = { new ProtoLiteral { I32 = 1 } } } },
+        };
+
+        foreach (ProtoLiteral proto in new[] { opaque, structured })
+        {
+            Literal literal = this.converter.CreateLiteral(proto);
+
+            await Assert.That(literal.TypeVariation!.Name).IsEqualTo("small");
+            await Assert.That(literal.Type).IsEqualTo(new ParameterizedType.AliasReference(37, IType.NullableType.Required));
+
+            ProtoLiteral back = new ExpressionToProtoConverter(new TypeToProtoConverter()).From(literal).Literal;
+            await Assert.That(back.TypeVariationReference).IsNotEqualTo(0u);
+            await Assert.That(back.UserDefined.TypeAliasReference).IsEqualTo(37u);
+        }
+    }
+
+    [Test]
+    public async Task TypeAliasUserDefinedLiteralVariationParticipatesInEquality()
+    {
+        Any value = Any.Pack(new Google.Protobuf.WellKnownTypes.StringValue { Value = "x" });
+        Literal literal = this.converter.CreateLiteral(new ProtoLiteral
         {
             TypeVariationReference = 9,
             UserDefined = new ProtoLiteral.Types.UserDefined { TypeAliasReference = 37, Value = value },
-        };
+        });
+        Literal same = new Literal.UserDefinedLiteral(37, value) { TypeVariation = literal.TypeVariation };
 
-        await Assert.That(() => this.converter.CreateLiteral(withParameters)).Throws<System.Runtime.Serialization.SerializationException>();
-        await Assert.That(() => this.converter.CreateLiteral(withVariation)).Throws<System.Runtime.Serialization.SerializationException>();
+        await Assert.That(literal).IsNotEqualTo(new Literal.UserDefinedLiteral(37, value));
+        await Assert.That(same).IsEqualTo(literal);
+        await Assert.That(same.GetHashCode()).IsEqualTo(literal.GetHashCode());
     }
 
     [Test]

@@ -46,7 +46,7 @@ public abstract class Literal : IExpression, IEquatable<Literal>, INodeEquatable
     /// <summary>
     /// Gets the type variation of the literal type.
     /// </summary>
-    public ITypeVariation? TypeVariation
+    public virtual ITypeVariation? TypeVariation
     {
         get => this.Type.TypeVariation;
         init => this.Type = TypeFactory.Of(this.Nullable).ResolveTypeWithNullability(this.Type, value);
@@ -1476,6 +1476,8 @@ public abstract class Literal : IExpression, IEquatable<Literal>, INodeEquatable
     /// </summary>
     public sealed class UserDefinedLiteral : Literal
     {
+        private readonly ITypeVariation? aliasTypeVariation;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="UserDefinedLiteral"/> class with an opaque value.
         /// </summary>
@@ -1578,6 +1580,23 @@ public abstract class Literal : IExpression, IEquatable<Literal>, INodeEquatable
         public IReadOnlyList<Literal>? Fields { get; }
 
         /// <inheritdoc/>
+        public override ITypeVariation? TypeVariation
+        {
+            get => this.Type is ParameterizedType.AliasReference ? this.aliasTypeVariation : base.TypeVariation;
+            init
+            {
+                if (this.Type is ParameterizedType.AliasReference)
+                {
+                    this.aliasTypeVariation = value;
+                }
+                else
+                {
+                    base.TypeVariation = value;
+                }
+            }
+        }
+
+        /// <inheritdoc/>
         public override IEnumerable<IExpression> InputNodes => this.Fields ?? ImmutableList<Literal>.Empty;
 
         /// <inheritdoc/>
@@ -1594,7 +1613,8 @@ public abstract class Literal : IExpression, IEquatable<Literal>, INodeEquatable
         {
             return other is UserDefinedLiteral o
                 && (this.Value?.Equals(o.Value) ?? o.Value is null)
-                && this.Fields?.Count == o.Fields?.Count;
+                && this.Fields?.Count == o.Fields?.Count
+                && this.aliasTypeVariation.EqualsWithNull(o.aliasTypeVariation);
         }
     }
 }
