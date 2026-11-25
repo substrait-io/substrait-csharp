@@ -191,6 +191,62 @@ public abstract class ExpressionVisitor<TContext, TOutput> : IVisitor<IExpressio
     public abstract TOutput Visit(StructLiteral expr, TContext context);
 
     /// <summary>
+    /// Visits an <see cref="UuidLiteral"/> expression.
+    /// </summary>
+    /// <param name="expr">UUID literal expression.</param>
+    /// <param name="context">Input context.</param>
+    /// <returns>The output as a result of the visit.</returns>
+    public abstract TOutput Visit(UuidLiteral expr, TContext context);
+
+    /// <summary>
+    /// Visits an <see cref="IntervalCompoundLiteral"/> expression.
+    /// </summary>
+    /// <param name="expr">Interval compound literal expression.</param>
+    /// <param name="context">Input context.</param>
+    /// <returns>The output as a result of the visit.</returns>
+    public abstract TOutput Visit(IntervalCompoundLiteral expr, TContext context);
+
+    /// <summary>
+    /// Visits an <see cref="ListLiteral"/> expression.
+    /// </summary>
+    /// <param name="expr">List literal expression.</param>
+    /// <param name="context">Input context.</param>
+    /// <returns>The output as a result of the visit.</returns>
+    public abstract TOutput Visit(ListLiteral expr, TContext context);
+
+    /// <summary>
+    /// Visits an <see cref="MapLiteral"/> expression.
+    /// </summary>
+    /// <param name="expr">Map literal expression.</param>
+    /// <param name="context">Input context.</param>
+    /// <returns>The output as a result of the visit.</returns>
+    public abstract TOutput Visit(MapLiteral expr, TContext context);
+
+    /// <summary>
+    /// Visits an <see cref="EmptyListLiteral"/> expression.
+    /// </summary>
+    /// <param name="expr">Empty list literal expression.</param>
+    /// <param name="context">Input context.</param>
+    /// <returns>The output as a result of the visit.</returns>
+    public abstract TOutput Visit(EmptyListLiteral expr, TContext context);
+
+    /// <summary>
+    /// Visits an <see cref="EmptyMapLiteral"/> expression.
+    /// </summary>
+    /// <param name="expr">Empty map literal expression.</param>
+    /// <param name="context">Input context.</param>
+    /// <returns>The output as a result of the visit.</returns>
+    public abstract TOutput Visit(EmptyMapLiteral expr, TContext context);
+
+    /// <summary>
+    /// Visits an <see cref="UserDefinedLiteral"/> expression.
+    /// </summary>
+    /// <param name="expr">User-defined literal expression.</param>
+    /// <param name="context">Input context.</param>
+    /// <returns>The output as a result of the visit.</returns>
+    public abstract TOutput Visit(UserDefinedLiteral expr, TContext context);
+
+    /// <summary>
     /// Visits an <see cref="ScalarFunctionInvocation"/> expression.
     /// </summary>
     /// <param name="expr">Scalar function invocation expression.</param>

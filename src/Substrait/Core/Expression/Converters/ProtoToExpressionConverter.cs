@@ -6,6 +6,8 @@ using System.Diagnostics;
 using System.Runtime.Serialization;
 using Substrait.Core.Extension;
 using Substrait.Core.Extension.Functions;
+using Substrait.Core.Extension.Types;
+using Substrait.Core.Metadata;
 using Substrait.Core.Plan.Converters;
 using Substrait.Core.Relation.Converters;
 using Substrait.Core.Type;
@@ -178,44 +180,163 @@ public class ProtoToExpressionConverter : IProtoConverter
         {
             var (current, inputs, destination, inputCount) = stack.Pop();
             NullableType nullable = current.Nullable ? NullableType.Nullable : NullableType.Required;
+            var variation = current.LiteralTypeCase == ProtoLiteral.LiteralTypeOneofCase.Null ? null : this.protoTypeConverter.GetTypeVariation(current.TypeVariationReference);
             switch (current.LiteralTypeCase)
             {
                 case ProtoLiteral.LiteralTypeOneofCase.Null: destination.Add(new Literal.NullLiteral(this.protoTypeConverter.From(current.Null))); break;
-                case ProtoLiteral.LiteralTypeOneofCase.Boolean: destination.Add(new Literal.BoolLiteral(current.Boolean, nullable)); break;
-                case ProtoLiteral.LiteralTypeOneofCase.I8: destination.Add(new Literal.I8Literal(current.I8, nullable)); break;
-                case ProtoLiteral.LiteralTypeOneofCase.I16: destination.Add(new Literal.I16Literal(current.I16, nullable)); break;
-                case ProtoLiteral.LiteralTypeOneofCase.I32: destination.Add(new Literal.I32Literal(current.I32, nullable)); break;
-                case ProtoLiteral.LiteralTypeOneofCase.I64: destination.Add(new Literal.I64Literal(current.I64, nullable)); break;
-                case ProtoLiteral.LiteralTypeOneofCase.Fp32: destination.Add(new Literal.FP32Literal(current.Fp32, nullable)); break;
-                case ProtoLiteral.LiteralTypeOneofCase.Fp64: destination.Add(new Literal.FP64Literal(current.Fp64, nullable)); break;
-                case ProtoLiteral.LiteralTypeOneofCase.String: destination.Add(new Literal.StrLiteral(current.String, nullable)); break;
-                case ProtoLiteral.LiteralTypeOneofCase.Binary: destination.Add(new Literal.BinaryLiteral(current.Binary, nullable)); break;
-                case ProtoLiteral.LiteralTypeOneofCase.Date: destination.Add(new Literal.DateLiteral(current.Date, nullable)); break;
-                case ProtoLiteral.LiteralTypeOneofCase.PrecisionTime:
-                    if (current.PrecisionTime.Precision != 6)
-                    {
-                        throw new NotSupportedException("Only microsecond-precision time literals are supported.");
-                    }
-
-                    destination.Add(new Literal.TimeLiteral(current.PrecisionTime.Value, nullable));
-                    break;
-                case ProtoLiteral.LiteralTypeOneofCase.IntervalYearToMonth: destination.Add(new Literal.IntervalYearLiteral(current.IntervalYearToMonth.Years, current.IntervalYearToMonth.Months, nullable)); break;
+                case ProtoLiteral.LiteralTypeOneofCase.Boolean: destination.Add(new Literal.BoolLiteral(current.Boolean, nullable) { TypeVariation = variation }); break;
+                case ProtoLiteral.LiteralTypeOneofCase.I8: destination.Add(new Literal.I8Literal(current.I8, nullable) { TypeVariation = variation }); break;
+                case ProtoLiteral.LiteralTypeOneofCase.I16: destination.Add(new Literal.I16Literal(current.I16, nullable) { TypeVariation = variation }); break;
+                case ProtoLiteral.LiteralTypeOneofCase.I32: destination.Add(new Literal.I32Literal(current.I32, nullable) { TypeVariation = variation }); break;
+                case ProtoLiteral.LiteralTypeOneofCase.I64: destination.Add(new Literal.I64Literal(current.I64, nullable) { TypeVariation = variation }); break;
+                case ProtoLiteral.LiteralTypeOneofCase.Fp32: destination.Add(new Literal.FP32Literal(current.Fp32, nullable) { TypeVariation = variation }); break;
+                case ProtoLiteral.LiteralTypeOneofCase.Fp64: destination.Add(new Literal.FP64Literal(current.Fp64, nullable) { TypeVariation = variation }); break;
+                case ProtoLiteral.LiteralTypeOneofCase.String: destination.Add(new Literal.StrLiteral(current.String, nullable) { TypeVariation = variation }); break;
+                case ProtoLiteral.LiteralTypeOneofCase.Binary: destination.Add(new Literal.BinaryLiteral(current.Binary, nullable) { TypeVariation = variation }); break;
+                case ProtoLiteral.LiteralTypeOneofCase.Date: destination.Add(new Literal.DateLiteral(current.Date, nullable) { TypeVariation = variation }); break;
+                case ProtoLiteral.LiteralTypeOneofCase.PrecisionTime: destination.Add(new Literal.TimeLiteral(current.PrecisionTime.Value, (int)current.PrecisionTime.Precision, nullable) { TypeVariation = variation }); break;
+                case ProtoLiteral.LiteralTypeOneofCase.PrecisionTimestamp: destination.Add(new Literal.PrecisionTimestampLiteral(current.PrecisionTimestamp.Value, (int)current.PrecisionTimestamp.Precision, nullable) { TypeVariation = variation }); break;
+                case ProtoLiteral.LiteralTypeOneofCase.PrecisionTimestampTz: destination.Add(new Literal.PrecisionTimestampTZLiteral(current.PrecisionTimestampTz.Value, (int)current.PrecisionTimestampTz.Precision, nullable) { TypeVariation = variation }); break;
+                case ProtoLiteral.LiteralTypeOneofCase.Uuid: destination.Add(new Literal.UuidLiteral(current.Uuid, nullable) { TypeVariation = variation }); break;
+                case ProtoLiteral.LiteralTypeOneofCase.IntervalYearToMonth: destination.Add(new Literal.IntervalYearLiteral(current.IntervalYearToMonth.Years, current.IntervalYearToMonth.Months, nullable) { TypeVariation = variation }); break;
                 case ProtoLiteral.LiteralTypeOneofCase.IntervalDayToSecond:
-                    if (current.IntervalDayToSecond.Precision != 0 || current.IntervalDayToSecond.Subseconds != 0)
+                    destination.Add(new Literal.IntervalDayLiteral(
+                        current.IntervalDayToSecond.Days,
+                        current.IntervalDayToSecond.Seconds,
+                        current.IntervalDayToSecond.Subseconds,
+                        (int)current.IntervalDayToSecond.Precision,
+                        nullable)
+                    { TypeVariation = variation });
+                    break;
+                case ProtoLiteral.LiteralTypeOneofCase.IntervalCompound:
+                    destination.Add(new Literal.IntervalCompoundLiteral(
+                        current.IntervalCompound.IntervalYearToMonth?.Years ?? 0,
+                        current.IntervalCompound.IntervalYearToMonth?.Months ?? 0,
+                        current.IntervalCompound.IntervalDayToSecond?.Days ?? 0,
+                        current.IntervalCompound.IntervalDayToSecond?.Seconds ?? 0,
+                        current.IntervalCompound.IntervalDayToSecond?.Subseconds ?? 0,
+                        (int)(current.IntervalCompound.IntervalDayToSecond?.Precision ?? 0),
+                        nullable)
+                    { TypeVariation = variation });
+                    break;
+                case ProtoLiteral.LiteralTypeOneofCase.EmptyList:
                     {
-                        throw new NotSupportedException("Only second-precision day interval literals are supported.");
+                        var listType = (ParameterizedType.List)this.protoTypeConverter.From(new Substrait.Protobuf.Type { List = current.EmptyList });
+                        destination.Add(new Literal.EmptyListLiteral(listType.ElementType, listType.Nullable) { TypeVariation = DeclaredVariation(variation, listType.TypeVariation) });
+                        break;
                     }
 
-                    destination.Add(new Literal.IntervalDayLiteral(current.IntervalDayToSecond.Days, current.IntervalDayToSecond.Seconds, nullable));
+                case ProtoLiteral.LiteralTypeOneofCase.EmptyMap:
+                    {
+                        var mapType = (ParameterizedType.Map)this.protoTypeConverter.From(new Substrait.Protobuf.Type { Map = current.EmptyMap });
+                        destination.Add(new Literal.EmptyMapLiteral(mapType.KeyType, mapType.ValueType, mapType.Nullable) { TypeVariation = DeclaredVariation(variation, mapType.TypeVariation) });
+                        break;
+                    }
+
+                case ProtoLiteral.LiteralTypeOneofCase.List:
+                    if (inputs.Count == inputCount)
+                    {
+                        destination.Add(new Literal.ListLiteral(inputs, nullable) { TypeVariation = variation });
+                    }
+                    else
+                    {
+                        stack.Push((current, inputs, destination, current.List.Values.Count));
+                        for (int index = current.List.Values.Count - 1; index >= 0; index--)
+                        {
+                            stack.Push((current.List.Values[index], new List<Literal>(), inputs, -1));
+                        }
+                    }
+
                     break;
-                case ProtoLiteral.LiteralTypeOneofCase.FixedChar: destination.Add(new Literal.FixedCharLiteral(current.FixedChar, nullable)); break;
-                case ProtoLiteral.LiteralTypeOneofCase.VarChar: destination.Add(new Literal.VarCharLiteral(current.VarChar.Value, (int)current.VarChar.Length, nullable)); break;
-                case ProtoLiteral.LiteralTypeOneofCase.FixedBinary: destination.Add(new Literal.FixedBinaryLiteral(current.FixedBinary, nullable)); break;
-                case ProtoLiteral.LiteralTypeOneofCase.Decimal: destination.Add(new Literal.DecimalLiteral(current.Decimal.Value, current.Decimal.Precision, current.Decimal.Scale, nullable)); break;
+                case ProtoLiteral.LiteralTypeOneofCase.Map:
+                    if (inputs.Count == inputCount)
+                    {
+                        var entries = new List<KeyValuePair<Literal, Literal>>(inputCount / 2);
+                        for (int index = 0; index < inputs.Count; index += 2)
+                        {
+                            entries.Add(new KeyValuePair<Literal, Literal>(inputs[index], inputs[index + 1]));
+                        }
+
+                        destination.Add(new Literal.MapLiteral(entries, nullable) { TypeVariation = variation });
+                    }
+                    else
+                    {
+                        stack.Push((current, inputs, destination, current.Map.KeyValues.Count * 2));
+                        for (int index = current.Map.KeyValues.Count - 1; index >= 0; index--)
+                        {
+                            stack.Push((current.Map.KeyValues[index].Value, new List<Literal>(), inputs, -1));
+                            stack.Push((current.Map.KeyValues[index].Key, new List<Literal>(), inputs, -1));
+                        }
+                    }
+
+                    break;
+                case ProtoLiteral.LiteralTypeOneofCase.UserDefined:
+                    if (current.UserDefined.Struct is not null && inputs.Count != inputCount)
+                    {
+                        stack.Push((current, inputs, destination, current.UserDefined.Struct.Fields.Count));
+                        for (int index = current.UserDefined.Struct.Fields.Count - 1; index >= 0; index--)
+                        {
+                            stack.Push((current.UserDefined.Struct.Fields[index], new List<Literal>(), inputs, -1));
+                        }
+
+                        break;
+                    }
+
+                    if (current.UserDefined.Struct is null && current.UserDefined.Value is null)
+                    {
+                        throw new SerializationException("User-defined literal must set either a value or a struct.");
+                    }
+
+                    if (current.UserDefined.TypeAnchorTypeCase == ProtoLiteral.Types.UserDefined.TypeAnchorTypeOneofCase.TypeAliasReference)
+                    {
+                        if (current.UserDefined.TypeParameters.Count > 0)
+                        {
+                            throw new SerializationException("User-defined literal with a type alias reference cannot set type parameters.");
+                        }
+
+                        if (current.UserDefined.Struct is not null)
+                        {
+                            destination.Add(new Literal.UserDefinedLiteral(current.UserDefined.TypeAliasReference, inputs, nullable) { TypeVariation = variation });
+                        }
+                        else
+                        {
+                            destination.Add(new Literal.UserDefinedLiteral(current.UserDefined.TypeAliasReference, ReadOnlyAny.FromProto(current.UserDefined.Value), nullable) { TypeVariation = variation });
+                        }
+
+                        break;
+                    }
+
+                    if (current.UserDefined.TypeAnchorTypeCase != ProtoLiteral.Types.UserDefined.TypeAnchorTypeOneofCase.TypeReference)
+                    {
+                        throw new SerializationException("User-defined literal must set either a type reference or a type alias reference.");
+                    }
+
+                    var userDefinedProto = new Substrait.Protobuf.Type.Types.UserDefined
+                    {
+                        TypeReference = current.UserDefined.TypeReference,
+                        TypeVariationReference = current.TypeVariationReference,
+                        Nullability = current.Nullable ? Substrait.Protobuf.Type.Types.Nullability.Nullable : Substrait.Protobuf.Type.Types.Nullability.Required,
+                    };
+                    userDefinedProto.TypeParameters.AddRange(current.UserDefined.TypeParameters);
+                    var userDefinedType = (UserDefinedType)this.protoTypeConverter.From(new Substrait.Protobuf.Type { UserDefined = userDefinedProto });
+                    if (current.UserDefined.Struct is not null)
+                    {
+                        destination.Add(new Literal.UserDefinedLiteral(userDefinedType.Anchor, userDefinedType.Parameters, inputs, nullable, userDefinedType.Declaration) { TypeVariation = userDefinedType.TypeVariation });
+                    }
+                    else
+                    {
+                        destination.Add(new Literal.UserDefinedLiteral(userDefinedType.Anchor, userDefinedType.Parameters, ReadOnlyAny.FromProto(current.UserDefined.Value), nullable, userDefinedType.Declaration) { TypeVariation = userDefinedType.TypeVariation });
+                    }
+
+                    break;
+                case ProtoLiteral.LiteralTypeOneofCase.FixedChar: destination.Add(new Literal.FixedCharLiteral(current.FixedChar, nullable) { TypeVariation = variation }); break;
+                case ProtoLiteral.LiteralTypeOneofCase.VarChar: destination.Add(new Literal.VarCharLiteral(current.VarChar.Value, (int)current.VarChar.Length, nullable) { TypeVariation = variation }); break;
+                case ProtoLiteral.LiteralTypeOneofCase.FixedBinary: destination.Add(new Literal.FixedBinaryLiteral(current.FixedBinary, nullable) { TypeVariation = variation }); break;
+                case ProtoLiteral.LiteralTypeOneofCase.Decimal: destination.Add(new Literal.DecimalLiteral(current.Decimal.Value, current.Decimal.Precision, current.Decimal.Scale, nullable) { TypeVariation = variation }); break;
                 case ProtoLiteral.LiteralTypeOneofCase.Struct:
                     if (inputs.Count == inputCount)
                     {
-                        destination.Add(new Literal.StructLiteral(inputs, nullable));
+                        destination.Add(new Literal.StructLiteral(inputs, nullable) { TypeVariation = variation });
                     }
                     else
                     {
@@ -265,6 +386,17 @@ public class ProtoToExpressionConverter : IProtoConverter
             ProtoFieldReference.RootTypeOneofCase.OuterReference => CreateOuterReference(fieldReference, enclosingSchemas, fieldIndex),
             _ => throw new NotImplementedException(fieldReference.RootTypeCase.ToString()),
         };
+    }
+
+    private static ITypeVariation? DeclaredVariation(ITypeVariation? literalVariation, ITypeVariation? typeVariation)
+    {
+        if (literalVariation is not null && typeVariation is not null && !literalVariation.Equals(typeVariation))
+        {
+            throw new SerializationException(
+                $"Literal type variation {literalVariation.Namespace}:{literalVariation.Name} conflicts with type variation {typeVariation.Namespace}:{typeVariation.Name} on its type.");
+        }
+
+        return literalVariation ?? typeVariation;
     }
 
     private static T GetSingleOutput<T>(IReadOnlyList<T> output, object input, string description)

@@ -126,4 +126,4 @@ collections.
 - Coverage uses small synthetic fixtures. An upstream conformance corpus and
   capability matrix belong to
   [substrait-io/substrait-csharp#48](https://github.com/substrait-io/substrait-csharp/issues/48).
-- This covers type metadata, not literal values of these types.
+- This covers type metadata. Literal values round-trip every `Literal.literal_type` variant: scalars, precision time/timestamp/timestamp-TZ, day and compound intervals (with subseconds and precision), UUID, struct, list, map, typed empty list and map, typed null, and user-defined literals (opaque `Any` or structured fields, with anchor, parameters and variation). Literal nullability and type-variation references are preserved.
