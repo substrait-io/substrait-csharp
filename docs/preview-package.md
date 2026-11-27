@@ -192,13 +192,14 @@ including to a root's input, and form acyclic chains or shared DAGs.
 - Custom `IPlan` implementations must implement the new `Relations` property
   and recompile. `IRoot.Input` is now inherited from `IRelation` rather than
   declared directly on `IRoot`; this is an approved preview API change.
-- Existing `new Plan(IEnumerable<IPlan.IRoot>, IVersion)` and `Plan.Root`
+- Existing `new Plan(IEnumerable<IPlan.IRoot>, IVersion, ExecutionBehavior)` and `Plan.Root`
   construction remain available. `IPlan.Roots` remains an ordered root-only
   projection; its indexes are **not** subtree ordinals.
 - Use `Plan.Relation(IRel input)` for non-root entries and
-  `Plan.FromRelations(IEnumerable<IPlan.IRelation>, IVersion)` for mixed
+  `Plan.FromRelations(IEnumerable<IPlan.IRelation>, IVersion, ExecutionBehavior)` for mixed
   advanced composition. The factory snapshots the supplied entry list.
-- `new PlanBuilder(IVersion? version = null)` defaults to `Version.Current`.
+- `new PlanBuilder(ExecutionBehavior, IVersion? version = null)` defaults the
+  version to `Version.Current`; the execution behavior is required.
   `RegisterSubplan(IRel)` appends a non-root entry and returns a `Reference`;
   `AddRoot(IRel, IEnumerable<string>)` appends a root and also returns a
   `Reference`, allowing later entries to reference that root's input.

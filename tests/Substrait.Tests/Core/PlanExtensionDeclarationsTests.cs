@@ -73,7 +73,7 @@ public sealed class PlanExtensionDeclarationsTests
     {
         ProtoPlan wire = CreateWirePlan();
         IPlan imported = new ProtoToPlanConverter(new ExtensionsCollection()).From(wire, StrictMode.OFF);
-        var builder = new PlanBuilder(imported.Metadata, imported.Version);
+        var builder = new PlanBuilder(imported.Metadata, imported.Version, imported.ExecutionBehavior);
         builder.AddRoot(imported.Relations[0].Input, ["first", "second"]);
         CorePlan before = builder.Build();
         builder.SetEnhancement(new StringValue { Value = "enhancement" });
@@ -264,7 +264,7 @@ public sealed class PlanExtensionDeclarationsTests
         var metadata = new PlanMetadata(null, null,
             wire.ExtensionUrns.Select(ReadOnlySimpleExtensionURN.FromProto),
             wire.Extensions.Select(ReadOnlySimpleExtensionDeclaration.FromProto));
-        var plan = new CorePlan(metadata, [new CorePlan.Root(Read("shape", Urn), ["value"])], CoreVersion.Current);
+        var plan = new CorePlan(metadata, [new CorePlan.Root(Read("shape", Urn), ["value"])], CoreVersion.Current, TestPlans.PerPlan);
         await Assert.That(() => new PlanToProtoConverter().From(plan)).ThrowsExactly<ArgumentException>();
     }
 
@@ -311,6 +311,7 @@ public sealed class PlanExtensionDeclarationsTests
     private static ProtoPlan CreateWirePlan() => new()
     {
         Version = new() { MajorNumber = 1, Producer = "tests" },
+        ExecutionBehavior = TestPlans.ProtoPerPlan,
         ExtensionUrns =
         {
             new SimpleExtensionURN { ExtensionUrnAnchor = 80, Urn = Urn },

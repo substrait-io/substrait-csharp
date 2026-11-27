@@ -200,11 +200,11 @@ public sealed class RelationMetadataConversionTests
     internal static NamedTableRead Read(RelationMetadata? metadata = null) =>
         new(metadata ?? RelationMetadata.Direct, Schema(), ["orders"], null);
 
-    internal static CorePlan Plan(IRel relation) => new([new CorePlan.Root(relation, ["value"])], Substrait.Core.Plan.Version.Current);
+    internal static CorePlan Plan(IRel relation) => new([new CorePlan.Root(relation, ["value"])], Substrait.Core.Plan.Version.Current, TestPlans.PerPlan);
 
     internal static ProtoPlan WirePlan(params ProtoRel[] relations)
     {
-        ProtoPlan plan = new() { Version = new() { MinorNumber = 104, Producer = "metadata-tests" } };
+        ProtoPlan plan = new() { Version = new() { MinorNumber = 104, Producer = "metadata-tests" }, ExecutionBehavior = TestPlans.ProtoPerPlan };
         plan.Relations.AddRange(relations.Select(relation => new PlanRel { Rel = relation }));
         return plan;
     }

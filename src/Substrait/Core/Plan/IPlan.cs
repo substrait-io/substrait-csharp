@@ -53,4 +53,9 @@ public interface IPlan
 
     /// <summary>Gets non-null plan-level metadata, preserving opaque advanced extensions and expected type URLs.</summary>
     public PlanMetadata Metadata { get; }
+
+    /// <summary>
+    /// Gets the execution behavior of the plan.
+    /// </summary>
+    public ExecutionBehavior ExecutionBehavior { get; }
 }

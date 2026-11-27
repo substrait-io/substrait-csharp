@@ -62,7 +62,8 @@ public sealed class UserDefinedPlanTests
                 new CorePlan.Relation(CreateRead(equalType)),
                 new CorePlan.Root(CreateRead(nestedType), ["nested"]),
             ],
-            PlanVersion.Current);
+            PlanVersion.Current,
+            TestPlans.PerPlan);
         var definitions = new ExtensionsCollection(
             registerTypes ? [new TypeDefinition(Anchor), new TypeDefinition(nestedAnchor)] : [],
             [variation, nestedVariation, leafVariation], [], [], []);
@@ -101,7 +102,7 @@ public sealed class UserDefinedPlanTests
             new PlanMetadata(null, null,
                 wire.ExtensionUrns.Select(ReadOnlySimpleExtensionURN.FromProto),
                 wire.Extensions.Select(ReadOnlySimpleExtensionDeclaration.FromProto)),
-            original.Relations, original.Version);
+            original.Relations, original.Version, original.ExecutionBehavior);
         IPlan[] imports =
         [
             decoder.From(wire, mode),
@@ -125,7 +126,8 @@ public sealed class UserDefinedPlanTests
     {
         IPlan plan = new CorePlan(
             [new CorePlan.Root(CreateRead(TypeFactory.REQUIRED.UserDefined(Anchor, [])), ["value"])],
-            PlanVersion.Current);
+            PlanVersion.Current,
+            TestPlans.PerPlan);
         ProtoPlan wire = new PlanToProtoConverter().From(plan);
         var decoder = new ProtoToPlanConverter(new ExtensionsCollection());
 
@@ -139,7 +141,8 @@ public sealed class UserDefinedPlanTests
     {
         IPlan plan = new CorePlan(
             [new CorePlan.Root(CreateRead(TypeFactory.REQUIRED.UserDefined(Anchor, [])), ["value"])],
-            PlanVersion.Current);
+            PlanVersion.Current,
+            TestPlans.PerPlan);
         ProtoPlan wire = new PlanToProtoConverter().From(plan);
         wire.Extensions.Clear();
         var decoder = new ProtoToPlanConverter(new ExtensionsCollection());

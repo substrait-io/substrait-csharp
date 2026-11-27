@@ -16,15 +16,18 @@ public sealed class ExtensionsDictionary
     private readonly IReadOnlyDictionary<uint, TypeAnchor> typeAnchorMap;
     private readonly IReadOnlyDictionary<int, TypeVariationImplAnchor> typeVariationAnchorMap;
     private readonly IReadOnlyDictionary<int, FunctionImplAnchor> functionAnchorMap;
+    private readonly ImmutableHashSet<uint>? typeAliasAnchors;
 
     private ExtensionsDictionary(
         IEnumerable<KeyValuePair<uint, TypeAnchor>> typeAnchorMap,
         IEnumerable<KeyValuePair<int, TypeVariationImplAnchor>> typeVariationAnchorMap,
-        IEnumerable<KeyValuePair<int, FunctionImplAnchor>> functionAnchorMap)
+        IEnumerable<KeyValuePair<int, FunctionImplAnchor>> functionAnchorMap,
+        IEnumerable<uint>? typeAliasAnchors)
     {
         this.typeAnchorMap = typeAnchorMap.ToImmutableDictionary();
         this.typeVariationAnchorMap = typeVariationAnchorMap.ToImmutableDictionary();
         this.functionAnchorMap = functionAnchorMap.ToImmutableDictionary();
+        this.typeAliasAnchors = typeAliasAnchors?.ToImmutableHashSet();
     }
 
     /// <summary>
@@ -57,6 +60,14 @@ public sealed class ExtensionsDictionary
 
     /// <summary>Tries to get a declared type identity.</summary>
     public bool TryGetTypeAnchor(uint reference, out TypeAnchor? anchor) => this.typeAnchorMap.TryGetValue(reference, out anchor);
+
+    internal void ValidateTypeAlias(uint reference)
+    {
+        if (this.typeAliasAnchors is not null && !this.typeAliasAnchors.Contains(reference))
+        {
+            throw new ArgumentException($"Invalid type alias ID: {reference}. Verify that the ID is included in the plan's type aliases section.");
+        }
+    }
 
     /// <summary>Resolves an extension type definition.</summary>
     public bool TryGetType(TypeAnchor anchor, ExtensionsCollection extensions, StrictMode strictMode, out TypeDefinition? type) =>
@@ -131,6 +142,7 @@ public sealed class ExtensionsDictionary
         private readonly IDictionary<uint, TypeAnchor> typeMap = new Dictionary<uint, TypeAnchor>();
         private readonly IDictionary<int, TypeVariationImplAnchor> typeVariationMap = new Dictionary<int, TypeVariationImplAnchor>();
         private readonly IDictionary<int, FunctionImplAnchor> functionMap = new Dictionary<int, FunctionImplAnchor>();
+        private IEnumerable<uint>? typeAliasAnchors;
 
         /// <summary>Initializes an empty builder.</summary>
         public Builder()
@@ -179,11 +191,17 @@ public sealed class ExtensionsDictionary
             }
         }
 
+        internal Builder RequireTypeAliases(IEnumerable<uint> anchors)
+        {
+            this.typeAliasAnchors = anchors.ToImmutableList();
+            return this;
+        }
+
         /// <summary>Builds the extension dictionary.</summary>
         /// <returns>The extension dictionary.</returns>
         public ExtensionsDictionary Build()
         {
-            return new ExtensionsDictionary(this.typeMap, this.typeVariationMap, this.functionMap);
+            return new ExtensionsDictionary(this.typeMap, this.typeVariationMap, this.functionMap, this.typeAliasAnchors);
         }
 
         private static string GetNamespace(IReadOnlyDictionary<int, string> namespaceMap, int reference)

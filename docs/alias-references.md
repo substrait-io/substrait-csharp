@@ -74,7 +74,5 @@ implementation to keep compiling.
   **resolution**: defining aliases, resolving references against an alias
   table, missing-target checks, and cycle detection are
   [`TypeAliasTable`](alias-resolution.md)'s job, not this type's.
-- Storing or emitting `Plan.type_aliases` belongs to
-  [substrait-io/substrait-csharp#27](https://github.com/substrait-io/substrait-csharp/issues/27).
-  This slice supplies the reference model that work needs, independent of
-  the full plan envelope.
+- Plan conversion stores and emits `Plan.type_aliases` as
+  `PlanMetadata.TypeAliases`; see [type-alias resolution](alias-resolution.md).

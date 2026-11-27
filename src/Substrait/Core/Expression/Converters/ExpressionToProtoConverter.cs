@@ -169,6 +169,7 @@ public class ExpressionToProtoConverter
             var userDefined = new ProtoLiteral.Types.UserDefined();
             if (expression.Type is ParameterizedType.AliasReference alias)
             {
+                context.ValidateTypeAlias(alias.Anchor);
                 userDefined.TypeAliasReference = alias.Anchor;
             }
             else

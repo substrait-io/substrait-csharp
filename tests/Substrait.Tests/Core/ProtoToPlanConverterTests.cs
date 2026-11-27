@@ -12,6 +12,7 @@ using Substrait.Core.Relation;
 using Substrait.Core.Type;
 using Substrait.Protobuf;
 using Substrait.Tools;
+using ProtoExecutionBehavior = Substrait.Protobuf.ExecutionBehavior;
 using ProtoPlan = Substrait.Protobuf.Plan;
 using ProtoRel = Substrait.Protobuf.Rel;
 using ProtoVersion = Substrait.Protobuf.Version;
@@ -122,25 +123,161 @@ public sealed class ProtoToPlanConverterTests
     }
 
     [Test]
-    public async Task RejectsPlanWithTypeAliasesRatherThanSilentlyDroppingTheTable()
+    public async Task RoundTripsTypeAliases()
     {
-        // A plan declaring alias anchor 7 as required i64, referenced by a required alias in the
-        // read's schema: round-tripping this through the plan converters today would silently drop
-        // Plan.type_aliases and export a dangling reference, since PlanMetadata does not retain it.
-        ProtoPlan plan = CreatePlan();
+        ProtoPlan plan = CreatePlanWithAliasedRead();
         plan.TypeAliases.Add(new Substrait.Protobuf.TypeAlias { TypeAliasAnchor = 7, Type = RequiredI64() });
-        plan.Relations[0].Root.Input.Read.BaseSchema.Struct.Types_[0] = new Substrait.Protobuf.Type
+
+        IPlan result = this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF);
+
+        await Assert.That(result.Metadata.TypeAliases.Definitions[7]).IsEqualTo(TypeFactory.REQUIRED.I64);
+        await Assert.That(((NamedTableRead)result.Roots[0].Input).RecordType.Fields[0]).IsEqualTo(new ParameterizedType.AliasReference(7, IType.NullableType.Required));
+
+        ProtoPlan serialized = new PlanToProtoConverter().From(result);
+        await Assert.That(serialized.TypeAliases.Single().TypeAliasAnchor).IsEqualTo(7U);
+        await Assert.That(serialized.TypeAliases.Single().Type).IsEqualTo(RequiredI64());
+        await Assert.That(this.converter.From(serialized, ExtensionsDictionary.StrictMode.OFF)).IsEqualTo(result);
+    }
+
+    [Test]
+    public async Task RejectsTypeAliasReferenceWithoutAlias()
+    {
+        ProtoPlan plan = CreatePlanWithAliasedRead();
+        plan.TypeAliases.Add(new Substrait.Protobuf.TypeAlias { TypeAliasAnchor = 8, Type = RequiredI64() });
+
+        ArgumentException error = await Assert.That(() => this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF))
+            .ThrowsExactly<ArgumentException>().And.IsNotNull();
+        await Assert.That(error.Message).Contains("Invalid type alias ID: 7");
+    }
+
+    [Test]
+    public async Task RejectsUserDefinedLiteralTypeAliasWithoutAlias()
+    {
+        ProtoPlan plan = CreatePlan();
+        plan.Relations[0].Root.Input = new ProtoRel
         {
-            Alias = new Substrait.Protobuf.Type.Types.TypeAliasReference
+            Project = new ProjectRel
             {
-                TypeAliasReference_ = 7,
-                Nullability = Substrait.Protobuf.Type.Types.Nullability.Required,
+                Input = CreateRead(),
+                Expressions =
+                {
+                    new Protobuf.Expression
+                    {
+                        Literal = new()
+                        {
+                            UserDefined = new() { TypeAliasReference = 9, Value = Google.Protobuf.WellKnownTypes.Any.Pack(new Google.Protobuf.WellKnownTypes.StringValue { Value = "x" }) },
+                        },
+                    },
+                },
+                Common = new RelCommon(),
             },
         };
 
-        NotSupportedException error = await Assert.That(() => this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF))
-            .ThrowsExactly<NotSupportedException>().And.IsNotNull();
-        await Assert.That(error.Message).Contains("type_aliases");
+        ArgumentException error = await Assert.That(() => this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF))
+            .ThrowsExactly<ArgumentException>().And.IsNotNull();
+        await Assert.That(error.Message).Contains("Invalid type alias ID: 9");
+
+        plan.TypeAliases.Add(new Substrait.Protobuf.TypeAlias { TypeAliasAnchor = 9, Type = RequiredI64() });
+        IPlan result = this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF);
+        await Assert.That(this.converter.From(new PlanToProtoConverter().From(result), ExtensionsDictionary.StrictMode.OFF)).IsEqualTo(result);
+    }
+
+    [Test]
+    public async Task TypeAliasesParticipateInMetadataEquality()
+    {
+        ProtoPlan first = CreatePlanWithAliasedRead();
+        first.TypeAliases.Add(new Substrait.Protobuf.TypeAlias { TypeAliasAnchor = 7, Type = RequiredI64() });
+        ProtoPlan second = first.Clone();
+        second.TypeAliases[0].Type = new Substrait.Protobuf.Type { I32 = new() { Nullability = Substrait.Protobuf.Type.Types.Nullability.Required } };
+
+        IPlan firstPlan = this.converter.From(first, ExtensionsDictionary.StrictMode.OFF);
+        IPlan secondPlan = this.converter.From(second, ExtensionsDictionary.StrictMode.OFF);
+
+        await Assert.That(firstPlan.Metadata).IsNotEqualTo(secondPlan.Metadata);
+        await Assert.That(firstPlan.Metadata).IsEqualTo(this.converter.From(first.Clone(), ExtensionsDictionary.StrictMode.OFF).Metadata);
+        await Assert.That(firstPlan.Metadata.GetHashCode()).IsEqualTo(this.converter.From(first.Clone(), ExtensionsDictionary.StrictMode.OFF).Metadata.GetHashCode());
+    }
+
+    [Test]
+    [Arguments(ProtoExecutionBehavior.Types.VariableEvaluationMode.Unspecified, VariableEvaluationMode.Unspecified)]
+    [Arguments(ProtoExecutionBehavior.Types.VariableEvaluationMode.PerPlan, VariableEvaluationMode.PerPlan)]
+    [Arguments(ProtoExecutionBehavior.Types.VariableEvaluationMode.PerRecord, VariableEvaluationMode.PerRecord)]
+    public async Task RoundTripsExecutionBehavior(ProtoExecutionBehavior.Types.VariableEvaluationMode protoMode, VariableEvaluationMode mode)
+    {
+        ProtoPlan plan = CreatePlan();
+        plan.ExecutionBehavior.VariableEvalMode = protoMode;
+
+        IPlan result = this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF);
+
+        await Assert.That(result.ExecutionBehavior.VariableEvaluationMode).IsEqualTo(mode);
+        await Assert.That(new PlanToProtoConverter().From(result).ExecutionBehavior.VariableEvalMode).IsEqualTo(protoMode);
+    }
+
+    [Test]
+    public async Task RejectsPlanWithoutExecutionBehavior()
+    {
+        ProtoPlan plan = CreatePlan();
+        plan.ExecutionBehavior = null;
+
+        System.Runtime.Serialization.SerializationException error = await Assert.That(() => this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF))
+            .ThrowsExactly<System.Runtime.Serialization.SerializationException>().And.IsNotNull();
+        await Assert.That(error.Message).Contains("execution behavior");
+    }
+
+    [Test]
+    public async Task ExecutionBehaviorParticipatesInPlanEquality()
+    {
+        ProtoPlan perRecord = CreatePlan();
+        perRecord.ExecutionBehavior.VariableEvalMode = ProtoExecutionBehavior.Types.VariableEvaluationMode.PerRecord;
+
+        IPlan perPlanResult = this.converter.From(CreatePlan(), ExtensionsDictionary.StrictMode.OFF);
+        IPlan perRecordResult = this.converter.From(perRecord, ExtensionsDictionary.StrictMode.OFF);
+
+        await Assert.That(perRecordResult).IsNotEqualTo(perPlanResult);
+        await Assert.That(perPlanResult.GetHashCode()).IsEqualTo(this.converter.From(CreatePlan(), ExtensionsDictionary.StrictMode.OFF).GetHashCode());
+    }
+
+    [Test]
+    public async Task RoundTripsParameterBindings()
+    {
+        ProtoPlan plan = CreatePlan();
+        plan.ParameterBindings.Add(new DynamicParameterBinding { ParameterAnchor = 3, Value = new() { I64 = 5 } });
+        plan.ParameterBindings.Add(new DynamicParameterBinding { ParameterAnchor = 0, Value = new() { String = "x", Nullable = true } });
+
+        IPlan result = this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF);
+
+        await Assert.That(result.Metadata.ParameterBindings.Count).IsEqualTo(2);
+        await Assert.That(result.Metadata.ParameterBindings[0].ParameterAnchor).IsEqualTo(3U);
+        await Assert.That(result.Metadata.ParameterBindings[0].Value).IsEqualTo(new Literal.I64Literal(5));
+        await Assert.That(result.Metadata.ParameterBindings[1].ParameterAnchor).IsEqualTo(0U);
+        await Assert.That(result.Metadata.ParameterBindings[1].Value).IsEqualTo(new Literal.StrLiteral("x", IType.NullableType.Nullable));
+
+        ProtoPlan serialized = new PlanToProtoConverter().From(result);
+        await Assert.That(serialized.ParameterBindings).IsEquivalentTo(plan.ParameterBindings, TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(this.converter.From(serialized, ExtensionsDictionary.StrictMode.OFF)).IsEqualTo(result);
+        await Assert.That(new PlanToProtoConverter().From(result, maxInlineRelExpressionDepth: 8).ParameterBindings)
+            .IsEquivalentTo(plan.ParameterBindings, TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
+    public async Task RejectsDuplicateParameterBindingAnchors()
+    {
+        ProtoPlan plan = CreatePlan();
+        plan.ParameterBindings.Add(new DynamicParameterBinding { ParameterAnchor = 3, Value = new() { I64 = 5 } });
+        plan.ParameterBindings.Add(new DynamicParameterBinding { ParameterAnchor = 3, Value = new() { I64 = 6 } });
+
+        await Assert.That(() => this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF))
+            .ThrowsExactly<System.Runtime.Serialization.SerializationException>();
+    }
+
+    [Test]
+    public async Task RejectsParameterBindingWithoutValue()
+    {
+        ProtoPlan plan = CreatePlan();
+        plan.ParameterBindings.Add(new DynamicParameterBinding { ParameterAnchor = 3 });
+
+        await Assert.That(() => this.converter.From(plan, ExtensionsDictionary.StrictMode.OFF))
+            .ThrowsExactly<System.Runtime.Serialization.SerializationException>();
     }
 
     [Test]
@@ -166,7 +303,8 @@ public sealed class ProtoToPlanConverterTests
             urn, "add:i64_i64", [new Literal.I64Literal(1), new Literal.I64Literal(2)], TypeFactory.REQUIRED.I64, null);
         IPlan plan = new Substrait.Core.Plan.Plan(
             [new Substrait.Core.Plan.Plan.Root(new Project(read, [function]), ["value", "sum"])],
-            Substrait.Core.Plan.Version.Current);
+            Substrait.Core.Plan.Version.Current,
+            TestPlans.PerPlan);
 
         ProtoPlan serialized = new PlanToProtoConverter().From(plan);
         await Assert.That(serialized.ExtensionUrns.Single().Urn).IsEqualTo(urn);
@@ -204,7 +342,8 @@ public sealed class ProtoToPlanConverterTests
         var project = new Project(read, [function]);
         IPlan plan = new Substrait.Core.Plan.Plan(
             [new Substrait.Core.Plan.Plan.Root(project, ["value", "result"])],
-            Substrait.Core.Plan.Version.Current);
+            Substrait.Core.Plan.Version.Current,
+            TestPlans.PerPlan);
 
         ProtoPlan result = new PlanToProtoConverter().From(plan);
 
@@ -212,6 +351,46 @@ public sealed class ProtoToPlanConverterTests
         await Assert.That(result.Relations[0].Root.Input.Project.Expressions[0].ScalarFunction.FunctionReference).IsEqualTo(0U);
         await Assert.That(result.Extensions.Single(extension => extension.ExtensionTypeVariation is not null).ExtensionTypeVariation.TypeVariationAnchor).IsEqualTo(1U);
         await Assert.That(result.Extensions.Single(extension => extension.ExtensionFunction is not null).ExtensionFunction.FunctionAnchor).IsEqualTo(0U);
+    }
+
+    [Test]
+    public async Task ExportsExtensionDeclarationsUsedByTypeAliases()
+    {
+        var variation = new TypeVariationImpl("extension:example:types", "i64", "custom", string.Empty, FunctionBehavior.INHERITS);
+        TypeAliasTable aliases = new TypeAliasTable.Builder().Add(7, TypeFactory.REQUIRED.I64_(variation)).Build();
+        var read = new NamedTableRead(
+            new Substrait.Core.Type.NamedStruct(["value"], TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64])), ["orders"], null);
+        IPlan plan = new Substrait.Core.Plan.Plan(
+            new Substrait.Core.Metadata.PlanMetadata(null, null, null, null, aliases, null),
+            [new Substrait.Core.Plan.Plan.Root(read, ["value"])],
+            Substrait.Core.Plan.Version.Current,
+            TestPlans.PerPlan);
+
+        ProtoPlan result = new PlanToProtoConverter().From(plan);
+
+        uint anchor = result.TypeAliases.Single().Type.I64.TypeVariationReference;
+        await Assert.That(result.Extensions.Single().ExtensionTypeVariation.TypeVariationAnchor).IsEqualTo(anchor);
+    }
+
+    [Test]
+    public async Task ExportRejectsTypeAliasReferencesWithoutAlias()
+    {
+        var read = new NamedTableRead(
+            new Substrait.Core.Type.NamedStruct(["value"], TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.AliasReference(7)])), ["orders"], null);
+        var plainRead = new NamedTableRead(
+            new Substrait.Core.Type.NamedStruct(["value"], TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64])), ["orders"], null);
+        var literal = new Literal.UserDefinedLiteral(9, new Google.Protobuf.WellKnownTypes.StringValue { Value = "x" });
+        TypeAliasTable aliases = new TypeAliasTable.Builder().Add(7, TypeFactory.REQUIRED.I64).Add(9, TypeFactory.REQUIRED.I64).Build();
+        (IRel Input, string[] Names, uint Anchor)[] cases = [(read, ["value"], 7), (new Project(plainRead, [literal]), ["value", "literal"], 9)];
+        foreach ((IRel input, string[] names, uint anchor) in cases)
+        {
+            ArgumentException error = await Assert.That(() => new PlanToProtoConverter().From(CreateCorePlan(input, names, TypeAliasTable.Empty)))
+                .ThrowsExactly<ArgumentException>().And.IsNotNull();
+            await Assert.That(error.Message).Contains($"Invalid type alias ID: {anchor}");
+
+            IPlan declared = CreateCorePlan(input, names, aliases);
+            await Assert.That(this.converter.From(new PlanToProtoConverter().From(declared), ExtensionsDictionary.StrictMode.OFF)).IsEqualTo(declared);
+        }
     }
 
     [Test]
@@ -324,6 +503,13 @@ public sealed class ProtoToPlanConverterTests
         await Assert.That(() => this.converter.From(plan, ExtensionsDictionary.StrictMode.TYPE_VARIATION)).ThrowsExactly<ArgumentException>();
     }
 
+    private static Substrait.Core.Plan.Plan CreateCorePlan(IRel input, IEnumerable<string> names, TypeAliasTable aliases) =>
+        new Substrait.Core.Plan.Plan(
+            new Substrait.Core.Metadata.PlanMetadata(null, null, null, null, aliases, null),
+            [new Substrait.Core.Plan.Plan.Root(input, names)],
+            Substrait.Core.Plan.Version.Current,
+            TestPlans.PerPlan);
+
     private static ProtoPlan CreatePlan()
     {
         return new ProtoPlan
@@ -336,6 +522,7 @@ public sealed class ProtoToPlanConverterTests
                 GitHash = "abc",
                 Producer = "tests",
             },
+            ExecutionBehavior = new ProtoExecutionBehavior { VariableEvalMode = ProtoExecutionBehavior.Types.VariableEvaluationMode.PerPlan },
             Relations =
             {
                 new PlanRel
@@ -348,6 +535,20 @@ public sealed class ProtoToPlanConverterTests
                 },
             },
         };
+    }
+
+    private static ProtoPlan CreatePlanWithAliasedRead()
+    {
+        ProtoPlan plan = CreatePlan();
+        plan.Relations[0].Root.Input.Read.BaseSchema.Struct.Types_[0] = new Substrait.Protobuf.Type
+        {
+            Alias = new Substrait.Protobuf.Type.Types.TypeAliasReference
+            {
+                TypeAliasReference_ = 7,
+                Nullability = Substrait.Protobuf.Type.Types.Nullability.Required,
+            },
+        };
+        return plan;
     }
 
     private static ProtoPlan CreatePlanWithExtensions(SimpleExtensionDeclaration extension)

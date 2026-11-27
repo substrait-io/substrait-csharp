@@ -157,13 +157,10 @@ creates a fresh one, for standalone use.
 
 ## Boundaries
 
-- This slice owns alias-definition models and table validation/resolution,
-  independent of the full plan envelope. Retaining `Plan.type_aliases` on
-  the internal `Plan`/`PlanMetadata` model, and invoking this table from
-  `ProtoToPlanConverter`/`PlanToProtoConverter`, belongs to
-  [substrait-io/substrait-csharp#27](https://github.com/substrait-io/substrait-csharp/issues/27).
-  Until that lands, `ProtoToPlanConverter` explicitly rejects any plan
-  declaring `Plan.type_aliases` rather than silently dropping the table.
+- `ProtoToPlanConverter` reads `Plan.type_aliases` into
+  `PlanMetadata.TypeAliases` and rejects any alias reference whose anchor the
+  plan does not declare; `PlanToProtoConverter` writes the table back through
+  the plan's shared context. References in the plan stay unresolved.
 - Extension YAML type variables/type classes remain out of scope here; see
   [substrait-io/substrait-csharp#46](https://github.com/substrait-io/substrait-csharp/issues/46).
   Alias anchors are a separate namespace from extension type anchors.

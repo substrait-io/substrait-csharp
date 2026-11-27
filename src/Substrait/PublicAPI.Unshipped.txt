@@ -216,7 +216,7 @@ static Substrait.Core.Metadata.ReadOnlySimpleExtensionURN.FromProto(Substrait.Pr
 static Substrait.Core.Metadata.RelationMetadata.Direct.get -> Substrait.Core.Metadata.RelationMetadata!
 static Substrait.Core.Metadata.RelationMetadata.Empty.get -> Substrait.Core.Metadata.RelationMetadata!
 static Substrait.Core.Metadata.RelationMetadata.FromRemap(Substrait.Core.Relation.Remap? transmute) -> Substrait.Core.Metadata.RelationMetadata!
-static Substrait.Core.Plan.Plan.FromRelations(Substrait.Core.Metadata.PlanMetadata! metadata, System.Collections.Generic.IEnumerable<Substrait.Core.Plan.IPlan.IRelation!>! relations, Substrait.Core.Plan.IVersion! version) -> Substrait.Core.Plan.Plan!
+static Substrait.Core.Plan.Plan.FromRelations(Substrait.Core.Metadata.PlanMetadata! metadata, System.Collections.Generic.IEnumerable<Substrait.Core.Plan.IPlan.IRelation!>! relations, Substrait.Core.Plan.IVersion! version, Substrait.Core.Plan.ExecutionBehavior! executionBehavior) -> Substrait.Core.Plan.Plan!
 static Substrait.Core.Type.PrimitiveType.IntervalDay.Of(int precision, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.IntervalDay!
 static Substrait.Core.Type.PrimitiveType.Time.Of(int precision, Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.Time!
 static Substrait.Core.Type.PrimitiveType.Uuid.Of(Substrait.Core.Type.IType.NullableType nullable, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.PrimitiveType.Uuid!
@@ -285,6 +285,16 @@ Substrait.Core.Metadata.PlanMetadata.Extensions.get -> System.Collections.Generi
 Substrait.Core.Metadata.PlanMetadata.ExtensionUrns.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Metadata.ReadOnlySimpleExtensionURN!>!
 Substrait.Core.Metadata.PlanMetadata.PlanMetadata(Substrait.Core.Metadata.ReadOnlyAdvancedExtension? advancedExtensions = null, System.Collections.Generic.IEnumerable<string!>? expectedTypeUrls = null) -> void
 Substrait.Core.Metadata.PlanMetadata.PlanMetadata(Substrait.Core.Metadata.ReadOnlyAdvancedExtension? advancedExtensions, System.Collections.Generic.IEnumerable<string!>? expectedTypeUrls, System.Collections.Generic.IEnumerable<Substrait.Core.Metadata.ReadOnlySimpleExtensionURN!>? extensionUrns, System.Collections.Generic.IEnumerable<Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclaration!>? extensions) -> void
+Substrait.Core.Metadata.PlanMetadata.PlanMetadata(Substrait.Core.Metadata.ReadOnlyAdvancedExtension? advancedExtensions, System.Collections.Generic.IEnumerable<string!>? expectedTypeUrls, System.Collections.Generic.IEnumerable<Substrait.Core.Metadata.ReadOnlySimpleExtensionURN!>? extensionUrns, System.Collections.Generic.IEnumerable<Substrait.Core.Metadata.ReadOnlySimpleExtensionDeclaration!>? extensions, Substrait.Core.Type.TypeAliasTable? typeAliases, System.Collections.Generic.IEnumerable<Substrait.Core.Metadata.DynamicParameterBinding!>? parameterBindings) -> void
+Substrait.Core.Metadata.PlanMetadata.ParameterBindings.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Metadata.DynamicParameterBinding!>!
+Substrait.Core.Metadata.PlanMetadata.TypeAliases.get -> Substrait.Core.Type.TypeAliasTable!
+Substrait.Core.Metadata.DynamicParameterBinding
+Substrait.Core.Metadata.DynamicParameterBinding.DynamicParameterBinding(uint parameterAnchor, Substrait.Core.Expression.Literal! value) -> void
+Substrait.Core.Metadata.DynamicParameterBinding.Equals(Substrait.Core.Metadata.DynamicParameterBinding? other) -> bool
+Substrait.Core.Metadata.DynamicParameterBinding.ParameterAnchor.get -> uint
+Substrait.Core.Metadata.DynamicParameterBinding.Value.get -> Substrait.Core.Expression.Literal!
+override Substrait.Core.Metadata.DynamicParameterBinding.Equals(object? obj) -> bool
+override Substrait.Core.Metadata.DynamicParameterBinding.GetHashCode() -> int
 Substrait.Core.Metadata.PlanMetadata.PlanMetadata(Substrait.Protobuf.AdvancedExtension! message, System.Collections.Generic.IEnumerable<string!>? expectedTypeUrls = null) -> void
 Substrait.Core.Metadata.PlanRelationMetadata
 Substrait.Core.Metadata.PlanRelationMetadata.DetachedExpressionCount.get -> int
@@ -393,14 +403,26 @@ Substrait.Core.Plan.Converters.ProtoToPlanConverter.ProtoToPlanConverter(Substra
 Substrait.Core.Plan.IPlan.IRelation
 Substrait.Core.Plan.IPlan.IRelation.Input.get -> Substrait.Core.Relation.IRel!
 Substrait.Core.Plan.IPlan.IRelation.Metadata.get -> Substrait.Core.Metadata.PlanRelationMetadata!
+Substrait.Core.Plan.IPlan.ExecutionBehavior.get -> Substrait.Core.Plan.ExecutionBehavior!
 Substrait.Core.Plan.IPlan.Metadata.get -> Substrait.Core.Metadata.PlanMetadata!
 Substrait.Core.Plan.IPlan.Relations.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Plan.IPlan.IRelation!>!
+Substrait.Core.Plan.ExecutionBehavior
+Substrait.Core.Plan.ExecutionBehavior.Equals(Substrait.Core.Plan.ExecutionBehavior? other) -> bool
+Substrait.Core.Plan.ExecutionBehavior.ExecutionBehavior(Substrait.Core.Plan.VariableEvaluationMode variableEvaluationMode) -> void
+Substrait.Core.Plan.ExecutionBehavior.VariableEvaluationMode.get -> Substrait.Core.Plan.VariableEvaluationMode
+override Substrait.Core.Plan.ExecutionBehavior.Equals(object? obj) -> bool
+override Substrait.Core.Plan.ExecutionBehavior.GetHashCode() -> int
+Substrait.Core.Plan.VariableEvaluationMode
+Substrait.Core.Plan.VariableEvaluationMode.PerPlan = 1 -> Substrait.Core.Plan.VariableEvaluationMode
+Substrait.Core.Plan.VariableEvaluationMode.PerRecord = 2 -> Substrait.Core.Plan.VariableEvaluationMode
+Substrait.Core.Plan.VariableEvaluationMode.Unspecified = 0 -> Substrait.Core.Plan.VariableEvaluationMode
+Substrait.Core.Plan.Plan.ExecutionBehavior.get -> Substrait.Core.Plan.ExecutionBehavior!
 Substrait.Core.Plan.Plan.Metadata.get -> Substrait.Core.Metadata.PlanMetadata!
-Substrait.Core.Plan.Plan.Plan(Substrait.Core.Metadata.PlanMetadata! metadata, System.Collections.Generic.IEnumerable<Substrait.Core.Plan.IPlan.IRoot!>! roots, Substrait.Core.Plan.IVersion! version) -> void
+Substrait.Core.Plan.Plan.Plan(Substrait.Core.Metadata.PlanMetadata! metadata, System.Collections.Generic.IEnumerable<Substrait.Core.Plan.IPlan.IRoot!>! roots, Substrait.Core.Plan.IVersion! version, Substrait.Core.Plan.ExecutionBehavior! executionBehavior) -> void
 Substrait.Core.Plan.Plan.Relation.Metadata.get -> Substrait.Core.Metadata.PlanRelationMetadata!
 Substrait.Core.Plan.Plan.Relation.Relation(Substrait.Core.Metadata.PlanRelationMetadata! metadata, Substrait.Core.Relation.IRel! input) -> void
 Substrait.Core.Plan.Plan.Relations.get -> System.Collections.Generic.IReadOnlyList<Substrait.Core.Plan.IPlan.IRelation!>!
-static Substrait.Core.Plan.Plan.FromRelations(System.Collections.Generic.IEnumerable<Substrait.Core.Plan.IPlan.IRelation!>! relations, Substrait.Core.Plan.IVersion! version) -> Substrait.Core.Plan.Plan!
+static Substrait.Core.Plan.Plan.FromRelations(System.Collections.Generic.IEnumerable<Substrait.Core.Plan.IPlan.IRelation!>! relations, Substrait.Core.Plan.IVersion! version, Substrait.Core.Plan.ExecutionBehavior! executionBehavior) -> Substrait.Core.Plan.Plan!
 Substrait.Core.Plan.Plan.Relation
 Substrait.Core.Plan.Plan.Relation.Relation(Substrait.Core.Relation.IRel! input) -> void
 Substrait.Core.Plan.Plan.Relation.Input.get -> Substrait.Core.Relation.IRel!
@@ -419,8 +441,8 @@ Substrait.Core.Plan.PlanBuilder.ClearEnhancement() -> void
 Substrait.Core.Plan.PlanBuilder.ClearExpectedTypeUrls() -> void
 Substrait.Core.Plan.PlanBuilder.ClearOptimizations() -> void
 Substrait.Core.Plan.PlanBuilder.Metadata.get -> Substrait.Core.Metadata.PlanMetadata!
-Substrait.Core.Plan.PlanBuilder.PlanBuilder(Substrait.Core.Metadata.PlanMetadata! metadata, Substrait.Core.Plan.IVersion? version) -> void
-Substrait.Core.Plan.PlanBuilder.PlanBuilder(Substrait.Core.Plan.IVersion? version = null) -> void
+Substrait.Core.Plan.PlanBuilder.PlanBuilder(Substrait.Core.Metadata.PlanMetadata! metadata, Substrait.Core.Plan.IVersion? version, Substrait.Core.Plan.ExecutionBehavior! executionBehavior) -> void
+Substrait.Core.Plan.PlanBuilder.PlanBuilder(Substrait.Core.Plan.ExecutionBehavior! executionBehavior, Substrait.Core.Plan.IVersion? version = null) -> void
 Substrait.Core.Plan.PlanBuilder.RegisterSubplan(Substrait.Core.Metadata.PlanRelationMetadata! metadata, Substrait.Core.Relation.IRel! subtree) -> Substrait.Core.Relation.Reference!
 Substrait.Core.Plan.PlanBuilder.RegisterSubplan(Substrait.Core.Relation.IRel! subtree) -> Substrait.Core.Relation.Reference!
 Substrait.Core.Plan.PlanBuilder.AddRoot(Substrait.Core.Relation.IRel! input, System.Collections.Generic.IEnumerable<string!>! names) -> Substrait.Core.Relation.Reference!
@@ -550,6 +572,9 @@ Substrait.Core.Type.TypeAliasTable.Builder.Add(uint anchor, Substrait.Core.Type.
 Substrait.Core.Type.TypeAliasTable.Builder.Build() -> Substrait.Core.Type.TypeAliasTable!
 Substrait.Core.Type.TypeAliasTable.Builder.Builder() -> void
 Substrait.Core.Type.TypeAliasTable.Count.get -> int
+Substrait.Core.Type.TypeAliasTable.Equals(Substrait.Core.Type.TypeAliasTable? other) -> bool
+override Substrait.Core.Type.TypeAliasTable.Equals(object? obj) -> bool
+override Substrait.Core.Type.TypeAliasTable.GetHashCode() -> int
 Substrait.Core.Type.TypeAliasTable.Definitions.get -> System.Collections.Generic.IReadOnlyDictionary<uint, Substrait.Core.Type.IType!>!
 Substrait.Core.Type.TypeAliasTable.Resolve(Substrait.Core.Type.IType! type) -> Substrait.Core.Type.IType!
 Substrait.Core.Type.TypeFactory.AliasReference(uint anchor, Substrait.Core.Extension.Types.ITypeVariation? typeVariation = null) -> Substrait.Core.Type.ParameterizedType.AliasReference!
@@ -1709,7 +1734,7 @@ Substrait.Core.Plan.IVersion.PatchNumber.get -> uint
 Substrait.Core.Plan.IVersion.Producer.get -> string!
 Substrait.Core.Plan.Plan
 Substrait.Core.Plan.Plan.Equals(Substrait.Core.Plan.Plan? other) -> bool
-Substrait.Core.Plan.Plan.Plan(System.Collections.Generic.IEnumerable<Substrait.Core.Plan.IPlan.IRoot!>! roots, Substrait.Core.Plan.IVersion! version) -> void
+Substrait.Core.Plan.Plan.Plan(System.Collections.Generic.IEnumerable<Substrait.Core.Plan.IPlan.IRoot!>! roots, Substrait.Core.Plan.IVersion! version, Substrait.Core.Plan.ExecutionBehavior! executionBehavior) -> void
 Substrait.Core.Plan.Plan.Root
 Substrait.Core.Plan.Plan.Root.Equals(Substrait.Core.Plan.Plan.Root? other) -> bool
 Substrait.Core.Plan.Plan.Root.Input.get -> Substrait.Core.Relation.IRel!

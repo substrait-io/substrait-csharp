@@ -294,6 +294,8 @@ public class ProtoToExpressionConverter : IProtoConverter
                             throw new SerializationException("User-defined literal with a type alias reference cannot set type parameters.");
                         }
 
+                        this.lookup.ValidateTypeAlias(current.UserDefined.TypeAliasReference);
+
                         if (current.UserDefined.Struct is not null)
                         {
                             destination.Add(new Literal.UserDefinedLiteral(current.UserDefined.TypeAliasReference, inputs, nullable) { TypeVariation = variation });

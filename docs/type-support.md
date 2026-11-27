@@ -115,12 +115,13 @@ collections.
 | Unspecified nullability | `NotImplementedException`; `SerializationException` for `user_defined` | `SerializationException` naming the path |
 | Undeclared variation anchor | `SerializationException` | `SerializationException` naming the path |
 | Out-of-range parameter | `ArgumentOutOfRangeException` | `SerializationException` naming the path |
+| Alias anchor not in the plan's `type_aliases` (plan import only) | `ArgumentException` | `ArgumentException` |
 
 ## Boundaries
 
-- `ProtoToPlanConverter` rejects plans that declare `Plan.type_aliases`; full
-  plan-envelope alias retention belongs to
-  [substrait-io/substrait-csharp#27](https://github.com/substrait-io/substrait-csharp/issues/27).
+- `ProtoToPlanConverter` retains `Plan.type_aliases` as `PlanMetadata.TypeAliases`
+  and rejects an alias reference whose anchor the plan does not declare.
+  Standalone type conversion does not check alias anchors.
 - Extension YAML type expressions and type classes belong to
   [substrait-io/substrait-csharp#46](https://github.com/substrait-io/substrait-csharp/issues/46).
 - Coverage uses small synthetic fixtures. An upstream conformance corpus and
