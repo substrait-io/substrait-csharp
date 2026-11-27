@@ -216,6 +216,7 @@ public class ProtoToTypeConverter
 
                         break;
                     case ProtoType.KindOneofCase.Alias:
+                        this.lookup.ValidateTypeAlias(current.Alias.TypeAliasReference_);
                         collectedTypes.Add(GetFactory(current.Alias.Nullability).AliasReference(current.Alias.TypeAliasReference_));
                         break;
                     case ProtoType.KindOneofCase.Func:

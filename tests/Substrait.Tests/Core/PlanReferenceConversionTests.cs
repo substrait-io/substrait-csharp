@@ -32,7 +32,8 @@ public sealed class PlanReferenceConversionTests
                 new CorePlan.Relation(CreateRead("shared")),
                 new CorePlan.Root(CreateRead("last"), []),
             ],
-            new PlanVersion(1, 2, 3, "hash", "tests"));
+            new PlanVersion(1, 2, 3, "hash", "tests"),
+            TestPlans.PerPlan);
 
         ProtoPlan wire = await AssertRoundTrips(plan);
         IPlan converted = Deserialize(wire);
@@ -50,7 +51,7 @@ public sealed class PlanReferenceConversionTests
     {
         NamedTableRead read = CreateRead();
         CorePlan plan = CorePlan.FromRelations(
-            [new CorePlan.Relation(new Cross(read, read)), new CorePlan.Relation(read)], PlanVersion.Current);
+            [new CorePlan.Relation(new Cross(read, read)), new CorePlan.Relation(read)], PlanVersion.Current, TestPlans.PerPlan);
 
         ProtoPlan wire = await AssertRoundTrips(plan);
 
@@ -65,7 +66,7 @@ public sealed class PlanReferenceConversionTests
     public async Task RepeatedSameAndEqualRegistrationsRemainIndependentWireEntries()
     {
         NamedTableRead read = CreateRead();
-        PlanBuilder builder = new();
+        PlanBuilder builder = new(TestPlans.PerPlan);
         builder.RegisterSubplan(read);
         builder.RegisterSubplan(read);
         builder.RegisterSubplan(CreateRead());
@@ -122,7 +123,7 @@ public sealed class PlanReferenceConversionTests
         NamedTableRead target = CreateRead();
         Reference forward = new(1, target);
         CorePlan plan = CorePlan.FromRelations(
-            [new CorePlan.Root(forward, []), new CorePlan.Relation(target)], PlanVersion.Current);
+            [new CorePlan.Root(forward, []), new CorePlan.Relation(target)], PlanVersion.Current, TestPlans.PerPlan);
 
         ProtoPlan wire = await AssertRoundTrips(plan);
 
@@ -339,7 +340,7 @@ public sealed class PlanReferenceConversionTests
             "extension:example:functions", "identity:i64", [new Literal.I64Literal(1)], TypeFactory.REQUIRED.I64, null);
         CoreExpression.ScalarFunctionInvocation another = new(
             "extension:example:other", "another:i64", [new Literal.I64Literal(2)], TypeFactory.REQUIRED.I64, null);
-        PlanBuilder builder = new();
+        PlanBuilder builder = new(TestPlans.PerPlan);
         Reference shared = builder.RegisterSubplan(new Project(read, [identity]));
         builder.AddRoot(new Project(shared, [identity, another]), []);
         builder.RegisterSubplan(new Project(read, [another]));
@@ -375,7 +376,7 @@ public sealed class PlanReferenceConversionTests
         }
 
         var serializer = new PlanToProtoConverter();
-        ProtoPlan unrelated = serializer.From(new CorePlan([new CorePlan.Root(CreateRead(), [])], PlanVersion.Current));
+        ProtoPlan unrelated = serializer.From(new CorePlan([new CorePlan.Root(CreateRead(), [])], PlanVersion.Current, TestPlans.PerPlan));
         await Assert.That(unrelated.Extensions.Count).IsEqualTo(0);
         await Assert.That(unrelated.ExtensionUrns.Count).IsEqualTo(0);
         await Assert.That(serializer.From(plan).ToByteArray()).IsEquivalentTo(wire.ToByteArray(), TUnit.Assertions.Enums.CollectionOrdering.Matching);
@@ -424,6 +425,7 @@ public sealed class PlanReferenceConversionTests
         ProtoPlan plan = new()
         {
             Version = new Substrait.Protobuf.Version { MajorNumber = 1, MinorNumber = 2, PatchNumber = 3, Producer = "tests" },
+            ExecutionBehavior = TestPlans.ProtoPerPlan,
         };
         plan.Relations.AddRange(relations);
         return plan;

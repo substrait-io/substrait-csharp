@@ -2,11 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Substrait.Core.Expression;
+using Substrait.Core.Expression.Converters;
 using Substrait.Core.Extension;
 using Substrait.Core.Metadata;
 using Substrait.Core.Relation;
 using Substrait.Core.Relation.Converters;
 using Substrait.Core.Type;
+using Substrait.Core.Type.Converters;
+using Substrait.Tools;
 using Substrait.Tools.Visitor;
 using ProtoExpression = Substrait.Protobuf.Expression;
 using ProtoRel = Substrait.Protobuf.Rel;
@@ -53,7 +56,14 @@ public class PlanToProtoConverter
 
         PlanValidation.Validate(plan.Relations);
         PlanMetadata metadata = plan.Metadata ?? throw new ArgumentException("Plan metadata must not be null.", nameof(plan));
-        var context = new ConverterContext(metadata) { PlanRelations = plan.Relations };
+        var context = new ConverterContext(metadata) { PlanRelations = plan.Relations, TypeAliases = metadata.TypeAliases };
+        IReadOnlyList<Protobuf.TypeAlias> typeAliases = new TypeAliasTableToProtoConverter().From(metadata.TypeAliases, context);
+        var expressionConverter = new ExpressionToProtoConverter(new TypeToProtoConverter());
+        var parameterBindings = metadata.ParameterBindings.Select(binding => new Protobuf.DynamicParameterBinding
+        {
+            ParameterAnchor = binding.ParameterAnchor,
+            Value = expressionConverter.From(binding.Value, context).Literal,
+        }).ToList();
         if (maxInlineRelExpressionDepth is int maxDepth)
         {
             context.Export = new ProtoExportContext(context, maxDepth);
@@ -71,8 +81,15 @@ public class PlanToProtoConverter
                 GitHash = plan.Version.GitHash,
                 Producer = plan.Version.Producer,
             },
+            ExecutionBehavior = new Protobuf.ExecutionBehavior
+            {
+                VariableEvalMode = EnumUtils.Cast<VariableEvaluationMode, Protobuf.ExecutionBehavior.Types.VariableEvaluationMode>(
+                    (plan.ExecutionBehavior ?? throw new ArgumentException("Plan execution behavior must not be null.", nameof(plan))).VariableEvaluationMode),
+            },
         };
         result.ExpectedTypeUrls.AddRange(metadata.ExpectedTypeUrls);
+        result.TypeAliases.AddRange(typeAliases);
+        result.ParameterBindings.AddRange(parameterBindings);
         result.Relations.AddRange(plan.Relations.Select(entry =>
         {
             Protobuf.PlanRel output = entry.Metadata.ToProto();
@@ -124,6 +141,16 @@ public class PlanToProtoConverter
         internal IReadOnlyList<IPlan.IRelation>? PlanRelations { get; init; }
 
         internal ProtoExportContext? Export { get; set; }
+
+        internal TypeAliasTable? TypeAliases { get; init; }
+
+        internal void ValidateTypeAlias(uint anchor)
+        {
+            if (this.TypeAliases is not null && !this.TypeAliases.Definitions.ContainsKey(anchor))
+            {
+                throw new ArgumentException($"Invalid type alias ID: {anchor}. Verify that the ID is included in the plan's type aliases section.");
+            }
+        }
 
         internal void ValidateReference(Reference reference)
         {

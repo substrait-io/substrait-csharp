@@ -44,6 +44,6 @@ public sealed class PlanTests
         NamedStruct schema = new(["value"], TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64]));
         NamedTableRead read = new(schema, ["orders"], filter: null);
         Plan.Root root = new(read, ["value"]);
-        return new Plan([root], Substrait.Core.Plan.Version.Current);
+        return new Plan([root], Substrait.Core.Plan.Version.Current, TestPlans.PerPlan);
     }
 }

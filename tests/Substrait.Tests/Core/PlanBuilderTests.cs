@@ -16,13 +16,14 @@ public sealed class PlanBuilderTests
 {
     private static readonly string[] ExpectedRootNames = ["output"];
     private static readonly int[] ExpectedRegistrationOrdinals = [0, 1, 2, 3, 4];
+    private static readonly Substrait.Core.Plan.ExecutionBehavior PerPlan = TestPlans.PerPlan;
 
     [Test]
     public async Task LegacyConstructorPreservesRootsInRelations()
     {
         Plan.Root first = new(CreateRead("first"), ["first"]);
         Plan.Root second = new(CreateRead("second"), []);
-        Plan plan = new([first, second], PlanVersion.Current);
+        Plan plan = new([first, second], PlanVersion.Current, PerPlan);
 
         await Assert.That(plan.Relations.ToArray()).IsEquivalentTo(new IPlan.IRelation[] { first, second }, TUnit.Assertions.Enums.CollectionOrdering.Matching);
         await Assert.That(plan.Roots.ToArray()).IsEquivalentTo(new IPlan.IRoot[] { first, second }, TUnit.Assertions.Enums.CollectionOrdering.Matching);
@@ -37,7 +38,7 @@ public sealed class PlanBuilderTests
         Plan.Root last = new(CreateRead("last"), []);
         List<IPlan.IRelation> entries = [first, shared, last];
 
-        Plan plan = Plan.FromRelations(entries, PlanVersion.Current);
+        Plan plan = Plan.FromRelations(entries, PlanVersion.Current, PerPlan);
         entries.Clear();
         names[0] = "changed";
 
@@ -51,7 +52,7 @@ public sealed class PlanBuilderTests
     public async Task BuilderAssignsOrdinalsAcrossRootsAndSubplans()
     {
         PlanVersion version = new(1, 2, 3, "hash", "builder-tests");
-        PlanBuilder builder = new(version);
+        PlanBuilder builder = new(PerPlan, version);
         Reference firstRoot = builder.AddRoot(CreateRead("first"), ["renamed"]);
         Reference shared = builder.RegisterSubplan(CreateRead("shared"));
         Reference lastRoot = builder.AddRoot(new Cross(firstRoot, shared), []);
@@ -75,7 +76,7 @@ public sealed class PlanBuilderTests
     [Test]
     public async Task RegistrationNeverDeduplicatesSameOrEqualSubtrees()
     {
-        PlanBuilder builder = new();
+        PlanBuilder builder = new(PerPlan);
         NamedTableRead read = CreateRead();
         Reference first = builder.RegisterSubplan(read);
         Reference sameInstance = builder.RegisterSubplan(read);
@@ -94,7 +95,7 @@ public sealed class PlanBuilderTests
     [Test]
     public async Task BuildReturnsImmutableSnapshotsAndDefaultsToCurrentVersion()
     {
-        PlanBuilder builder = new();
+        PlanBuilder builder = new(PerPlan);
         Reference shared = builder.RegisterSubplan(CreateRead());
         List<string> names = ["before"];
         builder.AddRoot(shared, names);
@@ -120,9 +121,9 @@ public sealed class PlanBuilderTests
     public async Task BuilderRejectsForeignAndUnownedReferencesWithoutConsumingOrdinals()
     {
         NamedTableRead read = CreateRead();
-        PlanBuilder owner = new();
+        PlanBuilder owner = new(PerPlan);
         Reference owned = owner.RegisterSubplan(read);
-        PlanBuilder other = new();
+        PlanBuilder other = new(PerPlan);
         other.RegisterSubplan(read);
         Reference unowned = new(0, read);
 
@@ -144,10 +145,10 @@ public sealed class PlanBuilderTests
     [Arguments(3)]
     public async Task BuilderFindsForeignReferencesInsideEverySubqueryKind(int kind)
     {
-        PlanBuilder owner = new();
+        PlanBuilder owner = new(PerPlan);
         Reference reference = owner.RegisterSubplan(CreateRead());
         Project project = new(CreateRead(), [CreateSubquery(kind, reference)]);
-        PlanBuilder other = new();
+        PlanBuilder other = new(PerPlan);
 
         await Assert.That(() => other.RegisterSubplan(project)).ThrowsExactly<ArgumentException>();
         await Assert.That(() => other.AddRoot(project, [])).ThrowsExactly<ArgumentException>();
@@ -160,13 +161,13 @@ public sealed class PlanBuilderTests
     [Test]
     public async Task BuilderFindsDependenciesInNestedSubqueryExpressionOperands()
     {
-        PlanBuilder owner = new();
+        PlanBuilder owner = new(PerPlan);
         Reference reference = owner.RegisterSubplan(CreateRead());
         ScalarSubquery hidden = new(reference, TypeFactory.REQUIRED.I64);
         SetComparisonSubquery comparison = new(
             hidden, SetComparisonSubquery.ComparisonOp.Equal, SetComparisonSubquery.ReductionOp.Any, CreateRead());
         InPredicateSubquery predicate = new(CreateRead(), [hidden]);
-        PlanBuilder other = new();
+        PlanBuilder other = new(PerPlan);
 
         await Assert.That(() =>
             other.RegisterSubplan(new Project(CreateRead(), [comparison]))).ThrowsExactly<ArgumentException>();
@@ -177,10 +178,10 @@ public sealed class PlanBuilderTests
     [Test]
     public async Task BuildRevalidatesDependenciesAndCorrelationAfterRegistration()
     {
-        PlanBuilder builder = new();
+        PlanBuilder builder = new(PerPlan);
         MutableInput input = new(CreateRead());
         Reference owned = builder.RegisterSubplan(input);
-        PlanBuilder other = new();
+        PlanBuilder other = new(PerPlan);
         Reference foreign = other.RegisterSubplan(CreateRead());
 
         input.Child = foreign;
@@ -203,15 +204,15 @@ public sealed class PlanBuilderTests
         Reference self = new(0, input);
         input.Child = self;
         await Assert.That(() =>
-            Plan.FromRelations([new Plan.Relation(input)], PlanVersion.Current)).ThrowsExactly<ArgumentException>();
+            Plan.FromRelations([new Plan.Relation(input)], PlanVersion.Current, PerPlan)).ThrowsExactly<ArgumentException>();
 
         input.Child = new Project(CreateRead(), [new ScalarSubquery(self, TypeFactory.REQUIRED.I64)]);
         await Assert.That(() =>
-            Plan.FromRelations([new Plan.Relation(input)], PlanVersion.Current)).ThrowsExactly<ArgumentException>();
+            Plan.FromRelations([new Plan.Relation(input)], PlanVersion.Current, PerPlan)).ThrowsExactly<ArgumentException>();
 
         input.Child = input;
         await Assert.That(() =>
-            new PlanBuilder().RegisterSubplan(input)).ThrowsExactly<ArgumentException>();
+            new PlanBuilder(PerPlan).RegisterSubplan(input)).ThrowsExactly<ArgumentException>();
     }
 
     [Test]
@@ -219,7 +220,7 @@ public sealed class PlanBuilderTests
     {
         IRel correlated = CreateCorrelatedRelation(0, 1);
         Project nested = new(CreateRead(), [new ScalarSubquery(correlated, TypeFactory.REQUIRED.I64)]);
-        PlanBuilder builder = new();
+        PlanBuilder builder = new(PerPlan);
 
         await Assert.That(() => builder.RegisterSubplan(new Cross(correlated, nested))).ThrowsExactly<ArgumentException>();
         await Assert.That(() => builder.RegisterSubplan(new Cross(nested, correlated))).ThrowsExactly<ArgumentException>();
@@ -232,12 +233,12 @@ public sealed class PlanBuilderTests
     public async Task RegistrationRejectsCorrelationEscapingTheEntry(int nestingDepth, int subqueryLevels)
     {
         IRel relation = CreateCorrelatedRelation(nestingDepth, subqueryLevels);
-        PlanBuilder builder = new();
+        PlanBuilder builder = new(PerPlan);
 
         await Assert.That(() => builder.RegisterSubplan(relation)).ThrowsExactly<ArgumentException>();
         await Assert.That(() => builder.AddRoot(relation, [])).ThrowsExactly<ArgumentException>();
         await Assert.That(() =>
-            Plan.FromRelations([new Plan.Relation(relation)], PlanVersion.Current)).ThrowsExactly<ArgumentException>();
+            Plan.FromRelations([new Plan.Relation(relation)], PlanVersion.Current, PerPlan)).ThrowsExactly<ArgumentException>();
         await Assert.That(builder.Build().Relations.Count).IsEqualTo(0);
     }
 
@@ -247,7 +248,7 @@ public sealed class PlanBuilderTests
     [Arguments(2, 2)]
     public async Task RegistrationAllowsCorrelationContainedWithinTheEntry(int nestingDepth, int subqueryLevels)
     {
-        PlanBuilder builder = new();
+        PlanBuilder builder = new(PerPlan);
         Reference reference = builder.RegisterSubplan(CreateCorrelatedRelation(nestingDepth, subqueryLevels));
         builder.AddRoot(reference, []);
 
@@ -288,14 +289,15 @@ public sealed class PlanBuilderTests
         await Assert.That(equalRead).IsEqualTo(read);
 
         await Assert.That(() => Plan.FromRelations(
-            [new Plan.Relation(read), new Plan.Root(new Reference(2, read), [])], PlanVersion.Current)).ThrowsExactly<ArgumentException>();
+            [new Plan.Relation(read), new Plan.Root(new Reference(2, read), [])], PlanVersion.Current, PerPlan)).ThrowsExactly<ArgumentException>();
         await Assert.That(() => Plan.FromRelations(
-            [new Plan.Relation(read), new Plan.Root(new Reference(int.MaxValue, read), [])], PlanVersion.Current)).ThrowsExactly<ArgumentException>();
+            [new Plan.Relation(read), new Plan.Root(new Reference(int.MaxValue, read), [])], PlanVersion.Current, PerPlan)).ThrowsExactly<ArgumentException>();
         await Assert.That(() => Plan.FromRelations(
-            [new Plan.Relation(read), new Plan.Root(new Reference(0, equalRead), [])], PlanVersion.Current)).ThrowsExactly<ArgumentException>();
+            [new Plan.Relation(read), new Plan.Root(new Reference(0, equalRead), [])], PlanVersion.Current, PerPlan)).ThrowsExactly<ArgumentException>();
         await Assert.That(() => Plan.FromRelations(
             [new Plan.Relation(new Project(read, [new ScalarSubquery(new Reference(1, read), TypeFactory.REQUIRED.I64)]))],
-            PlanVersion.Current)).ThrowsExactly<ArgumentException>();
+            PlanVersion.Current,
+            PerPlan)).ThrowsExactly<ArgumentException>();
     }
 
     [Test]
@@ -382,8 +384,8 @@ public sealed class PlanBuilderTests
         await Assert.That(CreateReferencedPlan("customers", "output", PlanVersion.Current)).IsNotEqualTo(baseline);
         await Assert.That(CreateReferencedPlan("orders", "renamed", PlanVersion.Current)).IsNotEqualTo(baseline);
         await Assert.That(CreateReferencedPlan("orders", "output", new PlanVersion(1, 0, 0, "", ""))).IsNotEqualTo(baseline);
-        await Assert.That(Plan.FromRelations([new Plan.Root(CreateRead(), [])], PlanVersion.Current)).IsNotEqualTo(Plan.FromRelations([new Plan.Relation(CreateRead())], PlanVersion.Current));
-        await Assert.That(Plan.FromRelations([new Plan.Relation(CreateRead("second")), new Plan.Relation(CreateRead("first"))], PlanVersion.Current)).IsNotEqualTo(Plan.FromRelations([new Plan.Relation(CreateRead("first")), new Plan.Relation(CreateRead("second"))], PlanVersion.Current));
+        await Assert.That(Plan.FromRelations([new Plan.Root(CreateRead(), [])], PlanVersion.Current, PerPlan)).IsNotEqualTo(Plan.FromRelations([new Plan.Relation(CreateRead())], PlanVersion.Current, PerPlan));
+        await Assert.That(Plan.FromRelations([new Plan.Relation(CreateRead("second")), new Plan.Relation(CreateRead("first"))], PlanVersion.Current, PerPlan)).IsNotEqualTo(Plan.FromRelations([new Plan.Relation(CreateRead("first")), new Plan.Relation(CreateRead("second"))], PlanVersion.Current, PerPlan));
     }
 
     [Test]
@@ -391,9 +393,9 @@ public sealed class PlanBuilderTests
     {
         Plan[] plans =
         [
-            new Plan([], PlanVersion.Current),
-            Plan.FromRelations([], PlanVersion.Current),
-            new PlanBuilder().Build(),
+            new Plan([], PlanVersion.Current, PerPlan),
+            Plan.FromRelations([], PlanVersion.Current, PerPlan),
+            new PlanBuilder(PerPlan).Build(),
         ];
 
         foreach (Plan plan in plans)
@@ -410,7 +412,7 @@ public sealed class PlanBuilderTests
     public async Task BuilderSupportsLongReferenceChainsWithoutRecursiveSchemaDerivation(bool wrapReferences)
     {
         const int count = 10001;
-        PlanBuilder builder = new();
+        PlanBuilder builder = new(PerPlan);
         Reference reference = builder.RegisterSubplan(CreateRead());
         for (int i = 1; i < count; ++i)
         {
@@ -455,7 +457,7 @@ public sealed class PlanBuilderTests
 
     private static Plan CreateReferencedPlan(string table, string name, IVersion version)
     {
-        PlanBuilder builder = new(version);
+        PlanBuilder builder = new(PerPlan, version);
         Reference reference = builder.RegisterSubplan(CreateRead(table));
         builder.AddRoot(reference, [name]);
         return builder.Build();
@@ -490,5 +492,7 @@ public sealed class PlanBuilderTests
         public IVersion Version => PlanVersion.Current;
 
         public PlanMetadata Metadata => PlanMetadata.Empty;
+
+        public Substrait.Core.Plan.ExecutionBehavior ExecutionBehavior => PerPlan;
     }
 }

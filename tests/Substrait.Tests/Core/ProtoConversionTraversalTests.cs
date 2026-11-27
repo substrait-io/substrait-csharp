@@ -294,6 +294,7 @@ public sealed class ProtoConversionTraversalTests
         Plan wire = new()
         {
             Version = new() { MinorNumber = 107, Producer = "traversal-tests" },
+            ExecutionBehavior = TestPlans.ProtoPerPlan,
             Relations =
             {
                 new PlanRel

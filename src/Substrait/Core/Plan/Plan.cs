@@ -19,8 +19,9 @@ public sealed class Plan : IPlan, IEquatable<Plan>
     /// </summary>
     /// <param name="roots">The roots of the plan.</param>
     /// <param name="version">The version of the plan.</param>
-    public Plan(IEnumerable<IRoot> roots, IVersion version)
-        : this(PlanMetadata.Empty, roots, version)
+    /// <param name="executionBehavior">The execution behavior of the plan.</param>
+    public Plan(IEnumerable<IRoot> roots, IVersion version, ExecutionBehavior executionBehavior)
+        : this(PlanMetadata.Empty, roots, version, executionBehavior)
     {
     }
 
@@ -28,12 +29,13 @@ public sealed class Plan : IPlan, IEquatable<Plan>
     /// <param name="metadata">The plan-level metadata.</param>
     /// <param name="roots">The roots of the plan.</param>
     /// <param name="version">The version of the plan.</param>
-    public Plan(PlanMetadata metadata, IEnumerable<IRoot> roots, IVersion version)
-        : this(metadata, roots.Cast<IRelation>().ToImmutableList(), version)
+    /// <param name="executionBehavior">The execution behavior of the plan.</param>
+    public Plan(PlanMetadata metadata, IEnumerable<IRoot> roots, IVersion version, ExecutionBehavior executionBehavior)
+        : this(metadata, roots.Cast<IRelation>().ToImmutableList(), version, executionBehavior)
     {
     }
 
-    private Plan(PlanMetadata metadata, ImmutableList<IRelation> relations, IVersion version)
+    private Plan(PlanMetadata metadata, ImmutableList<IRelation> relations, IVersion version, ExecutionBehavior executionBehavior)
     {
         this.Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
         PlanValidation.Validate(relations);
@@ -42,6 +44,7 @@ public sealed class Plan : IPlan, IEquatable<Plan>
             : new Relation(entry.Metadata, entry.Input)).ToImmutableList();
         this.Roots = this.Relations.OfType<IRoot>().ToImmutableList();
         this.Version = version ?? throw new ArgumentNullException(nameof(version));
+        this.ExecutionBehavior = executionBehavior ?? throw new ArgumentNullException(nameof(executionBehavior));
     }
 
     /// <summary>
@@ -49,17 +52,19 @@ public sealed class Plan : IPlan, IEquatable<Plan>
     /// </summary>
     /// <param name="relations">All entries in ordinal order.</param>
     /// <param name="version">The plan version.</param>
+    /// <param name="executionBehavior">The plan execution behavior.</param>
     /// <returns>An immutable, validated plan.</returns>
-    public static Plan FromRelations(IEnumerable<IRelation> relations, IVersion version) =>
-        FromRelations(PlanMetadata.Empty, relations, version);
+    public static Plan FromRelations(IEnumerable<IRelation> relations, IVersion version, ExecutionBehavior executionBehavior) =>
+        FromRelations(PlanMetadata.Empty, relations, version, executionBehavior);
 
     /// <summary>Creates a plan with explicit metadata and ordered root and non-root entries.</summary>
     /// <param name="metadata">The plan-level metadata.</param>
     /// <param name="relations">All entries in ordinal order.</param>
     /// <param name="version">The plan version.</param>
+    /// <param name="executionBehavior">The plan execution behavior.</param>
     /// <returns>An immutable, validated plan.</returns>
-    public static Plan FromRelations(PlanMetadata metadata, IEnumerable<IRelation> relations, IVersion version) =>
-        new(metadata, relations.ToImmutableList(), version);
+    public static Plan FromRelations(PlanMetadata metadata, IEnumerable<IRelation> relations, IVersion version, ExecutionBehavior executionBehavior) =>
+        new(metadata, relations.ToImmutableList(), version, executionBehavior);
 
     /// <inheritdoc/>
     public IReadOnlyList<IRelation> Relations { get; }
@@ -74,6 +79,9 @@ public sealed class Plan : IPlan, IEquatable<Plan>
     public PlanMetadata Metadata { get; }
 
     /// <inheritdoc/>
+    public ExecutionBehavior ExecutionBehavior { get; }
+
+    /// <inheritdoc/>
     public bool Equals(Plan? other)
     {
         if (ReferenceEquals(this, other))
@@ -82,7 +90,8 @@ public sealed class Plan : IPlan, IEquatable<Plan>
         }
 
         return other is not null && Enumerable.SequenceEqual(this.Relations, other.Relations)
-            && this.Version.Equals(other.Version) && this.Metadata.Equals(other.Metadata);
+            && this.Version.Equals(other.Version) && this.Metadata.Equals(other.Metadata)
+            && this.ExecutionBehavior.Equals(other.ExecutionBehavior);
     }
 
     /// <inheritdoc/>
@@ -94,7 +103,7 @@ public sealed class Plan : IPlan, IEquatable<Plan>
     /// <inheritdoc/>
     public override int GetHashCode()
     {
-        return HashCode.Combine(this.Relations.CombineHashCodes(), this.Version, this.Metadata);
+        return HashCode.Combine(this.Relations.CombineHashCodes(), this.Version, this.Metadata, this.ExecutionBehavior);
     }
 
     /// <summary>

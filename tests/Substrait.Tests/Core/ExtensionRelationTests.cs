@@ -343,7 +343,7 @@ public sealed class ExtensionRelationTests
     [Test]
     public async Task PlanBuilderAndImportValidateReferencesAndAnchorsInsideExtensions()
     {
-        PlanBuilder builder = new();
+        PlanBuilder builder = new(TestPlans.PerPlan);
         Reference shared = builder.RegisterSubplan(new ExtensionLeaf(Payload("source"), Struct.Empty));
         builder.AddRoot(new ExtensionMulti([new ExtensionSingle(shared, detail: null, Struct.Empty), shared], detail: null, Struct.Empty), []);
         ProtoPlan wire = new PlanToProtoConverter().From(builder.Build());

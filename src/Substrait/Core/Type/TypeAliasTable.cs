@@ -9,7 +9,7 @@ namespace Substrait.Core.Type;
 /// every definition and the whole alias dependency graph once, at construction, then resolves any
 /// <see cref="ParameterizedType.AliasReference"/> found anywhere in a type tree against it.
 /// </summary>
-public sealed class TypeAliasTable
+public sealed class TypeAliasTable : IEquatable<TypeAliasTable>
 {
     private readonly IReadOnlyDictionary<uint, IType> definitions;
     private readonly IReadOnlyDictionary<uint, IType> resolvedDefinitions;
@@ -44,6 +44,17 @@ public sealed class TypeAliasTable
     /// <exception cref="ArgumentException">An alias reference in <paramref name="type"/> does not
     /// specify nullability, or names an anchor absent from this table.</exception>
     public IType Resolve(IType type) => Rewrite(type ?? throw new ArgumentNullException(nameof(type)), this.resolvedDefinitions, path: null, definitionAnchor: null);
+
+    /// <inheritdoc/>
+    public bool Equals(TypeAliasTable? other) => other is not null
+        && this.definitions.Count == other.definitions.Count
+        && this.definitions.All(entry => other.definitions.TryGetValue(entry.Key, out IType? definition) && entry.Value.Equals(definition));
+
+    /// <inheritdoc/>
+    public override bool Equals(object? obj) => this.Equals(obj as TypeAliasTable);
+
+    /// <inheritdoc/>
+    public override int GetHashCode() => this.definitions.Aggregate(this.definitions.Count, (hash, entry) => hash ^ HashCode.Combine(entry.Key, entry.Value));
 
     private static IType Rewrite(IType root, IReadOnlyDictionary<uint, IType> resolvedDefinitions, RewritePath? path, uint? definitionAnchor)
     {

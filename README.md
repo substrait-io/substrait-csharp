@@ -158,7 +158,9 @@ operations fail explicitly. See [extension schema contracts](docs/metadata-facad
 for examples, output mapping, and round-trip limitations.
 
 `IPlan.Metadata` preserves plan-level advanced extensions, the ordered
-`expected_type_urls`, and imported extension URN/declaration tables. Export keeps
+`expected_type_urls`, imported extension URN/declaration tables, `type_aliases`,
+and `parameter_bindings`. `IPlan.ExecutionBehavior` holds the required
+`execution_behavior`. Export keeps
 all imported anchors, including aliases and apparently unused dependencies that
 opaque payloads may reference. Core references use one existing anchor per
 identity; new dependencies receive nonconflicting anchors.
@@ -185,7 +187,7 @@ var schema = new NamedStruct(
     ["order_id"], TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64]));
 var orders = new NamedTableRead(schema, ["orders"], filter: null);
 
-var builder = new PlanBuilder();
+var builder = new PlanBuilder(new ExecutionBehavior(VariableEvaluationMode.PerPlan));
 Reference sharedOrders = builder.RegisterSubplan(orders); // Entry 0, not an output.
 builder.AddRoot(sharedOrders, ["all_order_ids"]);         // Entry 1.
 builder.AddRoot(

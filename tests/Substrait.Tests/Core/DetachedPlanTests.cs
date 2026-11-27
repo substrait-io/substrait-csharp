@@ -280,7 +280,7 @@ public sealed class DetachedPlanTests
         await Assert.That(new PlanToProtoConverter().From(imported)).IsEqualTo(expected);
 
         var root = imported.Roots[0];
-        var builder = new PlanBuilder(imported.Metadata, imported.Version);
+        var builder = new PlanBuilder(imported.Metadata, imported.Version, imported.ExecutionBehavior);
         builder.AddRoot(root.Metadata, root.Input, root.Names);
         await Assert.That(new PlanToProtoConverter().From(builder.Build())).IsEqualTo(expected);
         expected.Relations[0].DetachedExpressions.Clear();
@@ -304,11 +304,11 @@ public sealed class DetachedPlanTests
         await Assert.That(metadata).IsEqualTo(equal);
 
         IPlan imported = Reader().From(DetachedPlan("mixed", nonRoot: true));
-        var builder = new PlanBuilder(imported.Metadata, imported.Version);
+        var builder = new PlanBuilder(imported.Metadata, imported.Version, imported.ExecutionBehavior);
         builder.RegisterSubplan(imported.Relations[0].Metadata, imported.Relations[0].Input);
         IPlan rebuilt = builder.Build();
         await Assert.That(rebuilt).IsEqualTo(imported);
-        IPlan copied = Substrait.Core.Plan.Plan.FromRelations(imported.Metadata, imported.Relations, imported.Version);
+        IPlan copied = Substrait.Core.Plan.Plan.FromRelations(imported.Metadata, imported.Relations, imported.Version, imported.ExecutionBehavior);
         await Assert.That(copied).IsEqualTo(imported);
         await Assert.That(PlanRelationMetadata.FromProto(new PlanRel())).IsSameReferenceAs(PlanRelationMetadata.Empty);
         await Assert.That(() => PlanRelationMetadata.FromProto(null!)).ThrowsExactly<ArgumentNullException>();
@@ -753,6 +753,7 @@ public sealed class DetachedPlanTests
         return $$$"""
             {
               "version": {"minorNumber": 107, "producer": "detached-plan-tests"},
+              "executionBehavior": {"variableEvalMode": "VARIABLE_EVALUATION_MODE_PER_PLAN"},
               "relations": [{"root": {
                 "names": ["value", "computed"],
                 "input": {"project": {
@@ -768,6 +769,7 @@ public sealed class DetachedPlanTests
     private static ProtoPlan WirePlan(ProtoRel input, bool nonRoot = false) => new()
     {
         Version = new() { MinorNumber = 107, Producer = "detached-plan-tests" },
+        ExecutionBehavior = TestPlans.ProtoPerPlan,
         Relations = { nonRoot ? new PlanRel { Rel = input } : new PlanRel { Root = new() { Input = input, Names = { "value", "computed" } } } },
     };
 

@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Google.Protobuf;
+using Substrait.Core.Expression;
 using Substrait.Core.Extension;
 using Substrait.Core.Metadata;
 using Substrait.Core.Plan;
 using Substrait.Core.Plan.Converters;
+using Substrait.Core.Type;
 using Substrait.Protobuf;
+using Substrait.Tools;
 using TUnit.Assertions.Enums;
 using Any = Google.Protobuf.WellKnownTypes.Any;
+using CoreBinding = Substrait.Core.Metadata.DynamicParameterBinding;
 using CorePlan = Substrait.Core.Plan.Plan;
 using StringValue = Google.Protobuf.WellKnownTypes.StringValue;
 
@@ -247,6 +251,27 @@ public sealed class PlanBuilderMetadataTests
         await Assert.That(builder.Metadata).IsSameReferenceAs(absent);
     }
 
+    [Test]
+    public async Task MetadataEditsPreserveTypeAliasesAndParameterBindings()
+    {
+        TypeAliasTable aliases = new TypeAliasTable.Builder().Add(7, TypeFactory.REQUIRED.I64).Build();
+        CoreBinding[] bindings = [new(3, new Literal.I64Literal(5))];
+        PlanBuilder builder = Builder(new(null, null, null, null, aliases, bindings));
+        Action[] edits =
+        [
+            () => builder.SetAdvancedExtensions(UnknownExtensions()),
+            () => builder.SetEnhancement(new StringValue { Value = "payload" }),
+            () => builder.SetExpectedTypeUrls(["url"]),
+            builder.ClearAdvancedExtensions,
+        ];
+        foreach (Action edit in edits)
+        {
+            edit();
+            await Assert.That(builder.Metadata.TypeAliases).IsSameReferenceAs(aliases);
+            await Assert.That(builder.Metadata.ParameterBindings).IsEquivalentTo(bindings, CollectionOrdering.Matching);
+        }
+    }
+
     private static IEnumerable<string> FailingUrls()
     {
         yield return "must-not-be-applied";
@@ -259,7 +284,7 @@ public sealed class PlanBuilderMetadataTests
 
     private static PlanBuilder Builder(PlanMetadata? metadata = null)
     {
-        PlanBuilder builder = new(metadata ?? PlanMetadata.Empty, version: null);
+        PlanBuilder builder = new(metadata ?? PlanMetadata.Empty, version: null, TestPlans.PerPlan);
         builder.AddRoot(RelationMetadataConversionTests.Read(), ["value"]);
         return builder;
     }

@@ -220,7 +220,7 @@ public sealed class BoundedPlanSerializationTests
             Enhancement = Any.Pack(new ProtoExpression { DetachedExpressionOrdinal = 0 }),
         }));
         IRel relation = new Project(metadata, Read(), [Cast(Integer(7))]);
-        IPlan plan = CorePlan.FromRelations([new CorePlan.Root(encoding, relation, ["value"])], Substrait.Core.Plan.Version.Current);
+        IPlan plan = CorePlan.FromRelations([new CorePlan.Root(encoding, relation, ["value"])], Substrait.Core.Plan.Version.Current, TestPlans.PerPlan);
         var writer = new PlanToProtoConverter();
         ProtoPlan wire = writer.From(plan, 1);
         await AssertEncoding(wire, 1, retainedExpressions: 2, retainedRelations: 1);
@@ -238,7 +238,7 @@ public sealed class BoundedPlanSerializationTests
     [Test]
     public async Task PlanReferencesAndContainerOrdinalsRemainSeparate()
     {
-        var builder = new PlanBuilder();
+        var builder = new PlanBuilder(TestPlans.PerPlan);
         Reference reference = builder.RegisterSubplan(Project(Cast(Integer(7))));
         builder.AddRoot(new Filter(reference, new Literal.BoolLiteral(true)), ["value"]);
         IPlan plan = builder.Build();

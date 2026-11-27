@@ -3,10 +3,13 @@
 
 using System.Runtime.Serialization;
 using Google.Protobuf;
+using Substrait.Core.Expression.Converters;
 using Substrait.Core.Extension;
 using Substrait.Core.Metadata;
 using Substrait.Core.Relation;
 using Substrait.Core.Relation.Converters;
+using Substrait.Core.Type;
+using Substrait.Core.Type.Converters;
 using Substrait.Tools;
 
 namespace Substrait.Core.Plan.Converters;
@@ -16,7 +19,7 @@ namespace Substrait.Core.Plan.Converters;
 /// </summary>
 /// <remarks>
 /// All import entry points resolve reachable detached subtrees and retain their container-local
-/// tables for opaque payloads. Nonempty named-lambda and type-alias tables remain unsupported.
+/// tables for opaque payloads. Nonempty named-lambda tables remain unsupported.
 /// </remarks>
 public class ProtoToPlanConverter
 {
@@ -100,13 +103,23 @@ public class ProtoToPlanConverter
             throw new NotSupportedException("Plan.named_lambdas is not supported by the internal representation.");
         }
 
-        if (plan.TypeAliases.Count > 0)
+        var lookup = new ExtensionsDictionary.Builder(plan).RequireTypeAliases(plan.TypeAliases.Select(alias => alias.TypeAliasAnchor)).Build();
+        var typeConverter = new ProtoToTypeConverter(lookup, this.extensions, strictMode);
+        var expressionConverter = new ProtoToExpressionConverter(lookup, this.extensions, typeConverter, strictMode);
+        TypeAliasTable typeAliases = new ProtoToTypeAliasTableConverter(typeConverter).From(plan.TypeAliases);
+        var parameterBindings = plan.ParameterBindings.Select(binding => new DynamicParameterBinding(
+            binding.ParameterAnchor,
+            expressionConverter.CreateLiteral(binding.Value ?? throw new SerializationException($"Dynamic parameter binding {binding.ParameterAnchor} has no value."))));
+        PlanMetadata metadata;
+        try
         {
-            throw new NotSupportedException("Plan.type_aliases is not supported by the internal representation.");
+            metadata = PlanMetadata.Capture(plan, ownsMetadata, typeAliases, parameterBindings);
+        }
+        catch (ArgumentException error)
+        {
+            throw new SerializationException(error.Message, error);
         }
 
-
-        var metadata = PlanMetadata.Capture(plan, ownsMetadata);
         _ = new ExtensionsCollector.Builder(metadata.ExtensionUrns, metadata.Extensions);
         var inputs = new Protobuf.Rel[plan.Relations.Count];
         var dependencies = new List<IReadOnlyList<int>>(plan.Relations.Count);
@@ -127,7 +140,7 @@ public class ProtoToPlanConverter
 
         IReadOnlyList<int> order = PlanValidation.GetDependencyOrder(dependencies, message => new SerializationException(message));
         var converted = new IRel?[plan.Relations.Count];
-        var relationConverter = new ProtoToRelConverter(new ExtensionsDictionary.Builder(plan).Build(), this.extensions, strictMode, ownsMetadata, this.extensionSchemaResolver);
+        var relationConverter = new ProtoToRelConverter(lookup, this.extensions, strictMode, ownsMetadata, this.extensionSchemaResolver);
         relationConverter.ReferenceResolver = ordinal =>
         {
             PlanValidation.ValidateOrdinal(ordinal, converted.Length, "Plan reference resolution", message => new SerializationException(message));
@@ -157,6 +170,7 @@ public class ProtoToPlanConverter
         });
 
         Protobuf.Version version = plan.Version ?? throw new SerializationException("Plan version is required by this converter.");
+        Protobuf.ExecutionBehavior executionBehavior = plan.ExecutionBehavior ?? throw new SerializationException("Plan execution behavior is required by this converter.");
         return Plan.FromRelations(
             metadata,
             entries,
@@ -165,7 +179,8 @@ public class ProtoToPlanConverter
                 version.MinorNumber,
                 version.PatchNumber,
                 version.GitHash,
-                version.Producer));
+                version.Producer),
+            new ExecutionBehavior(EnumUtils.Cast<Protobuf.ExecutionBehavior.Types.VariableEvaluationMode, VariableEvaluationMode>(executionBehavior.VariableEvalMode)));
     }
 
     /// <summary>

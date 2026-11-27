@@ -188,7 +188,7 @@ public sealed class PlanMetadataTests
         PlanMetadata metadata = new(extensions, urls);
         PlanVersion version = new(1, 2, 3, "hash", "plan-extensions-tests");
         NamedTableRead read = RelationMetadataConversionTests.Read();
-        PlanBuilder builder = new(metadata, version);
+        PlanBuilder builder = new(metadata, version, TestPlans.PerPlan);
         Reference shared = builder.RegisterSubplan(read);
         builder.AddRoot(shared, ["first"]);
         CorePlan first = builder.Build();
@@ -212,12 +212,12 @@ public sealed class PlanMetadataTests
         await Assert.That(((Reference)imported.Roots[1].Input).Target).IsSameReferenceAs(imported.Relations[0].Input);
 
         List<IPlan.IRelation> entries = [new CorePlan.Relation(read), new CorePlan.Root(new Reference(0, read), ["output"])];
-        CorePlan fromRelations = CorePlan.FromRelations(metadata, entries, version);
+        CorePlan fromRelations = CorePlan.FromRelations(metadata, entries, version, TestPlans.PerPlan);
         entries.Clear();
         await Assert.That(fromRelations.Metadata).IsSameReferenceAs(metadata);
         await Assert.That(fromRelations.Relations.Count).IsEqualTo(2);
         await Assert.That(Decoder().From(new PlanToProtoConverter().From(fromRelations))).IsEqualTo(fromRelations);
-        CorePlan fromRoots = new(metadata, [new CorePlan.Root(read, ["output"])], version);
+        CorePlan fromRoots = new(metadata, [new CorePlan.Root(read, ["output"])], version, TestPlans.PerPlan);
         await Assert.That(Decoder().From(new PlanToProtoConverter().From(fromRoots))).IsEqualTo(fromRoots);
     }
 
@@ -227,8 +227,8 @@ public sealed class PlanMetadataTests
         NamedTableRead read = RelationMetadataConversionTests.Read();
         CorePlan[] legacy =
         [
-            new([new CorePlan.Root(read, [])], PlanVersion.Current),
-            CorePlan.FromRelations([new CorePlan.Relation(read)], PlanVersion.Current),
+            new([new CorePlan.Root(read, [])], PlanVersion.Current, TestPlans.PerPlan),
+            CorePlan.FromRelations([new CorePlan.Relation(read)], PlanVersion.Current, TestPlans.PerPlan),
         ];
         foreach (CorePlan plan in legacy)
         {
@@ -239,13 +239,13 @@ public sealed class PlanMetadataTests
             await Assert.That(Decoder().From(wire)).IsEqualTo(plan);
         }
 
-        await Assert.That(new PlanBuilder(null).Build().Metadata).IsSameReferenceAs(PlanMetadata.Empty);
+        await Assert.That(new PlanBuilder(TestPlans.PerPlan).Build().Metadata).IsSameReferenceAs(PlanMetadata.Empty);
         PlanMetadata metadata = new(UnknownExtensions(), ExpectedUrls);
         CorePlan[] empty =
         [
-            new(metadata, [], PlanVersion.Current),
-            CorePlan.FromRelations(metadata, [], PlanVersion.Current),
-            new PlanBuilder(metadata, version: null).Build(),
+            new(metadata, [], PlanVersion.Current, TestPlans.PerPlan),
+            CorePlan.FromRelations(metadata, [], PlanVersion.Current, TestPlans.PerPlan),
+            new PlanBuilder(metadata, version: null, TestPlans.PerPlan).Build(),
         ];
         foreach (CorePlan plan in empty)
         {
@@ -253,7 +253,7 @@ public sealed class PlanMetadataTests
             await Assert.That(() => new PlanToProtoConverter().From(plan)).ThrowsExactly<ArgumentException>();
         }
 
-        ProtoPlan noRelations = new() { Version = new(), AdvancedExtensions = UnknownExtensions(), ExpectedTypeUrls = { ExpectedUrls } };
+        ProtoPlan noRelations = new() { Version = new(), ExecutionBehavior = TestPlans.ProtoPerPlan, AdvancedExtensions = UnknownExtensions(), ExpectedTypeUrls = { ExpectedUrls } };
         IPlan importedEmpty = Decoder().From(noRelations);
         await Assert.That(importedEmpty.Metadata).IsEqualTo(metadata);
         await Assert.That(importedEmpty.Relations.Count).IsEqualTo(0);
@@ -303,9 +303,11 @@ public sealed class PlanMetadataTests
     {
         await Assert.That(() => new PlanMetadata(message: null!)).ThrowsExactly<ArgumentNullException>();
         await Assert.That(() => new PlanMetadata(expectedTypeUrls: [null!])).ThrowsExactly<ArgumentException>();
-        await Assert.That(() => new CorePlan(null!, [], PlanVersion.Current)).ThrowsExactly<ArgumentNullException>();
-        await Assert.That(() => CorePlan.FromRelations(null!, [], PlanVersion.Current)).ThrowsExactly<ArgumentNullException>();
-        await Assert.That(() => new PlanBuilder(null!, version: null)).ThrowsExactly<ArgumentNullException>();
+        await Assert.That(() => new CorePlan(null!, [], PlanVersion.Current, TestPlans.PerPlan)).ThrowsExactly<ArgumentNullException>();
+        await Assert.That(() => CorePlan.FromRelations(null!, [], PlanVersion.Current, TestPlans.PerPlan)).ThrowsExactly<ArgumentNullException>();
+        await Assert.That(() => new PlanBuilder(null!, version: null, TestPlans.PerPlan)).ThrowsExactly<ArgumentNullException>();
+        await Assert.That(() => new CorePlan(PlanMetadata.Empty, [], PlanVersion.Current, null!)).ThrowsExactly<ArgumentNullException>();
+        await Assert.That(() => new PlanBuilder(PlanMetadata.Empty, version: null, null!)).ThrowsExactly<ArgumentNullException>();
 
         CorePlan original = Plan(new(UnknownExtensions(), ExpectedUrls));
         CustomPlan custom = new(original, original.Metadata);
@@ -314,7 +316,7 @@ public sealed class PlanMetadataTests
     }
 
     private static CorePlan Plan(PlanMetadata metadata) =>
-        new(metadata, [new CorePlan.Root(RelationMetadataConversionTests.Read(), ["value"])], PlanVersion.Current);
+        new(metadata, [new CorePlan.Root(RelationMetadataConversionTests.Read(), ["value"])], PlanVersion.Current, TestPlans.PerPlan);
 
     private static ProtoPlan WirePlan() => new PlanToProtoConverter().From(Plan(PlanMetadata.Empty));
 
@@ -331,5 +333,7 @@ public sealed class PlanMetadataTests
         public IReadOnlyList<IPlan.IRoot> Roots => source.Roots;
 
         public IVersion Version => source.Version;
+
+        public Substrait.Core.Plan.ExecutionBehavior ExecutionBehavior => source.ExecutionBehavior;
     }
 }

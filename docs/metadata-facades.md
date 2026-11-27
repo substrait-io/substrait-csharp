@@ -285,7 +285,7 @@ using Substrait.Core.Type;
 var schema = new Substrait.Core.Type.NamedStruct(
     ["order_id"], TypeFactory.REQUIRED.Struct([TypeFactory.REQUIRED.I64]));
 var orders = new NamedTableRead(schema, ["orders"], filter: null);
-var builder = new PlanBuilder();
+var builder = new PlanBuilder(new ExecutionBehavior(VariableEvaluationMode.PerPlan));
 builder.AddRoot(orders, ["order_id"]);
 var configuration = new StringValue { Value = "required configuration" };
 builder.SetEnhancement(configuration);
@@ -325,7 +325,7 @@ unchanged. An unchanged `Build()` reuses the current metadata rather than
 recopying it. Editing an advanced-extension field preserves the other fields
 and unknown protobuf fields. Expected type URLs are edited independently and
 are never inferred from payloads. All these edits also preserve the declaration
-tables. Builders are not thread-safe.
+tables, type aliases, and parameter bindings. Builders are not thread-safe.
 
 Setting or adding a payload creates the advanced-extension message if absent.
 Removing the last payload leaves a present empty message; only
@@ -337,11 +337,11 @@ Callers with existing immutable metadata can still construct `PlanMetadata` from
 a `ReadOnlyAdvancedExtension` or a protobuf `AdvancedExtension`. The protobuf
 constructor snapshots the entire message, including nested payloads and unknown
 fields. That metadata can be supplied to
-`new Plan(metadata, roots, version)` or
-`Plan.FromRelations(metadata, relations, version)`, or used as the starting point
-for `new PlanBuilder(metadata, version)`. The builder's metadata-first overload
-requires an explicit `version` argument (null selects the current version), so
-the existing `new PlanBuilder(null)` call remains unambiguous.
+`new Plan(metadata, roots, version, executionBehavior)` or
+`Plan.FromRelations(metadata, relations, version, executionBehavior)`, or used as
+the starting point for `new PlanBuilder(metadata, version, executionBehavior)`.
+The builder's metadata-first overload requires explicit `version` and
+`executionBehavior` arguments (a null version selects the current version).
 
 The four-argument facade constructor additionally accepts `extensionUrns` and
 `extensions`. Null collections mean empty lists; null elements are rejected.

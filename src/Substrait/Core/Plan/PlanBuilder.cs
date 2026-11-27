@@ -22,22 +22,26 @@ public sealed class PlanBuilder
     // Shared by this builder's references without retaining the builder itself.
     private readonly object owner = new();
     private readonly IVersion version;
+    private readonly ExecutionBehavior executionBehavior;
     private PlanMetadata metadata;
 
     /// <summary>Initializes a builder.</summary>
+    /// <param name="executionBehavior">The plan execution behavior.</param>
     /// <param name="version">The plan version, or the current specification version.</param>
-    public PlanBuilder(IVersion? version = null)
-        : this(PlanMetadata.Empty, version)
+    public PlanBuilder(ExecutionBehavior executionBehavior, IVersion? version = null)
+        : this(PlanMetadata.Empty, version, executionBehavior)
     {
     }
 
     /// <summary>Initializes a builder with explicit immutable plan-level metadata.</summary>
     /// <param name="metadata">The initial metadata. Later edits do not change this snapshot.</param>
     /// <param name="version">The plan version, or null for the current specification version.</param>
-    public PlanBuilder(PlanMetadata metadata, IVersion? version)
+    /// <param name="executionBehavior">The plan execution behavior.</param>
+    public PlanBuilder(PlanMetadata metadata, IVersion? version, ExecutionBehavior executionBehavior)
     {
         this.metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
         this.version = version ?? Version.Current;
+        this.executionBehavior = executionBehavior ?? throw new ArgumentNullException(nameof(executionBehavior));
     }
 
     /// <summary>Gets the current immutable metadata snapshot, unaffected by later edits.</summary>
@@ -48,7 +52,7 @@ public sealed class PlanBuilder
     public void SetAdvancedExtensions(ReadOnlyAdvancedExtension extensions) =>
         this.metadata = new(
             extensions ?? throw new ArgumentNullException(nameof(extensions)), this.metadata.ExpectedTypeUrls,
-            this.metadata.ExtensionUrns, this.metadata.Extensions);
+            this.metadata.ExtensionUrns, this.metadata.Extensions, this.metadata.TypeAliases, this.metadata.ParameterBindings);
 
     /// <summary>Copies a protobuf advanced-extension message, retaining expected type URLs.</summary>
     /// <param name="message">The non-null message to copy. Do not mutate concurrently with this call.</param>
@@ -60,7 +64,7 @@ public sealed class PlanBuilder
     {
         if (this.metadata.AdvancedExtensions is not null)
         {
-            this.metadata = new(null, this.metadata.ExpectedTypeUrls, this.metadata.ExtensionUrns, this.metadata.Extensions);
+            this.metadata = new(null, this.metadata.ExpectedTypeUrls, this.metadata.ExtensionUrns, this.metadata.Extensions, this.metadata.TypeAliases, this.metadata.ParameterBindings);
         }
     }
 
@@ -124,7 +128,7 @@ public sealed class PlanBuilder
     public void SetExpectedTypeUrls(IEnumerable<string> expectedTypeUrls) =>
         this.metadata = new(
             this.metadata.AdvancedExtensions, expectedTypeUrls ?? throw new ArgumentNullException(nameof(expectedTypeUrls)),
-            this.metadata.ExtensionUrns, this.metadata.Extensions);
+            this.metadata.ExtensionUrns, this.metadata.Extensions, this.metadata.TypeAliases, this.metadata.ParameterBindings);
 
     /// <summary>Appends an expected type URL, preserving duplicates and empty strings.</summary>
     /// <param name="typeUrl">The non-null type URL.</param>
@@ -179,7 +183,7 @@ public sealed class PlanBuilder
             _ = PlanValidation.ValidateEntry(this.relations[ordinal].Input, ordinal, this.relations, this.owner);
         }
 
-        return Plan.FromRelations(this.metadata, this.relations, this.version);
+        return Plan.FromRelations(this.metadata, this.relations, this.version, this.executionBehavior);
     }
 
     private void UpdateAdvancedExtensions(Action<AdvancedExtension> edit)

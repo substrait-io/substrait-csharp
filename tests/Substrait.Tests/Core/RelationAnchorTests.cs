@@ -61,12 +61,12 @@ public sealed class RelationAnchorTests
         NamedTableRead first = Anchored(1);
         NamedTableRead last = Anchored(uint.MaxValue);
         CorePlan plan = CorePlan.FromRelations(
-            [new CorePlan.Root(first, []), new CorePlan.Relation(last)], Substrait.Core.Plan.Version.Current);
+            [new CorePlan.Root(first, []), new CorePlan.Relation(last)], Substrait.Core.Plan.Version.Current, TestPlans.PerPlan);
         await Assert.That(Decoder().FromBytes(new PlanToProtoConverter().From(plan).ToByteArray(), ExtensionsDictionary.StrictMode.OFF)).IsEqualTo(plan);
         await Assert.That(() => Plan(Anchored(0))).ThrowsExactly<ArgumentException>();
         await Assert.That(() => Plan(new Cross(first, Anchored(1)))).ThrowsExactly<ArgumentException>();
         await Assert.That(() => CorePlan.FromRelations(
-            [new CorePlan.Root(first, []), new CorePlan.Relation(first)], Substrait.Core.Plan.Version.Current)).ThrowsExactly<ArgumentException>();
+            [new CorePlan.Root(first, []), new CorePlan.Relation(first)], Substrait.Core.Plan.Version.Current, TestPlans.PerPlan)).ThrowsExactly<ArgumentException>();
 
         ProtoRel wire = WireRead(0);
         await Assert.That(() => Decoder().From(WirePlan(wire), ExtensionsDictionary.StrictMode.OFF)).ThrowsExactly<SerializationException>();
@@ -101,7 +101,7 @@ public sealed class RelationAnchorTests
     [Test]
     public async Task ExplicitReferencesDoNotRecountTheirTargetsOrCollideWithOrdinals()
     {
-        PlanBuilder builder = new();
+        PlanBuilder builder = new(TestPlans.PerPlan);
         Reference shared = builder.RegisterSubplan(Anchored(1));
         builder.AddRoot(new Cross(shared, shared), []);
         builder.AddRoot(shared, []);
@@ -120,7 +120,7 @@ public sealed class RelationAnchorTests
     [Test]
     public async Task RejectedBuilderRegistrationsDoNotConsumeOrdinalsOrReserveAnchors()
     {
-        PlanBuilder builder = new();
+        PlanBuilder builder = new(TestPlans.PerPlan);
         builder.RegisterSubplan(Anchored(7));
         await Assert.That(() => builder.AddRoot(new Cross(Anchored(8), Anchored(7)), [])).ThrowsExactly<ArgumentException>();
         Reference next = builder.RegisterSubplan(Anchored(8));
@@ -133,7 +133,7 @@ public sealed class RelationAnchorTests
     [Test]
     public async Task FailedAnchorBatchRollsBackNewKeysWithoutRemovingExistingKeys()
     {
-        PlanBuilder builder = new();
+        PlanBuilder builder = new(TestPlans.PerPlan);
         builder.RegisterSubplan(Anchored(7));
         builder.RegisterSubplan(Anchored(11));
         IPlan before = builder.Build();
@@ -171,7 +171,7 @@ public sealed class RelationAnchorTests
         IPlan valid = Decoder().From(WirePlan(root), ExtensionsDictionary.StrictMode.OFF);
         IRel nested = PlanReferenceConversionTests.GetSubquery(((Project)valid.Relations[0].Input).Expressions[0]);
         await Assert.That(() => CorePlan.FromRelations(
-            [new CorePlan.Relation(valid.Relations[0].Input), new CorePlan.Root(nested, [])], Substrait.Core.Plan.Version.Current)).ThrowsExactly<ArgumentException>();
+            [new CorePlan.Relation(valid.Relations[0].Input), new CorePlan.Root(nested, [])], Substrait.Core.Plan.Version.Current, TestPlans.PerPlan)).ThrowsExactly<ArgumentException>();
         await Assert.That(() => Decoder().From(WirePlan(root, WireRead(1)), ExtensionsDictionary.StrictMode.OFF)).ThrowsExactly<SerializationException>();
         root.Project.Expressions.Add(root.Project.Expressions[0]);
         await Assert.That(() => Decoder().From(WirePlan(root), ExtensionsDictionary.StrictMode.OFF)).ThrowsExactly<SerializationException>();
@@ -239,5 +239,7 @@ public sealed class RelationAnchorTests
         public IVersion Version => Substrait.Core.Plan.Version.Current;
 
         public PlanMetadata Metadata => PlanMetadata.Empty;
+
+        public Substrait.Core.Plan.ExecutionBehavior ExecutionBehavior => TestPlans.PerPlan;
     }
 }
